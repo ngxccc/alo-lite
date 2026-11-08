@@ -1,0 +1,11 @@
+[package]
+name = "alolite-gpui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "AloLite Native GPU Desktop Client (GPUI Experiment)"
+
+[dependencies]
+alolite-core = { path = "../alolite-core" }
+anyhow = "1.0"
+gpui = "0.2.2"

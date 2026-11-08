@@ -4,6 +4,7 @@ members = [
     "crates/alolite-core",
     "crates/alolite-cli",
     "crates/alolite-desktop",
+    "crates/alolite-gpui",
 ]
 
 [workspace.package]
