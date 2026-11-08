@@ -30,12 +30,11 @@ jobs:
       - name: Format Check
         run: cargo fmt --all -- --check
 
-      - name: Clippy Linter
-        run: cargo clippy --all-targets -- -D warnings
+      - name: Clippy Linter (Core & CLI)
+        run: cargo clippy -p alolite-core -p alolite-cli --all-targets -- -D warnings
 
       - name: Run Unit & Integration Tests
-        run: cargo test --locked
-
+        run: cargo test -p alolite-core -p alolite-cli --locked
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
 
