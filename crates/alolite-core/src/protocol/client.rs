@@ -94,7 +94,8 @@ impl ZaloClient {
     // Friends & Profiles
     // ------------------------------------------------------------------------
 
-    /// Fetch the user's friend list and 1-1 conversations.
+    /// Fetch the user's friend list and 1-1 conversations (no local history is hydrated;
+    /// use `social::friends::get_friends_with` to hydrate through a caller-supplied hook).
     pub async fn get_friends(&self) -> Result<Vec<Thread>> {
         let s = self.session.lock().await.clone();
         crate::protocol::social::friends::get_friends(&s).await
@@ -337,7 +338,9 @@ impl ZaloClient {
     // Polling & Real-Time Sync
     // ------------------------------------------------------------------------
 
-    /// Long-poll for incoming messages (`lp_chat`).
+    /// Long-poll for incoming messages (`lp_chat`) and merge them into `threads`.
+    ///
+    /// Nothing is persisted; callers store the result (`storage::persist_account_threads`).
     pub async fn poll_new_messages(
         &self,
         state: &mut PollState,

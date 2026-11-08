@@ -151,7 +151,10 @@ pub async fn get_chat_from_polling(s: &Session, state: &mut PollState) -> Result
     }
 }
 
-/// Poll `getChatFromPolling`, `get-last-msgs`, and `/api/cm/getrecentv2`, merge messages, and persist.
+/// Poll `getChatFromPolling`, `get-last-msgs`, and `/api/cm/getrecentv2`, and merge messages into `threads`.
+///
+/// Pure protocol: nothing is written to disk. The caller persists the merged `threads`
+/// (see `storage::persist_account_threads`) when this returns `Ok`.
 ///
 /// # Errors
 /// Returns an error if unauthenticated.
@@ -214,10 +217,5 @@ pub async fn poll_new_messages(
     resolve_thread_names(s, threads).await;
     threads.retain(|t| !t.messages.is_empty() || !t.name.starts_with("Người dùng "));
     deduplicate_threads(threads, None);
-    let db_path = crate::store::db_path_for_account(&login.uin);
-    if let Ok(mut store) = crate::store::MessageStore::open(&db_path) {
-        let _ = crate::store::persist_threads(&mut store, threads);
-    }
-    crate::store::save_threads_cache(threads);
     Ok(())
 }

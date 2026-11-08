@@ -13,14 +13,17 @@ use crate::protocol::messaging::stickers::fetch_sticker_suggest_keywords;
 use crate::protocol::messaging::unread::get_mute_snapshot;
 use crate::protocol::messaging::Thread;
 use crate::protocol::session::Session;
-use crate::protocol::social::friends::get_friends;
+use crate::protocol::social::friends::get_friends_with;
 use crate::protocol::social::groups::get_groups;
 use crate::services::account_manager::{
     delete_saved_account as svc_delete_saved_account,
     list_saved_accounts as svc_list_saved_accounts, save_current_account_snapshot,
     switch_to_account, AccountProfile,
 };
-use crate::storage::{load_history_into_threads, load_threads_cache, MessageStore};
+use crate::storage::{
+    load_history_into_threads, load_threads_cache, persist_account_threads,
+    preload_account_history, MessageStore,
+};
 
 impl CoreEngine {
     pub(super) async fn handle_expired_session(self: &Arc<Self>, message: &str) {
@@ -165,7 +168,7 @@ impl CoreEngine {
         });
 
         let mut list: Vec<Thread> = Vec::new();
-        if let Ok(friends) = get_friends(&s).await {
+        if let Ok(friends) = get_friends_with(&s, |t| preload_account_history(&uin, t)).await {
             merge_thread_headers(&mut list, friends, false);
         }
         if let Ok(groups) = get_groups(&s).await {
@@ -183,7 +186,9 @@ impl CoreEngine {
         {
             let mut ps = self.poll_state.lock().await;
             *ps = PollState::default();
-            let _ = poll_new_messages(&s, &mut ps, &mut list).await;
+            if poll_new_messages(&s, &mut ps, &mut list).await.is_ok() {
+                persist_account_threads(&uin, &list);
+            }
         }
         if let Ok(mute_snap) = get_mute_snapshot(&s, unix_now()).await {
             mute_snap.merge_into(&mut list);

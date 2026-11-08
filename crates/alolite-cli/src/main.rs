@@ -234,7 +234,10 @@ async fn run_terminal_login_flow(
     store::load_history_into_threads("zalo_history.db", &mut initial_threads, 200);
 
     if s.login.is_some() && server_ok {
-        if let Ok(list) = social::friends::get_friends(&s).await {
+        let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+        if let Ok(list) =
+            social::friends::get_friends_with(&s, |t| store::preload_account_history(&uin, t)).await
+        {
             for ft in list {
                 if let Some(ex) = initial_threads.iter_mut().find(|t| t.id == ft.id) {
                     if !ft.name.is_empty() {

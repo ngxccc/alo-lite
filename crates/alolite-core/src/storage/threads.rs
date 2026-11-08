@@ -388,3 +388,23 @@ pub fn load_history_into_threads(path: &str, threads: &mut Vec<Thread>, limit_pe
         let _ = store.hydrate_threads(threads, limit_per_thread);
     }
 }
+
+/// Hydrate `threads` from the SQLite history of account `uin` (`PRELOAD_MSGS` messages per thread).
+///
+/// Owns the account-to-database-path mapping so `protocol/` never needs to know about the store.
+pub fn preload_account_history(uin: &str, threads: &mut Vec<Thread>) {
+    let db_path = super::models::db_path_for_account(uin);
+    load_history_into_threads(&db_path, threads, MessageStore::PRELOAD_MSGS);
+}
+
+/// Persist `threads` into the SQLite store of account `uin`, then refresh `threads_cache.json`.
+///
+/// Persistence is best-effort: an unopenable store or a failed transaction is skipped silently and
+/// the cache file is still written, matching the former in-protocol behaviour of `poll_new_messages`.
+pub fn persist_account_threads(uin: &str, threads: &[Thread]) {
+    let db_path = super::models::db_path_for_account(uin);
+    if let Ok(mut store) = MessageStore::open(&db_path) {
+        let _ = persist_threads(&mut store, threads);
+    }
+    super::thread_cache::save_threads_cache(threads);
+}

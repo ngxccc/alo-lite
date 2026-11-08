@@ -22,7 +22,7 @@ use crate::protocol::messaging::unread::{
 };
 use crate::protocol::messaging::Thread;
 use crate::protocol::session::{Session, SessionStatus};
-use crate::protocol::social::friends::get_friends;
+use crate::protocol::social::friends::get_friends_with;
 use crate::protocol::social::groups::{get_groups, resolve_thread_names};
 use crate::protocol::sync::{
     fetch_phone_messages, fetch_thread_history, format_phone_sync_final_message, PHONE_SYNC_CANCEL,
@@ -30,8 +30,9 @@ use crate::protocol::sync::{
 };
 use crate::storage::{
     commit_phone_sync_to_store, db_path_for_account, load_history_into_threads, load_threads_cache,
-    oldest_message_id, persist_thread_snapshot, persist_threads as storage_persist_threads,
-    save_threads_cache, MessageStore,
+    oldest_message_id, persist_account_threads, persist_thread_snapshot,
+    persist_threads as storage_persist_threads, preload_account_history, save_threads_cache,
+    MessageStore,
 };
 
 async fn compose_sync_thread(s: &Session, t: &mut Thread) -> Result<usize> {
@@ -166,7 +167,8 @@ impl CoreEngine {
             .await
             .unwrap_or_default();
         let mut errors = Vec::new();
-        match get_friends(&s).await {
+        let uin = s.login.as_ref().map(|l| l.uin.as_str()).unwrap_or_default();
+        match get_friends_with(&s, |t| preload_account_history(uin, t)).await {
             Ok(friends) => merge_thread_headers(&mut list, friends, false),
             Err(e) => {
                 crate::logger::log_error("core::refresh_friends", &e.to_string());
@@ -185,7 +187,6 @@ impl CoreEngine {
             }
         }
 
-        let uin = s.login.as_ref().map(|l| l.uin.as_str()).unwrap_or_default();
         let db_path = self.resolve_db_path_for_uin(uin);
         let mut list = tokio::task::spawn_blocking(move || {
             load_history_into_threads(&db_path, &mut list, MessageStore::PRELOAD_MSGS);
@@ -199,9 +200,12 @@ impl CoreEngine {
             list.len()
         )));
         let mut fresh_ps = PollState::default();
-        if let Err(e) = poll_new_messages(&s, &mut fresh_ps, &mut list).await {
-            crate::logger::log_error("core::refresh_poll", &e.to_string());
-            errors.push(format!("Tin nhắn: {e}"));
+        match poll_new_messages(&s, &mut fresh_ps, &mut list).await {
+            Ok(()) => persist_account_threads(uin, &list),
+            Err(e) => {
+                crate::logger::log_error("core::refresh_poll", &e.to_string());
+                errors.push(format!("Tin nhắn: {e}"));
+            }
         }
         {
             let mut ps = self.poll_state.lock().await;

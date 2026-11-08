@@ -70,11 +70,25 @@ pub(crate) fn parse_thread(v: &Value) -> Option<Thread> {
     })
 }
 
-/// `/api/social/friend/getfriends` — fetch friends, hydrate local SQLite history, and merge groups.
+/// `/api/social/friend/getfriends` — fetch friends and merge groups, without any local history.
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the friend endpoint fails across all candidates.
 pub async fn get_friends(s: &Session) -> Result<Vec<Thread>> {
+    get_friends_with(s, |_| {}).await
+}
+
+/// Like [`get_friends`], but runs `preload` on the parsed friend list before groups are merged.
+///
+/// The hook is the seam that lets the caller hydrate local history (SQLite lives outside
+/// `protocol/`) at the exact point the former in-protocol preload ran.
+///
+/// # Errors
+/// Returns an error if unauthenticated or the friend endpoint fails across all candidates.
+pub async fn get_friends_with<F>(s: &Session, preload: F) -> Result<Vec<Thread>>
+where
+    F: FnOnce(&mut Vec<Thread>),
+{
     require_login(s)?;
     let body = obj(&[
         ("incInvalid", json!(1)),
@@ -132,13 +146,7 @@ pub async fn get_friends(s: &Session) -> Result<Vec<Thread>> {
         }
     }
 
-    let uin = s.login.as_ref().map(|l| l.uin.as_str()).unwrap_or_default();
-    let db_path = crate::store::db_path_for_account(uin);
-    crate::store::load_history_into_threads(
-        &db_path,
-        &mut threads,
-        crate::store::MessageStore::PRELOAD_MSGS,
-    );
+    preload(&mut threads);
 
     if let Ok(mut groups) = get_groups(s).await {
         for g in groups.drain(..) {

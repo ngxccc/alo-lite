@@ -20,7 +20,9 @@ pub use sync_ingest::{
     persist_resolved_thread_names, persist_thread_snapshot, ConvArchive, RawArchiveRow,
 };
 pub use thread_cache::{load_threads_cache, save_threads_cache};
-pub use threads::{load_history_into_threads, persist_threads};
+pub use threads::{
+    load_history_into_threads, persist_account_threads, persist_threads, preload_account_history,
+};
 
 impl MessageStore {
     /// Open SQLite database at `path` and initialize table schemas and indices if absent.
