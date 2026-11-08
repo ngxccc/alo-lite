@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-REPO="${REPO:-ngxccc/alolite}"
+REPO="${REPO:-ngxccc/alo-lite}"
 OUT="${1:-docs/DA_BIET.md}"
 API="https://api.github.com/repos/${REPO}/issues?state=open&per_page=100&sort=created&direction=desc"
 
@@ -26,7 +26,10 @@ if [ -n "${GITHUB_TOKEN:-}" ]; then
 fi
 
 if ! curl -fsSL -H "Accept: application/vnd.github+json" "${auth[@]}" "$API" -o "$tmp"; then
-  echo "! Không tải được issue từ GitHub — giữ nguyên ${OUT}" >&2
+  echo "! Không tải được issue từ GitHub — giữ nguyên hoặc tạo stub cho ${OUT}" >&2
+  if [ ! -f "$OUT" ]; then
+    echo -e "# Đã biết\n\nChưa có danh sách lỗi hoặc mạng không khả dụng." > "$OUT"
+  fi
   exit 0
 fi
 
