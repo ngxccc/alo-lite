@@ -4,4 +4,4 @@ pub mod login;
 pub mod qr;
 pub mod trust;
 
-pub use qr::QrLogin;
+pub use qr::{QrConfirmResult, QrLogin, QrScannedProfile};

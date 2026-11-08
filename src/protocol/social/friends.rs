@@ -9,7 +9,7 @@ use crate::clock::{message_time, unix_now};
 use crate::protocol::messaging::threads::{merge_thread_into, Thread};
 use crate::protocol::session::Session;
 use crate::protocol::wire::{
-    domain_or, is_group_flag, obj, pick_str, require_login, unwrap_data, val_i64,
+    domain_or, is_group_flag, obj, pick_str, require_login, unwrap_data, val_i64, ActionAck,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -268,7 +268,7 @@ pub async fn get_user_online_status(s: &Session, uid: &str) -> Result<(bool, Str
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the server returns a non-zero `error_code`.
-pub async fn send_friend_request(s: &Session, to_id: &str, msg: &str) -> Result<Value> {
+pub async fn send_friend_request(s: &Session, to_id: &str, msg: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[
         ("toid", json!(to_id)),
@@ -283,14 +283,14 @@ pub async fn send_friend_request(s: &Session, to_id: &str, msg: &str) -> Result<
     let resp = s.post_form(&url, format!("params={enc}")).await?;
     let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
     crate::protocol::wire::ensure_ok_code(&dec, "sendreq error")?;
-    Ok(dec)
+    Ok(ActionAck::from_wire(&dec))
 }
 
 /// Accept a pending incoming friend request (`/api/friend/accept`, cmd `11427`).
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the server returns a non-zero `error_code`.
-pub async fn accept_friend_request(s: &Session, fid: &str) -> Result<Value> {
+pub async fn accept_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[("fid", json!(fid)), ("language", json!("vi"))]);
     let enc = s.encoded_params(&body)?;
@@ -299,35 +299,37 @@ pub async fn accept_friend_request(s: &Session, fid: &str) -> Result<Value> {
     let resp = s.post_form(&url, format!("params={enc}")).await?;
     let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
     crate::protocol::wire::ensure_ok_code(&dec, "accept error")?;
-    Ok(dec)
+    Ok(ActionAck::from_wire(&dec))
 }
 
 /// Cancel / undo a pending outgoing friend request (`/api/friend/undo`, cmd `11441`).
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the HTTP request fails.
-pub async fn undo_friend_request(s: &Session, fid: &str) -> Result<Value> {
+pub async fn undo_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[("fid", json!(fid)), ("imei", json!(s.imei))]);
     let enc = s.encoded_params(&body)?;
     let host = default_friend_host(s);
     let url = format!("{host}/api/friend/undo?{}", s.common_params());
     let resp = s.post_form(&url, format!("params={enc}")).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(ActionAck::from_wire(&dec))
 }
 
 /// Reject a pending incoming friend request (`/api/friend/reject`, cmd `11428`).
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the HTTP request fails.
-pub async fn reject_friend_request(s: &Session, fid: &str) -> Result<Value> {
+pub async fn reject_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[("fid", json!(fid)), ("imei", json!(s.imei))]);
     let enc = s.encoded_params(&body)?;
     let host = default_friend_host(s);
     let url = format!("{host}/api/friend/reject?{}", s.common_params());
     let resp = s.post_form(&url, format!("params={enc}")).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(ActionAck::from_wire(&dec))
 }
 
 /// Normalize a Vietnamese or international phone string for `/api/friend/profile/get`.

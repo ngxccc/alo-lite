@@ -29,6 +29,114 @@ pub struct QueueCursor {
     pub ids: Vec<String>,
 }
 
+/// Typed batch returned by `get_chat_from_polling`.
+#[derive(Debug, Clone)]
+pub struct PollBatch {
+    pub more: bool,
+    pub has_reset: bool,
+    pub sync_controls: Vec<crate::protocol::sync::MobileSyncControlEvent>,
+    pub mute_events: Vec<super::unread::MuteControlEvent>,
+    raw: Value,
+}
+
+impl PollBatch {
+    pub fn from_wire(raw: Value, now_unix: i64) -> Self {
+        let data_node = raw.get("data").unwrap_or(&raw);
+        let more = data_node.get("more").and_then(Value::as_i64).unwrap_or(0) != 0;
+        let has_reset =
+            pick_str(data_node, &["resetLastActionId"]).is_some_and(|r| r != "0" && !r.is_empty());
+        let sync_controls = crate::protocol::sync::extract_mobile_sync_controls(data_node);
+        let mute_events = super::unread::extract_mute_controls(data_node, now_unix);
+        Self {
+            more,
+            has_reset,
+            sync_controls,
+            mute_events,
+            raw,
+        }
+    }
+
+    /// Merge preview/chat messages from this poll batch into `threads`.
+    pub fn merge_into(&self, threads: &mut Vec<Thread>) {
+        merge_previews(threads, &self.raw);
+    }
+
+    /// Apply read-point watermarks from this poll batch onto `threads`.
+    pub fn merge_read_points_into(&self, threads: &mut [Thread]) {
+        if let Some(data_node) = self.raw.get("data") {
+            super::unread::merge_read_points(threads, data_node);
+        }
+    }
+
+    /// Raw JSON envelope for diagnostic CLI tools.
+    pub fn raw_value(&self) -> &Value {
+        &self.raw
+    }
+}
+
+/// Typed preview batch returned by `get_last_msgs`.
+#[derive(Debug, Clone)]
+pub struct LastMsgsBatch {
+    raw: Value,
+}
+
+impl LastMsgsBatch {
+    /// Merge message previews from this batch into `threads`.
+    pub fn merge_into(&self, threads: &mut Vec<Thread>) {
+        merge_previews(threads, &self.raw);
+    }
+
+    /// Raw JSON envelope for diagnostic CLI tools.
+    pub fn raw_value(&self) -> &Value {
+        &self.raw
+    }
+}
+
+/// Typed cloud/group history page returned by `get_cloud_messages`.
+#[derive(Debug, Clone)]
+pub struct CloudMessagesPage {
+    pub has_more: bool,
+    pub last_msg_id: Option<String>,
+    raw: Value,
+}
+
+impl CloudMessagesPage {
+    pub fn from_wire(raw: Value) -> Self {
+        let data_node = raw
+            .pointer("/data/data")
+            .or_else(|| raw.get("data"))
+            .unwrap_or(&raw);
+        let has_more = data_node
+            .get("hasMore")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+            != 0;
+        let last_msg_id = data_node
+            .get("lastMsgId")
+            .and_then(|v| {
+                v.as_str()
+                    .map(str::to_string)
+                    .or_else(|| v.as_u64().map(|n| n.to_string()))
+            })
+            .filter(|s| !s.is_empty() && s != "0" && s.chars().all(|c| c.is_ascii_digit()));
+        Self {
+            has_more,
+            last_msg_id,
+            raw,
+        }
+    }
+
+    /// Merge messages from this page into a single group/cloud thread.
+    pub fn merge_into_thread(&self, thread: &mut Thread) {
+        merge_group_history(thread, &self.raw);
+    }
+
+    /// Merge messages from this page as previews into `threads`.
+    pub fn merge_into_threads(&self, threads: &mut Vec<Thread>) {
+        merge_previews(threads, &self.raw);
+    }
+}
+
 /// State machine for Zalo's native HTTP long-polling message receiver (`getChatFromPolling`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollState {
@@ -145,7 +253,7 @@ impl PollState {
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the HTTP call fails.
-pub async fn get_last_msgs(s: &Session, thread_ids: &[String]) -> Result<Value> {
+pub async fn get_last_msgs(s: &Session, thread_ids: &[String]) -> Result<LastMsgsBatch> {
     require_login(s)?;
     let mut map = Map::new();
     if thread_ids.len() <= 25 {
@@ -177,7 +285,8 @@ pub async fn get_last_msgs(s: &Session, thread_ids: &[String]) -> Result<Value> 
         s.common_params()
     );
     let resp = s.get(&url).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let raw = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(LastMsgsBatch { raw })
 }
 
 /// Fetch cloud/group message history (`/api/cm/getrecentv2` / `/api/cm/getoldv2`, cmd `12506` / `12507`).
@@ -190,7 +299,7 @@ pub async fn get_cloud_messages(
     global_msg_id: &str,
     is_old: bool,
     count: u32,
-) -> Result<Value> {
+) -> Result<CloudMessagesPage> {
     let login = require_login(s)?;
     if is_old && (global_msg_id.is_empty() || global_msg_id == "0") {
         anyhow::bail!("getoldv2 yêu cầu con trỏ globalMsgId hợp lệ (khác 0)");
@@ -238,14 +347,14 @@ pub async fn get_cloud_messages(
             }
         }
     }
-    Ok(dec)
+    Ok(CloudMessagesPage::from_wire(dec))
 }
 
 /// Call Zalo's native HTTP long-polling message endpoint (`getChatFromPolling`, 12s window).
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the server returns a non-zero `error_code` / HTTP error.
-pub async fn get_chat_from_polling(s: &Session, state: &mut PollState) -> Result<Value> {
+pub async fn get_chat_from_polling(s: &Session, state: &mut PollState) -> Result<PollBatch> {
     require_login(s)?;
     let host = domain_or(&s.domains.lp_chat, crate::endpoints::LP_CHAT_DEFAULT);
     let ts = unix_now();
@@ -268,10 +377,13 @@ pub async fn get_chat_from_polling(s: &Session, state: &mut PollState) -> Result
                 }
             }
             state.update_from_response(&dec);
-            Ok(dec)
+            Ok(PollBatch::from_wire(dec, ts))
         }
         Ok(Err(e)) => Err(e),
-        Err(_) => Ok(json!({"error_code": 0, "data": {}})),
+        Err(_) => Ok(PollBatch::from_wire(
+            json!({"error_code": 0, "data": {}}),
+            ts,
+        )),
     }
 }
 
@@ -286,21 +398,16 @@ pub async fn poll_new_messages(
 ) -> Result<()> {
     let login = require_login(s)?;
     for _ in 0..3 {
-        let Ok(lp_resp) = get_chat_from_polling(s, state).await else {
+        let Ok(batch) = get_chat_from_polling(s, state).await else {
             break;
         };
-        merge_previews(threads, &lp_resp);
-        let data_node = lp_resp.get("data").unwrap_or(&lp_resp);
-        let more = data_node.get("more").and_then(Value::as_i64).unwrap_or(0);
-        let has_reset = pick_str(data_node, &["resetLastActionId"])
-            .map(|r| r != "0" && !r.is_empty())
-            .unwrap_or(false);
-        if more == 0 && !has_reset {
+        batch.merge_into(threads);
+        if !batch.more && !batch.has_reset {
             break;
         }
     }
-    if let Ok(preview_resp) = get_last_msgs(s, &[]).await {
-        merge_previews(threads, &preview_resp);
+    if let Ok(preview_batch) = get_last_msgs(s, &[]).await {
+        preview_batch.merge_into(threads);
     }
     let known_ids: Vec<String> = threads
         .iter()
@@ -314,17 +421,17 @@ pub async fn poll_new_messages(
         })
         .collect();
     for chunk in known_ids.chunks(25) {
-        if let Ok(preview_resp) = get_last_msgs(s, chunk).await {
-            merge_previews(threads, &preview_resp);
+        if let Ok(preview_batch) = get_last_msgs(s, chunk).await {
+            preview_batch.merge_into(threads);
         }
     }
     let send2me_id = login.send2me_id.clone();
     if !send2me_id.is_empty() {
-        if let Ok(cm_resp) = get_cloud_messages(s, &send2me_id, "0", false, 50).await {
+        if let Ok(cm_page) = get_cloud_messages(s, &send2me_id, "0", false, 50).await {
             if let Some(t) = threads.iter_mut().find(|t| t.id == send2me_id) {
-                merge_group_history(t, &cm_resp);
+                cm_page.merge_into_thread(t);
             } else {
-                merge_previews(threads, &cm_resp);
+                cm_page.merge_into_threads(threads);
             }
         }
     }
@@ -334,9 +441,9 @@ pub async fn poll_new_messages(
         .map(|t| t.id.clone())
         .collect();
     for gid in group_ids {
-        if let Ok(cm_resp) = get_cloud_messages(s, &gid, "0", false, 50).await {
+        if let Ok(cm_page) = get_cloud_messages(s, &gid, "0", false, 50).await {
             if let Some(t) = threads.iter_mut().find(|t| t.id == gid) {
-                merge_group_history(t, &cm_resp);
+                cm_page.merge_into_thread(t);
             }
         }
     }

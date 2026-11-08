@@ -3,39 +3,9 @@ use std::sync::mpsc::Sender;
 
 use crate::protocol::auth::QrLogin;
 use crate::protocol::messaging::{ChatMessage, Thread};
+use crate::services::native_notifications::{AuthorizationStatus, NotificationError};
+pub use crate::services::updater::{is_newer_semver, UpdateCheckResult};
 use eframe::egui;
-
-#[derive(Debug, Clone)]
-pub struct UpdateCheckResult {
-    pub current_version: String,
-    pub latest_version: String,
-    pub has_update: bool,
-    pub release_title: String,
-    pub release_notes: String,
-    pub html_url: String,
-    pub download_url: Option<String>,
-    pub asset_name: Option<String>,
-    pub asset_size: u64,
-    pub expected_sha256: Option<String>,
-    pub published_at: String,
-}
-
-pub fn is_newer_semver(latest: &str, current: &str) -> bool {
-    let parse_semver = |v: &str| -> Option<(u64, u64, u64)> {
-        let clean = v.trim_start_matches(['v', 'V']);
-        let core = clean.split('-').next().unwrap_or(clean);
-        let mut parts = core.split('.');
-        let major = parts.next()?.parse().ok()?;
-        let minor = parts.next()?.parse().ok()?;
-        let patch = parts.next()?.parse().ok()?;
-        Some((major, minor, patch))
-    };
-
-    match (parse_semver(latest), parse_semver(current)) {
-        (Some(l), Some(c)) => l > c,
-        _ => false,
-    }
-}
 
 pub fn phone_sync_completion_message(
     added: usize,
@@ -60,10 +30,7 @@ pub enum GuiEvent {
     /// Terminal response for a Settings authorization action.
     NotificationAuthorization {
         request_id: u64,
-        result: Result<
-            crate::native_notifications::AuthorizationStatus,
-            crate::native_notifications::NotificationError,
-        >,
+        result: Result<AuthorizationStatus, NotificationError>,
     },
     QrReady {
         qr_login: QrLogin,
@@ -159,18 +126,6 @@ pub enum GuiEvent {
     SessionUnreachable(String),
     /// `zalo_history.db` + `threads_cache.json` were removed on request (#21).
     LocalDataWiped,
-    CallStateChanged(String),
-    IncomingCall {
-        call_id: i64,
-        caller_id: String,
-        caller_name: String,
-        is_video: bool,
-        is_group: bool,
-    },
-    CallRejected {
-        code: i64,
-        reason: String,
-    },
     StatusUpdate(String),
     RefreshFinished {
         threads: usize,
@@ -178,7 +133,6 @@ pub enum GuiEvent {
         errors: Vec<String>,
         manual: bool,
     },
-    ScheduledListUpdated,
     SyncFinished {
         added: usize,
         errors: Vec<String>,
@@ -197,17 +151,6 @@ pub enum GuiEvent {
         total: u64,
     },
     UpdateAppliedAndRestarting(String),
-    SocialProfileLoaded(Result<crate::feed::SocialUserProfile, String>),
-    SocialAvatarsLoaded(Result<Vec<crate::feed::FeedMedia>, String>),
-    SocialTimelineLoaded(
-        Result<
-            (
-                Vec<crate::feed::SocialUserProfile>,
-                Vec<crate::feed::FeedItem>,
-            ),
-            String,
-        >,
-    ),
     MuteSnapshotSynced(HashMap<String, i64>),
     MuteEventsReceived(Vec<crate::protocol::messaging::unread::MuteControlEvent>),
     PhoneSyncProgress {

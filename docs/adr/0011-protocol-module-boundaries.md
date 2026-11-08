@@ -41,6 +41,10 @@ Decompose the protocol and persistence layers into cohesive single-responsibilit
    - `src/protocol/sync/` contains **zero** `rusqlite` or `MessageStore` imports: `sync/mod.rs` (sync key/status state & cursor helper), `sync/controls.rs` (`pull_mobile_msg`, `cancel_phone_sync`, `clean_sync`, `/api/znoise`, `MobileSyncControlEvent`), `sync/zdb4.rs` (RSA-2048 sync keys & `ZDB4.0` decryptor), `sync/bin_net.rs` (`BinNet` TLV decoder), `sync/v2_proto.rs` (`proto.Sync2` chunk parser).
    - `src/storage/sync_ingest.rs` and `src/storage/thread_cache.rs` own all SQLite archive ingestion (`sync_thread`, `sync_phone_messages_opts`, `extract_conv_archives_from_entries`, `commit_conv_archives_to_store`, `import_mobile_backup_container*`, `import_sync_v2_*`) and `threads_cache.json` persistence (`load_threads_cache`, `save_threads_cache`).
 
+5. **Typed Protocol Boundary & UI-Free `CoreEngine` (`src/core/`):**
+   - Public endpoints in `src/protocol/` return typed structs (`SendMessageReceipt`, `ActionAck`, `PollBatch`, `CloudMessagesPage`, `LastMsgsBatch`, `MuteSnapshot`, `QrScannedProfile`, `QrConfirmResult`) instead of raw `serde_json::Value`.
+   - `src/core/` (`CoreEngine`, `CoreEvent`, `CoreImageData`) contains zero `egui` imports and drives both the GUI worker adapter (`src/gui/worker/`) and MCP/REST (`src/mcp/`).
+
 ---
 
 ## 3. Mandatory Module & Boundary Rules Going Forward

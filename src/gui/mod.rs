@@ -51,10 +51,6 @@ pub use theme::{emoji_to_tex_key, load_app_icon, lucide, REACTION_LIST};
 pub use worker::WorkerCmd;
 use worker::*;
 
-pub async fn check_github_release_cli() -> Result<UpdateCheckResult, String> {
-    worker::fetch_github_latest_release().await
-}
-
 fn merge_sent_message(thread: &mut Thread, message: ChatMessage) {
     crate::protocol::messaging::threads::merge_sent_message(thread, message);
 }
@@ -71,6 +67,7 @@ impl ZaloGuiApp {
         mut session: Session,
         dev_mode: bool,
         initial_threads: Vec<Thread>,
+        api_port: Option<u16>,
     ) -> Self {
         setup_custom_fonts(&cc.egui_ctx);
         let mut loaded_settings = AppSettings::load();
@@ -81,9 +78,6 @@ impl ZaloGuiApp {
                 loaded_settings.proxy_url = p.clone();
             }
         }
-        crate::media::set_selected_mic_device(&loaded_settings.selected_mic_device);
-        crate::media::set_selected_camera_device(&loaded_settings.selected_camera_device);
-        crate::media::set_mic_gain_percent(loaded_settings.mic_gain_percent);
         crate::session::set_privacy_blocker(
             loaded_settings.block_typing,
             loaded_settings.block_delivered,
@@ -171,7 +165,6 @@ impl ZaloGuiApp {
             forward_msg: None,
             forward_filter: String::new(),
             filter_starred_only: false,
-            active_call: None,
             image_viewer: None,
             status_msg: "Trực tuyến · Sẵn sàng".into(),
             info_drawer_open: loaded_settings.info_drawer_open,
@@ -247,32 +240,9 @@ impl ZaloGuiApp {
             dev_tab: DevTab::Logs,
             selected_log: None,
             scanner_findings: Vec::new(),
-            feed_modal_open: false,
-            feed_modal_tab: FeedModalTab::Profile,
-            feed_target_uid: String::new(),
-            feed_loading_profile: false,
-            feed_profile: None,
-            feed_profile_error: None,
-            feed_loading_avatars: false,
-            feed_avatars: Vec::new(),
-            feed_avatars_error: None,
-            feed_loading_timeline: false,
-            feed_items: Vec::new(),
-            feed_friend_profiles: Vec::new(),
-            feed_search_query: String::new(),
-            feed_pkt_owner_id: String::new(),
-            feed_pkt_viewer_id: String::new(),
-            feed_pkt_tab: 0,
-            feed_pkt_page: 1,
-            feed_pkt_count: 20,
             contacts_view_open: false,
             contacts_sub_tab: ContactsSubTab::Friends,
             contacts_search_query: String::new(),
-            schedule_modal_open: false,
-            schedule_custom_input: String::new(),
-            schedule_editing_id: None,
-            scheduled_items: crate::scheduler::list_pending_scheduled("zalo_history.db", None)
-                .unwrap_or_default(),
             phone_sync_progress: 0.0,
             phone_sync_status: String::new(),
             last_typing_sent_at: None,
@@ -297,7 +267,6 @@ impl ZaloGuiApp {
             let _ = std::fs::remove_file(&old_unix);
         }
 
-        app.publish_known_threads();
         spawn_session_worker(
             session,
             GuiTx {
@@ -305,7 +274,9 @@ impl ZaloGuiApp {
                 ctx: cc.egui_ctx.clone(),
             },
             cc.egui_ctx.clone(),
+            api_port,
         );
+        app.publish_known_threads();
         ensure_cjk_font(&cc.egui_ctx, thread_texts(&app.threads));
 
         if let Some(wtx) = WORKER_TX.get() {
@@ -341,20 +312,14 @@ impl ZaloGuiApp {
         count
     }
 
-    pub(super) fn refresh_scheduled_items(&mut self) {
-        self.scheduled_items =
-            crate::scheduler::list_pending_scheduled("zalo_history.db", None).unwrap_or_default();
-    }
-
     /// Hand the worker's poll timer the thread ids/names it maps incoming messages onto.
     fn publish_known_threads(&self) {
-        if let Ok(mut known) = KNOWN_THREADS.lock() {
-            *known = self
-                .threads
-                .iter()
-                .map(|t| (t.id.clone(), t.name.clone(), t.is_group))
-                .collect();
-        }
+        let known = self
+            .threads
+            .iter()
+            .map(|t| (t.id.clone(), t.name.clone(), t.is_group))
+            .collect();
+        worker::publish_known_threads_to_engine(known);
     }
 
     fn persist_threads_async(&self) {
@@ -372,9 +337,6 @@ impl eframe::App for ZaloGuiApp {
             || ctx.input(|i| i.viewport().close_requested())
         {
             self.allow_quit = true;
-            if let Some(tx) = WORKER_TX.get() {
-                let _ = tx.send(WorkerCmd::EndCall);
-            }
             std::process::exit(0);
         }
         if ctx.input(|i| {

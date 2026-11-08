@@ -123,7 +123,7 @@ impl ZaloGuiApp {
                                             );
         ui.add_space(10.0);
 
-        let saved = crate::account_manager::list_saved_accounts(&self.user_uin);
+        let saved = crate::services::account_manager::list_saved_accounts(&self.user_uin);
         let mut delete_target: Option<String> = None;
 
         for acc in &saved {
@@ -215,7 +215,7 @@ impl ZaloGuiApp {
         }
 
         if let Some(target) = delete_target {
-            let _ = crate::account_manager::delete_saved_account(&target);
+            let _ = crate::services::account_manager::delete_saved_account(&target);
         }
 
         ui.add_space(14.0);

@@ -13,7 +13,7 @@ use crate::crypto::{encode_aes, md5_hex};
 use crate::protocol::session::{urlencode, Session, SessionError};
 use crate::protocol::wire::{
     chat_send_host, domain_or, next_client_message_id, obj, require_login, strip_group_prefix,
-    strip_vn_diacritics,
+    strip_vn_diacritics, SendMessageReceipt,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +43,7 @@ pub async fn send_sticker(
     cate_id: u64,
     sticker_type: u32,
     is_group: bool,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     send_sticker_with_client_id(
         s,
         to_id,
@@ -68,7 +68,7 @@ pub async fn send_sticker_with_client_id(
     sticker_type: u32,
     is_group: bool,
     now: u64,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     require_login(s)?;
     let (url, body) = if is_group {
         let clean_grid = strip_group_prefix(to_id);
@@ -119,7 +119,7 @@ pub async fn send_sticker_with_client_id(
             return Err(SessionError::new(code, msg).into());
         }
     }
-    Ok(resp)
+    Ok(SendMessageReceipt::from_wire(&resp))
 }
 
 fn default_sticker_host(s: &Session) -> &str {

@@ -1,6 +1,6 @@
 # Concurrency & Locking Standards
 
-Runtime model: one UI thread (`egui` / `ratatui`), one Tokio runtime in the worker, blocking work on `spawn_blocking`, SQLite owned by the worker.
+Runtime model: one UI thread (`egui`), one Tokio runtime owned by `CoreEngine` (`src/core/`), blocking work on `spawn_blocking`, SQLite accessed via `CoreEngine`/`spawn_blocking`.
 
 ---
 
@@ -34,7 +34,7 @@ Runtime model: one UI thread (`egui` / `ratatui`), one Tokio runtime in the work
 
 ## 3. Blocking Work
 
-- `spawn_blocking` for: SQLite, image decode, ZIP/sticker unpack, file hashing, audio device setup.
+- `spawn_blocking` for: SQLite, image decode, ZIP/sticker unpack, file hashing.
 - Never call `block_on` inside async context.
 - Never hold a `MutexGuard` across `.await`.
 - File and DB handles stay inside the blocking closure.
@@ -77,7 +77,6 @@ When multiple resources must be locked:
 | Message send | **Fail-closed** | Never show "sent" when the server rejected it. |
 | History write | **Fail-open** | Local cache loss must not drop a message. |
 | Session/auth | **Fail-closed** | Never continue with an expired credential. |
-| Call signalling | **Fail-closed** | Hang up cleanly instead of a half-open call. |
 
 ---
 

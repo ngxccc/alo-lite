@@ -31,7 +31,7 @@
 | `ci` | Workflows, packaging. |
 | `style` | Formatting only. |
 
-**Scopes** (lowercase, module-aligned): `auth`, `net`, `chat`, `media`, `call`, `ui`, `store`, `crypto`, `session`, `ci`, `docs`, `harness`.
+**Scopes** (lowercase, module-aligned): `auth`, `core`, `net`, `chat`, `media`, `mcp`, `ui`, `store`, `crypto`, `session`, `ci`, `docs`, `harness`.
 
 ```
 feat(chat): add quote-reply rendering

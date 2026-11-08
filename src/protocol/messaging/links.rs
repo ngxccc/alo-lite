@@ -9,6 +9,7 @@ use crate::protocol::registry;
 use crate::protocol::session::Session;
 use crate::protocol::wire::{
     chat_send_host, next_client_message_id, obj, require_login, strip_group_prefix, unwrap_data,
+    SendMessageReceipt,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -316,7 +317,7 @@ pub async fn send_link_message(
     text: &str,
     meta: &LinkMetadata,
     is_group: bool,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     send_link_message_with_client_id(s, to_id, text, meta, is_group, next_client_message_id()).await
 }
 
@@ -331,7 +332,7 @@ pub async fn send_link_message_with_client_id(
     meta: &LinkMetadata,
     is_group: bool,
     now: u64,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     require_login(s)?;
     let msg_str = if text.trim().is_empty() {
         meta.url.as_str()
@@ -415,7 +416,7 @@ pub async fn send_link_message_with_client_id(
     .await;
 
     match res {
-        Ok(v) => Ok(v),
+        Ok(v) => Ok(SendMessageReceipt::from_wire(&v)),
         Err(_) => {
             if is_group {
                 send_group_message_with_client_id(s, to_id, msg_str, now).await

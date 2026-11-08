@@ -37,81 +37,6 @@ impl ZaloGuiApp {
                 self.phone_modal_open = true;
                 self.phone_lookup_error = Some(err);
             }
-            GuiEvent::CallStateChanged(state) => {
-                if state == "free" {
-                    // Keep modal open if there is a rejection reason so the user can read it
-                    let has_error = self
-                        .active_call
-                        .as_ref()
-                        .and_then(|c| c.error_reason.as_ref())
-                        .is_some();
-                    self.sticker_textures.remove("call_remote_video");
-                    self.sticker_textures.remove("call_remote_video_1");
-                    self.sticker_textures.remove("call_remote_video_2");
-                    self.sticker_textures.remove("call_remote_video_3");
-                    self.sticker_textures.remove("call_local_video");
-                    if !has_error {
-                        self.active_call = None;
-                    }
-                } else if let Some(ref mut call) = self.active_call {
-                    if state == "incall" || state == "connected" {
-                        call.is_incoming_ringing = false;
-                    }
-                    if call.error_reason.is_none() {
-                        call.state_label = match state.as_str() {
-                            "calling" | "ringing" => "Đang đổ chuông…".into(),
-                            "incoming_ringing" => "Cuộc gọi đến đang đổ chuông…".into(),
-                            "connecting" => "Đang kết nối luồng âm thanh/video…".into(),
-                            "incall" | "connected" => "Đang trong cuộc gọi (Pure-Rust VoIP)".into(),
-                            _ => format!("Đang kết nối ({state})…"),
-                        };
-                    }
-                }
-            }
-            GuiEvent::IncomingCall {
-                call_id: _,
-                caller_id,
-                caller_name,
-                is_video,
-                is_group,
-            } => {
-                let resolved_name = self
-                    .threads
-                    .iter()
-                    .find(|t| t.id == caller_id)
-                    .map(|t| t.name.clone())
-                    .unwrap_or(caller_name);
-                self.status_msg = format!(
-                    "Cuộc gọi {} đến từ {resolved_name}…",
-                    if is_video { "video" } else { "thoại" }
-                );
-                self.active_call = Some(ActiveCallOverlay {
-                    partner_id: caller_id,
-                    partner_name: resolved_name,
-                    is_video,
-                    is_group,
-                    state_label: "Cuộc gọi đến đang đổ chuông…".into(),
-                    started_at: std::time::Instant::now(),
-                    mic_muted: false,
-                    cam_enabled: is_video,
-                    is_incoming_ringing: true,
-                    error_code: None,
-                    error_reason: None,
-                    speaker_view: false,
-                    pinned_tile_idx: 0,
-                });
-                ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
-                    egui::UserAttentionType::Critical,
-                ));
-            }
-            GuiEvent::CallRejected { code, reason } => {
-                self.status_msg = format!("Từ chối cuộc gọi (mã {code}): {reason}");
-                if let Some(ref mut call) = self.active_call {
-                    call.state_label = "Không thể thực hiện cuộc gọi".into();
-                    call.error_code = Some(code);
-                    call.error_reason = Some(reason);
-                }
-            }
             GuiEvent::StatusUpdate(msg) => {
                 self.status_msg = msg;
             }
@@ -138,7 +63,7 @@ impl ZaloGuiApp {
                                     self.update_modal_open = true;
                                     self.update_banner_dismissed = false;
                                     if self.settings.enable_notifications {
-                                        crate::updater::notify_os_new_update(
+                                        crate::services::updater::notify_os_new_update(
                                             &info.latest_version,
                                             &info.current_version,
                                             &info.release_title,
@@ -186,42 +111,6 @@ impl ZaloGuiApp {
                 self.allow_quit = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 std::process::exit(0);
-            }
-            GuiEvent::SocialProfileLoaded(res) => {
-                self.feed_loading_profile = false;
-                match res {
-                    Ok(prof) => {
-                        self.feed_profile = Some(prof);
-                        self.feed_profile_error = None;
-                    }
-                    Err(e) => {
-                        self.feed_profile_error = Some(e);
-                    }
-                }
-            }
-            GuiEvent::SocialAvatarsLoaded(res) => {
-                self.feed_loading_avatars = false;
-                match res {
-                    Ok(photos) => {
-                        self.feed_avatars = photos;
-                        self.feed_avatars_error = None;
-                    }
-                    Err(e) => {
-                        self.feed_avatars_error = Some(e);
-                    }
-                }
-            }
-            GuiEvent::SocialTimelineLoaded(res) => {
-                self.feed_loading_timeline = false;
-                match res {
-                    Ok((profiles, items)) => {
-                        self.feed_friend_profiles = profiles;
-                        self.feed_items = items;
-                    }
-                    Err(e) => {
-                        self.feed_profile_error = Some(e);
-                    }
-                }
             }
             GuiEvent::ProxyUpdated(res) => match res {
                 Ok(Some(url)) => {

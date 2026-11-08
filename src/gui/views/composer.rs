@@ -290,35 +290,6 @@ impl ZaloGuiApp {
                                     }
                                 }
 
-                                // Schedule Send Button (`🕒`)
-                                let (sched_rect, sched_resp) =
-                                    ui.allocate_exact_size(Vec2::new(32.0, 34.0), Sense::click());
-                                if self.schedule_modal_open || sched_resp.hovered() {
-                                    ui.painter().rect_filled(
-                                        sched_rect,
-                                        Rounding::same(8.0),
-                                        pal.bg_hover,
-                                    );
-                                }
-                                ui.painter().text(
-                                    sched_rect.center(),
-                                    egui::Align2::CENTER_CENTER,
-                                    "🕒",
-                                    FontId::proportional(14.5),
-                                    if self.schedule_modal_open || sched_resp.hovered() {
-                                        pal.primary_hover
-                                    } else {
-                                        pal.text_secondary
-                                    },
-                                );
-                                if sched_resp
-                                    .on_hover_cursor(CursorIcon::PointingHand)
-                                    .on_hover_text("Hẹn giờ gửi tin nhắn & Nhắc hẹn")
-                                    .clicked()
-                                {
-                                    self.schedule_modal_open = !self.schedule_modal_open;
-                                }
-
                                 // Send Button
                                 let can_send = !self.input_message.trim().is_empty()
                                     || self.pending_clipboard_image.is_some();
@@ -326,9 +297,6 @@ impl ZaloGuiApp {
                                     Vec2::new(send_btn_w, 34.0),
                                     Sense::click(),
                                 );
-                                if send_resp.secondary_clicked() {
-                                    self.schedule_modal_open = true;
-                                }
                                 let send_bg = if !can_send {
                                     pal.primary.linear_multiply(0.42)
                                 } else if send_resp.hovered() {

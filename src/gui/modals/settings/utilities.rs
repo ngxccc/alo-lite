@@ -171,7 +171,7 @@ impl ZaloGuiApp {
                                                 .rounding(Rounding::same(8.0))
                                                 .inner_margin(Margin::symmetric(14.0, 12.0))
                                                 .show(ui, |ui| {
-                                                    let rules = crate::api_mcp::load_autoreply_rules();
+                                                    let rules = crate::mcp::load_autoreply_rules();
                                                     let active_cnt = rules.iter().filter(|r| r.enabled).count();
                                                     ui.label(RichText::new(format!("Quy tắc Auto-Reply đang bật: {active_cnt}/{} (cấu hình trong autoreply_rules.json)", rules.len())).color(pal.text_primary).size(12.6).strong());
                                                     ui.add_space(4.0);

@@ -7,11 +7,7 @@ use serde_json::json;
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut s = Session::new(false, false, false)?;
-    if let Ok(resp) = alolite::auth::login::get_server_info(&s).await {
-        if let Some(d) = resp.get("data") {
-            s.apply_server_info(d);
-        }
-    }
+    let _ = alolite::auth::login::fetch_and_apply_server_info(&mut s).await;
 
     let client_time = alolite::clock::unix_now();
     let payload = obj(&[

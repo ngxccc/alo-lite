@@ -38,7 +38,6 @@ impl ZaloGuiApp {
 
                 GuiEvent::ThreadsUpdated(..)
                 | GuiEvent::RefreshFinished { .. }
-                | GuiEvent::ScheduledListUpdated
                 | GuiEvent::SyncFinished { .. }
                 | GuiEvent::MuteSnapshotSynced(..)
                 | GuiEvent::MuteEventsReceived(..)

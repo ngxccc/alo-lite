@@ -14,11 +14,9 @@ use super::models::{db_path_for_account, MessageStore, StoredMessage, StoredThre
 use super::thread_cache::{load_threads_cache, save_threads_cache};
 use super::threads::persist_threads;
 use crate::protocol::messaging::polling::{
-    get_chat_from_polling, get_cloud_messages, get_last_msgs, merge_group_history, merge_previews,
-    PollState,
+    get_chat_from_polling, get_cloud_messages, get_last_msgs, PollState,
 };
 use crate::protocol::messaging::threads::{deduplicate_threads, is_generic_thread_name, Thread};
-use crate::protocol::messaging::unread::merge_read_points;
 use crate::protocol::session::{Session, ZALO_UA};
 use crate::protocol::social::groups::resolve_thread_names;
 use crate::protocol::sync::{
@@ -57,9 +55,9 @@ pub async fn sync_thread(s: &Session, t: &mut Thread) -> Result<usize> {
         if CANCEL.load(Ordering::Relaxed) {
             break;
         }
-        let resp = get_cloud_messages(s, &t.id, &cursor, true, PAGE).await?;
+        let page = get_cloud_messages(s, &t.id, &cursor, true, PAGE).await?;
         let before = t.messages.len();
-        merge_group_history(t, &resp);
+        page.merge_into_thread(t);
         if t.messages.len() == before {
             break;
         }
@@ -186,27 +184,16 @@ where
             let mut ps = poll_state.lock().await;
             get_chat_from_polling(s, &mut ps).await
         };
-        let Ok(lp_resp) = lp_res else {
+        let Ok(batch) = lp_res else {
             break;
         };
-        merge_previews(threads, &lp_resp);
-        if let Some(data_node) = lp_resp.get("data") {
-            merge_read_points(threads, data_node);
-        }
-        let data_node = lp_resp.get("data").unwrap_or(&lp_resp);
-        let more = data_node
-            .get("more")
-            .and_then(serde_json::Value::as_i64)
-            .unwrap_or(0);
-        let has_reset = data_node
-            .get("resetLastActionId")
-            .and_then(serde_json::Value::as_str)
-            .is_some_and(|r| !r.is_empty() && r != "0");
+        batch.merge_into(threads);
+        batch.merge_read_points_into(threads);
         on_progress(
             0.22 + (batch_idx as f32 + 1.0) * 0.04,
             format!("Đã nhận lô hàng đợi #{} từ điện thoại…", batch_idx + 1),
         );
-        if more == 0 && !has_reset {
+        if !batch.more && !batch.has_reset {
             break;
         }
     }
@@ -215,8 +202,8 @@ where
         0.45,
         "Đang đồng bộ tin nhắn các cuộc trò chuyện 1-1 & nhóm…".to_string(),
     );
-    if let Ok(preview_resp) = get_last_msgs(s, &[]).await {
-        merge_previews(threads, &preview_resp);
+    if let Ok(preview_batch) = get_last_msgs(s, &[]).await {
+        preview_batch.merge_into(threads);
     }
     let known_ids: Vec<String> = threads
         .iter()
@@ -236,8 +223,8 @@ where
             let _ = cancel_phone_sync(s, &pub_key).await;
             break;
         }
-        if let Ok(preview_resp) = get_last_msgs(s, chunk).await {
-            merge_previews(threads, &preview_resp);
+        if let Ok(preview_batch) = get_last_msgs(s, chunk).await {
+            preview_batch.merge_into(threads);
         }
         let frac = 0.45 + 0.25 * ((idx + 1) as f32 / total_chunks as f32);
         on_progress(
@@ -281,12 +268,12 @@ where
             frac,
             format!("Đang đồng bộ lịch sử: {tname} ({}/{total_cm})…", pos + 1),
         );
-        if let Ok(cm_resp) = get_cloud_messages(s, &tid, "0", false, PAGE).await {
-            merge_group_history(&mut threads[tidx], &cm_resp);
+        if let Ok(cm_page) = get_cloud_messages(s, &tid, "0", false, PAGE).await {
+            cm_page.merge_into_thread(&mut threads[tidx]);
         }
         if let Some(oldest) = next_cursor(&threads[tidx], "") {
-            if let Ok(old_resp) = get_cloud_messages(s, &tid, &oldest, true, PAGE).await {
-                merge_group_history(&mut threads[tidx], &old_resp);
+            if let Ok(old_page) = get_cloud_messages(s, &tid, &oldest, true, PAGE).await {
+                old_page.merge_into_thread(&mut threads[tidx]);
             }
         }
         tokio::time::sleep(Duration::from_millis(150)).await;

@@ -71,9 +71,8 @@ impl ZaloGuiApp {
                     ui.add_space(18.0);
 
                     // Navigation Icon 1: Tin nhắn (All / Active Chat)
-                    let is_msg_nav = !self.feed_modal_open
-                        && !self.contacts_view_open
-                        && self.thread_filter == ThreadFilter::All;
+                    let is_msg_nav =
+                        !self.contacts_view_open && self.thread_filter == ThreadFilter::All;
                     let (nav1_rect, nav1_resp) =
                         ui.allocate_exact_size(Vec2::new(42.0, 42.0), Sense::click());
                     if is_msg_nav {
@@ -143,7 +142,6 @@ impl ZaloGuiApp {
                         .on_hover_text("Tin nhắn")
                         .clicked()
                     {
-                        self.feed_modal_open = false;
                         self.contacts_view_open = false;
                         self.thread_filter = ThreadFilter::All;
                     }
@@ -157,7 +155,7 @@ impl ZaloGuiApp {
                         .filter(|t| !t.is_group && !t.name.contains("Cloud của tôi"))
                         .count();
                     let group_cnt = self.threads.iter().filter(|t| t.is_group).count();
-                    let is_contacts_nav = !self.feed_modal_open && self.contacts_view_open;
+                    let is_contacts_nav = self.contacts_view_open;
                     let (nav2_rect, nav2_resp) =
                         ui.allocate_exact_size(Vec2::new(42.0, 42.0), Sense::click());
                     if is_contacts_nav {
@@ -191,15 +189,13 @@ impl ZaloGuiApp {
                         .on_hover_text(format!("Danh bạ ({direct_cnt} bạn bè · {group_cnt} nhóm)"))
                         .clicked()
                     {
-                        self.feed_modal_open = false;
                         self.contacts_view_open = !self.contacts_view_open;
                     }
 
                     ui.add_space(6.0);
 
                     // Navigation Icon 3: Cloud của tôi
-                    let is_cloud_selected = !self.feed_modal_open
-                        && !self.contacts_view_open
+                    let is_cloud_selected = !self.contacts_view_open
                         && self
                             .threads
                             .get(self.selected_thread_index)
@@ -232,7 +228,6 @@ impl ZaloGuiApp {
                         .on_hover_text("Cloud của tôi")
                         .clicked()
                     {
-                        self.feed_modal_open = false;
                         self.contacts_view_open = false;
                         if let Some((cidx, cthread)) = self
                             .threads

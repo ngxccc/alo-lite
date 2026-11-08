@@ -115,7 +115,7 @@ pub fn setup_panic_hook() {
 
 /// Check for updates against GitHub Releases API and display information.
 pub async fn handle_check_update() -> Result<()> {
-    match crate::gui::check_github_release_cli().await {
+    match crate::services::updater::fetch_github_latest_release().await {
         Ok(info) => {
             if info.has_update {
                 println!(
@@ -139,7 +139,7 @@ pub async fn handle_check_update() -> Result<()> {
                         }
                     }
                 }
-                crate::updater::notify_os_new_update(
+                crate::services::updater::notify_os_new_update(
                     &info.latest_version,
                     &info.current_version,
                     &info.release_title,

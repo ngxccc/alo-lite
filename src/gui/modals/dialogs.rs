@@ -632,18 +632,5 @@ mod tests {
 
         let icon99 = crate::gui::theme::load_app_icon_with_badge(125).unwrap();
         assert_eq!((icon99.width, icon99.height), (64, 64));
-
-        assert!(crate::media::is_ignored_virtual_or_ir_device(
-            "Integrated IR Camera"
-        ));
-        assert!(crate::media::is_ignored_virtual_or_ir_device(
-            "Windows Hello Depth Camera"
-        ));
-        assert!(crate::media::is_ignored_virtual_or_ir_device(
-            "Monitor of Built-in Audio"
-        ));
-        assert!(!crate::media::is_ignored_virtual_or_ir_device(
-            "Integrated Webcam"
-        ));
     }
 }

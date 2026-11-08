@@ -17,47 +17,15 @@ use cli::{setup_panic_hook, CliOptions};
 use session::Session;
 
 pub use alolite::{
-    account_manager, api_mcp, audio, auth, call, clock, crypto, data_dir, endpoints, feed, gui,
-    logger, media, media_resources, messaging, param_cipher, registry, scheduler, session, social,
-    socket, store, sync, ui, updater, voip_log, wire,
+    auth, clock, core, crypto, data_dir, endpoints, gui, logger, mcp, messaging, param_cipher,
+    registry, services, session, social, socket, store, sync, ui, wire,
 };
 
 pub const POLL_SECS: u64 = 4;
 
-#[cfg(target_os = "linux")]
-fn silence_alsa_logging() {
-    unsafe extern "C" fn noop_alsa_error_handler(
-        _file: *const std::os::raw::c_char,
-        _line: std::os::raw::c_int,
-        _function: *const std::os::raw::c_char,
-        _err: std::os::raw::c_int,
-        _fmt: *const std::os::raw::c_char,
-    ) {
-    }
-
-    extern "C" {
-        fn snd_lib_error_set_handler(
-            handler: unsafe extern "C" fn(
-                *const std::os::raw::c_char,
-                std::os::raw::c_int,
-                *const std::os::raw::c_char,
-                std::os::raw::c_int,
-                *const std::os::raw::c_char,
-            ),
-        ) -> std::os::raw::c_int;
-    }
-    unsafe {
-        let _ = snd_lib_error_set_handler(noop_alsa_error_handler);
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn silence_alsa_logging() {}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    silence_alsa_logging();
 
     if args.iter().any(|a| a == "--help" || a == "-h") {
         cli::print_help();
@@ -149,25 +117,24 @@ async fn main() -> Result<()> {
 
     // If `--mcp` is requested, run Model Context Protocol JSON-RPC server over stdio
     if opts.force_mcp {
-        let shared = std::sync::Arc::new(tokio::sync::Mutex::new(s));
-        return api_mcp::run_mcp_stdio_server(shared, "zalo_history.db").await;
+        let engine = core::CoreEngine::headless(s, "zalo_history.db");
+        return mcp::run_mcp_stdio_server(engine).await;
     }
 
-    // If `--api-port <PORT>` is set, run headless REST + MCP HTTP server
+    // If `--api-port <PORT>` is set without GUI (`--api-only`), run headless REST + MCP HTTP server.
+    // When launched with GUI, the port is handed to `CoreEngine` inside the shared worker runtime.
     if let Some(port) = opts.api_port {
-        let shared = std::sync::Arc::new(tokio::sync::Mutex::new(s.clone()));
         println!("🌐 REST API & MCP HTTP server đang lắng nghe tại http://127.0.0.1:{port}/api/v1/status");
         if args.iter().any(|a| a == "--api-only") {
-            return api_mcp::run_local_http_server(shared, port, "zalo_history.db".into()).await;
+            let engine = core::CoreEngine::headless(s, "zalo_history.db");
+            engine.start_background_loops(None);
+            return mcp::run_local_http_server(engine, port).await;
         }
-        tokio::spawn(async move {
-            let _ = api_mcp::run_local_http_server(shared, port, "zalo_history.db".into()).await;
-        });
     }
 
     // Default: Open the native GUI window immediately
     if opts.force_gui || (!opts.force_qr && !args.iter().any(|a| a.starts_with("--phone"))) {
-        return run_gui_application(s, opts.dev_mode, opts.maximized);
+        return run_gui_application(s, opts.dev_mode, opts.maximized, opts.api_port);
     }
 
     // Terminal fallback login flow
@@ -175,7 +142,12 @@ async fn main() -> Result<()> {
 }
 
 /// Launches the native desktop GUI application.
-fn run_gui_application(session: Session, dev_mode: bool, maximized: bool) -> Result<()> {
+fn run_gui_application(
+    session: Session,
+    dev_mode: bool,
+    maximized: bool,
+    api_port: Option<u16>,
+) -> Result<()> {
     if dev_mode {
         println!("Đang khởi chạy giao diện đồ họa AloLite (egui)…");
     }
@@ -229,6 +201,7 @@ fn run_gui_application(session: Session, dev_mode: bool, maximized: bool) -> Res
                 session,
                 dev_mode,
                 initial_threads,
+                api_port,
             )))
         }),
     )
@@ -247,11 +220,7 @@ async fn run_terminal_login_flow(
     mut session_restored: bool,
     args: &[String],
 ) -> Result<()> {
-    if let Ok(resp) = auth::login::get_server_info(&s).await {
-        if let Some(d) = resp.get("data") {
-            s.apply_server_info(d);
-        }
-    }
+    let _ = auth::login::fetch_and_apply_server_info(&mut s).await;
 
     println!("Khởi chạy chế độ dòng lệnh…");
     let mut server_ok = false;

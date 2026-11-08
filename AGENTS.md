@@ -4,7 +4,7 @@ Operating guide for AI agents and humans working in this repository.
 
 ## Project
 
-`alolite` is a lightweight native desktop messaging client written in Rust: `egui` GUI, `ratatui` TUI, a Tokio worker for network I/O, and a local SQLite message store. Zero Node.js, zero Electron, zero Chromium.
+`alolite` is a lightweight native desktop messaging client written in Rust: a UI-independent `CoreEngine` (protocol + Tokio sync/WebSocket + SQLite + MCP/REST server), an `egui` GUI adapter (with future Tauri WebView frontend path), and zero Node.js/Electron/Chromium.
 
 - Repository: <https://github.com/ngxccc/alolite>
 - Rust 1.75+ / edition 2021
@@ -20,21 +20,22 @@ Operating guide for AI agents and humans working in this repository.
 |Format|`cargo fmt --all`|
 |Lint|`cargo clippy --all-targets -- -D warnings`|
 |Run GUI|`cargo run -- --gui`|
-|Run TUI|`cargo run -- --tui --qr`|
-
-`CMAKE_POLICY_VERSION_MINIMUM=3.5` is required when building against CMake 4.x (see `docs/KHAC_PHUC_SU_CO.md`).
+|Run MCP (stdio)|`cargo run -- --mcp`|
+|Run headless REST + MCP HTTP|`cargo run -- --api-port 18128 --api-only`|
 
 ## Architecture Map
 
 |Path|Responsibility|
 |:---|:---|
 |`src/main.rs`|CLI & Linux desktop entrypoint|
-|`src/lib.rs`|Library surface & feature module re-exports|
+|`src/lib.rs`|Library surface & core/protocol/storage/mcp/services exports|
+|`src/core/`|UI-independent `CoreEngine`, `CoreEvent`, `CoreEventSink`, `CoreImageData` shared by GUI, MCP, and future Tauri UI|
 |`src/protocol/`|Pure network protocol (`client`, `auth/{login,qr,trust}`, `social/{friends,groups}`, `messaging/{model,threads,send,polling,attachments,links,stickers,reactions,unread}`, `session/`, `registry/`, `sync/`, `socket`, `crypto`, `param_cipher`, `endpoints`, `wire`)|
 |`src/storage/`|SQLite persistence (`messages`, `threads`, `models`, `importer/`, `sync_ingest`, `thread_cache`)|
-|`src/gui/`|Native egui GUI app shell, messages, workspace, worker channel|
+|`src/mcp/`|Model Context Protocol JSON-RPC 2.0 (`--mcp`), local HTTP REST API (`--api-port`), and auto-reply rules|
+|`src/services/`|Host support services (`account_manager`, `media_resources`, `native_notifications`, `updater`)|
+|`src/gui/`|Native egui GUI app shell (`worker/` adapter over `CoreEngine`, messages, workspace, modals)|
 |`src/common/`|Shared utilities (`clock`, `data_dir`, `logger`, `ui`)|
-|`src/legacy/`|Quarantined out-of-scope modules (VoIP, Feed, Scheduler)|
 
 ### Protocol Submodule Map (`src/protocol/`)
 
@@ -51,7 +52,7 @@ Operating guide for AI agents and humans working in this repository.
 ## Non-Negotiables
 
 - **Never commit secrets.** `session.json`, `*.db`, cookies, `zpw_sek`, `zpw_enk`, IMEI and capture dumps stay out of Git (`.gitignore`, `SESSION_SECURITY.md`).
-- **No blocking work on the UI thread.** Network, disk and crypto go through `WorkerCmd`; the UI only renders and sends commands.
+- **No blocking work on the UI thread.** Network, disk, SQLite, and image decoding live inside `CoreEngine` (`src/core/`); UI adapters (`src/gui/worker/`) only send commands and render `CoreEvent`s.
 - **All hosts live in `src/protocol/endpoints.rs`.** Never hardcode a host elsewhere; declare HTTP command IDs in `src/protocol/registry/` and invoke via `Session::api_get` / `Session::api_post`.
 - **Single responsibility & pure protocol boundary.** Keep `rusqlite`, `MessageStore`, and `threads_cache.json` persistence in `src/storage/` (`sync_ingest`, `thread_cache`) — never import `rusqlite` into `src/protocol/`. Reuse `src/protocol/wire.rs` helpers instead of duplicating JSON coercion, `group_` stripping, or control-envelope parsing.
 - **Every outbound request goes through the standard path:** params → `ParamCipher v2` → `signkey` → session cookie attachment.

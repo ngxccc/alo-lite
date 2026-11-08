@@ -481,7 +481,39 @@ fn process_companion_link_data(cs: &mut CompanionState, data: &Value) -> Result<
 /// [O] The client appends `&lang=<code>` and loops with `qr_timeout` / `qr_retry`.
 /// While nobody has scanned, the endpoint answers **HTTP 408** — that is the
 /// "still waiting" signal, not a failure.
-pub async fn wait_for_scan(s: &Session, q: &mut QrLogin) -> Result<Value> {
+/// Typed display summary returned once a user scans a QR code on mobile.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QrScannedProfile {
+    pub display_name: String,
+    pub avatar: Option<String>,
+}
+
+/// Typed confirmation outcome carrying the newly issued session token (`zpw_sek`).
+#[derive(Debug, Clone)]
+pub struct QrConfirmResult {
+    pub zpw_sek: String,
+    raw_resp: Value,
+}
+
+impl QrConfirmResult {
+    /// Apply confirmed session token, companion identity keys, and config fields onto `s`.
+    pub fn apply_to_session(&self, s: &mut Session, q: &QrLogin) {
+        s.set_zpw_sek(self.zpw_sek.clone());
+        if let Some(cs) = &q.companion_state {
+            if let Some(proof) = &cs.proof {
+                s.companion_ik = Some(cs.identity_key.public_key().to_vec());
+                s.companion_priv = Some(cs.identity_key.private_key().to_vec());
+                s.companion_master_id = Some(proof.master_id.clone());
+                s.companion_link_id = Some(proof.link_id);
+            }
+        }
+        if let Some(data) = self.raw_resp.get("data") {
+            login::apply_login_config(s, data);
+        }
+    }
+}
+
+pub async fn wait_for_scan(s: &Session, q: &mut QrLogin) -> Result<QrScannedProfile> {
     let url = format!("{}&lang=vi", q.chk_wait_scan);
     let deadline = std::time::Instant::now() + Duration::from_secs(q.qr_timeout.max(30));
     let mut attempts: u32 = 0;
@@ -512,7 +544,24 @@ pub async fn wait_for_scan(s: &Session, q: &mut QrLogin) -> Result<Value> {
                                     }
                                 }
                             }
-                            return Ok(data.clone());
+                            let display_name = data
+                                .get("display_name")
+                                .or_else(|| data.get("displayName"))
+                                .and_then(Value::as_str)
+                                .unwrap_or("Zalo User")
+                                .to_string();
+                            let avatar = data
+                                .get("avatar")
+                                .or_else(|| data.get("avatar_url"))
+                                .or_else(|| data.get("thumb"))
+                                .or_else(|| data.get("avt"))
+                                .and_then(Value::as_str)
+                                .filter(|s| !s.is_empty())
+                                .map(str::to_string);
+                            return Ok(QrScannedProfile {
+                                display_name,
+                                avatar,
+                            });
                         }
                     }
                 } else {
@@ -534,7 +583,7 @@ pub async fn wait_for_scan(s: &Session, q: &mut QrLogin) -> Result<Value> {
 
 /// Confirm the scan and turn it into a session.
 /// Polls until user confirms on mobile or timeout.
-pub async fn confirm(s: &Session, q: &QrLogin) -> Result<Value> {
+pub async fn confirm(s: &Session, q: &QrLogin) -> Result<QrConfirmResult> {
     if q.chk_wait_cfirm.is_empty() {
         bail!("reqqr: không có chk_wait_cfirm");
     }
@@ -587,7 +636,10 @@ pub async fn confirm(s: &Session, q: &QrLogin) -> Result<Value> {
             // yet tapped 'Đăng nhập' (Confirm) on their phone.
             if let Some(sek) = extract_zpw_sek(&v) {
                 if !sek.is_empty() && sek != "EXPIRED" {
-                    return Ok(v);
+                    return Ok(QrConfirmResult {
+                        zpw_sek: sek,
+                        raw_resp: v,
+                    });
                 }
             }
             // Still waiting for user confirmation
@@ -608,7 +660,10 @@ pub async fn confirm(s: &Session, q: &QrLogin) -> Result<Value> {
 }
 
 /// The whole QR login: ticket → code on screen → wait → confirm → session.
-pub async fn login_via_qr(s: &mut Session, language: &str) -> Result<Value> {
+pub async fn login_via_qr(
+    s: &mut Session,
+    language: &str,
+) -> Result<crate::protocol::wire::ActionAck> {
     let mut q = request_qr(s, language).await?;
 
     match render_terminal(&q) {
@@ -629,25 +684,14 @@ pub async fn login_via_qr(s: &mut Session, language: &str) -> Result<Value> {
     }
 
     let scanned = wait_for_scan(s, &mut q).await?;
-    if let Some(name) = scanned
-        .get("display_name")
-        .or_else(|| scanned.get("displayName"))
-        .and_then(Value::as_str)
-    {
-        println!("✓ Đã quét: {name}");
+    if !scanned.display_name.is_empty() {
+        println!("✓ Đã quét: {}", scanned.display_name);
     }
 
-    let resp = confirm(s, &q).await?;
-    let sek = extract_zpw_sek(&resp)
-        .ok_or_else(|| anyhow::anyhow!("Chưa nhận được mã phiên xác nhận từ điện thoại"))?;
-    s.set_zpw_sek(sek);
-
+    let confirmed = confirm(s, &q).await?;
+    confirmed.apply_to_session(s, &q);
     if let Some(cs) = &q.companion_state {
         if let Some(proof) = &cs.proof {
-            s.companion_ik = Some(cs.identity_key.public_key().to_vec());
-            s.companion_priv = Some(cs.identity_key.private_key().to_vec());
-            s.companion_master_id = Some(proof.master_id.clone());
-            s.companion_link_id = Some(proof.link_id);
             println!(
                 "✓ Đã xác thực sinh trắc học & hoàn tất liên kết thiết bị tin cậy! (Master UID: {}, Link ID: {})",
                 proof.master_id, proof.link_id
@@ -655,24 +699,15 @@ pub async fn login_via_qr(s: &mut Session, language: &str) -> Result<Value> {
         }
     }
     println!("✓ Đăng nhập thành công trên điện thoại! Đang đồng bộ khoá phiên…");
-    let info = login::get_login_info(s).await?;
-    if let Some(sek) = extract_zpw_sek(&info) {
-        s.set_zpw_sek(sek);
-    }
-    if let Some(cfg) = info.get("data") {
-        login::apply_login_config(s, cfg);
-        s.apply_server_info(cfg);
-        println!("✓ Đã nạp khoá phiên zpw_enk và cập nhật endpoints!");
-        if let Err(e) = s.save_to_file("session.json") {
-            eprintln!("! Lỗi lưu session.json: {e}");
-        } else {
-            println!("✓ Đã lưu phiên vào session.json (tự động khôi phục cho các lần chạy sau)");
-        }
+    login::fetch_and_apply_login_info(s).await?;
+    println!("✓ Đã nạp khoá phiên zpw_enk và cập nhật endpoints!");
+    if let Err(e) = s.save_to_file("session.json") {
+        eprintln!("! Lỗi lưu session.json: {e}");
     } else {
-        bail!("getLoginInfo không trả về data: {info}");
+        println!("✓ Đã lưu phiên vào session.json (tự động khôi phục cho các lần chạy sau)");
     }
 
-    Ok(resp)
+    Ok(crate::protocol::wire::ActionAck::ok())
 }
 
 pub fn extract_zpw_sek(v: &Value) -> Option<String> {

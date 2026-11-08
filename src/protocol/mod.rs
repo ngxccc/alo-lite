@@ -13,12 +13,14 @@ pub mod socket;
 pub mod sync;
 pub mod wire;
 
-pub use auth::QrLogin;
+pub use auth::{QrConfirmResult, QrLogin, QrScannedProfile};
 pub use client::ZaloClient;
 pub use messaging::{
-    ChatMessage, DeliveryState, LinkMetadata, MessageKind, PollState, StickerItem, StickerPackInfo,
-    Thread, UnreadPolicy, WireMessageRef,
+    ChatMessage, CloudMessagesPage, DeliveryState, LastMsgsBatch, LinkMetadata, MessageKind,
+    MuteSnapshot, PollBatch, PollState, StickerItem, StickerPackInfo, Thread, UnreadPolicy,
+    WireMessageRef,
 };
 pub use registry::{ApiDomain, CommandSpec};
 pub use session::Session;
 pub use social::{FriendshipStatus, PhoneLookupResult};
+pub use wire::{ActionAck, SendMessageReceipt};
