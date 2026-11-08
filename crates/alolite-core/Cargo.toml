@@ -18,7 +18,7 @@ sha2 = "0.10"
 base64 = "0.22"
 aes-gcm = "0.10"
 rsa = "0.9.10"
-generic-array = "0.14"
+generic-array = "1.4"
 
 # Trusted-device protocol (Curve25519 identity keys, XEdDSA, linking MAC)
 curve25519-dalek = { version = "4", features = ["digest"] }
