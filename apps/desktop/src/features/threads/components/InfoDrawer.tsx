@@ -12,6 +12,7 @@ import {
   Trash2,
   UserCheck,
   UserPlus,
+  Users,
   UserX,
 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
@@ -22,13 +23,68 @@ import { jxlToJpgUrl } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/appReducer";
 import { isPhotoMessage } from "@/features/chat/utils/messages";
 import { isThreadMuted } from "@/features/threads/utils/threads";
+
 interface InfoDrawerProps {
   state: AppState;
   dispatch: (action: AppAction) => void;
 }
 
+/** 8-px bg-canvas band that separates sections visually */
+function SectionBand() {
+  return <div className="h-2 shrink-0 bg-canvas" />;
+}
+
+/** Collapsible section header row: 16px/500, chevron on right */
+function SectionHeader({
+  label,
+  expanded,
+  onToggle,
+  trailing,
+}: {
+  label: string;
+  expanded: boolean;
+  onToggle: () => void;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:opacity-80"
+    >
+      <span className="text-base font-medium text-foreground">{label}</span>
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        {trailing}
+        {expanded ? (
+          <ChevronDown className="h-4 w-4" />
+        ) : (
+          <ChevronRight className="h-4 w-4" />
+        )}
+      </div>
+    </button>
+  );
+}
+
+/** Full-width "Xem tất cả" button: bg-secondary, 16px/500 */
+function ViewAllButton({ onClick }: { onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mx-4 mb-3 w-[calc(100%-2rem)] cursor-pointer rounded-md bg-secondary py-1.5 text-center text-base font-medium text-foreground transition-colors hover:bg-secondary/70"
+    >
+      Xem tất cả
+    </button>
+  );
+}
+
 export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
   const [membersExpanded, setMembersExpanded] = useState(true);
+  const [boardExpanded, setBoardExpanded] = useState(true);
+  const [photosExpanded, setPhotosExpanded] = useState(true);
+  const [fileExpanded, setFileExpanded] = useState(true);
+  const [linkExpanded, setLinkExpanded] = useState(true);
+
   const thread = state.threads.find((t) => t.id === state.selectedThreadId);
   if (!state.infoDrawerOpen || !thread) return null;
 
@@ -37,7 +93,13 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
   const online = state.userOnlineMap[thread.id];
   const muted = state.settings ? isThreadMuted(thread, state.settings) : false;
   const pinned =
-    thread.presentation.pinned || (state.settings?.pinned_threads.includes(thread.id) ?? false);
+    thread.presentation.pinned ||
+    (state.settings?.pinned_threads.includes(thread.id) ?? false);
+  const memberCount =
+    thread.presentation.member_count ||
+    thread.presentation.members.length ||
+    0;
+
   const sharedPhotos = thread.messages
     .filter((m) => isPhotoMessage(m) && Boolean(m.link_thumb ?? m.link_url))
     .slice(-8)
@@ -79,15 +141,104 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
     void ipc.muteThread(thread.id, thread.is_group, muted ? 0 : -1, !muted);
   };
 
+  /** Circular action button used in the quick-action row */
+  const ActionBtn = ({
+    icon,
+    label,
+    onClick,
+    active = false,
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    onClick?: () => void;
+    active?: boolean;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5 cursor-pointer group"
+    >
+      <div
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+          active
+            ? "bg-primary/20 text-primary"
+            : "bg-secondary text-foreground/80 group-hover:bg-secondary/70",
+        )}
+      >
+        {icon}
+      </div>
+      <span className="text-[12px] leading-tight text-muted-foreground group-hover:text-foreground">
+        {label}
+      </span>
+    </button>
+  );
+
+  /* ------------------------------------------------------------------ */
+  /* Action button sets per thread type                                   */
+  /* ------------------------------------------------------------------ */
+  const actionButtons = thread.is_group ? (
+    // Group: 4 buttons
+    <div className="grid grid-cols-4 gap-1 px-3 py-4">
+      <ActionBtn
+        icon={muted ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+        label={muted ? "Bật TB" : "Tắt thông báo"}
+        onClick={handleToggleMute}
+        active={muted}
+      />
+      <ActionBtn
+        icon={<Pin className="h-5 w-5" />}
+        label={pinned ? "Bỏ ghim" : "Ghim"}
+        onClick={handleTogglePin}
+        active={pinned}
+      />
+      <ActionBtn
+        icon={<UserPlus className="h-5 w-5" />}
+        label="Thêm thành viên"
+        onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
+      />
+      <ActionBtn
+        icon={<Shield className="h-5 w-5" />}
+        label="Quản lý nhóm"
+        onClick={() =>
+          dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })
+        }
+      />
+    </div>
+  ) : (
+    // 1-on-1 (non-cloud): 3 buttons
+    <div className="grid grid-cols-3 gap-1 px-3 py-4">
+      <ActionBtn
+        icon={muted ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+        label={muted ? "Bật TB" : "Tắt thông báo"}
+        onClick={handleToggleMute}
+        active={muted}
+      />
+      <ActionBtn
+        icon={<Pin className="h-5 w-5" />}
+        label={pinned ? "Bỏ ghim" : "Ghim"}
+        onClick={handleTogglePin}
+        active={pinned}
+      />
+      <ActionBtn
+        icon={<Users className="h-5 w-5" />}
+        label="Tạo nhóm trò chuyện"
+        onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
+      />
+    </div>
+  );
+
   return (
-    <aside className="flex h-full w-[320px] shrink-0 flex-col overflow-y-auto border-l border-border bg-sidebar text-sidebar-foreground">
-      <div className="flex h-15 shrink-0 items-center justify-between border-b border-border px-4">
-        <span className="text-[15px] font-bold text-foreground">
+    <aside className="flex h-full w-[343px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background text-foreground">
+      {/* Header: 68px, centered title 18px/500 */}
+      <div className="flex h-[68px] shrink-0 items-center justify-center border-b border-border">
+        <span className="text-[18px] font-medium text-foreground">
           {thread.is_group ? "Thông tin nhóm" : "Thông tin hội thoại"}
         </span>
       </div>
 
-      <div className="flex flex-col items-center gap-1.5 px-4 pt-4 pb-3 text-center">
+      {/* Avatar + Name row */}
+      <div className="flex flex-col items-center gap-1 px-4 pt-5 pb-4 text-center">
         <Avatar
           id={thread.id}
           name={thread.name}
@@ -97,11 +248,11 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
             thread.presentation.member_count ||
             (thread.is_group ? thread.presentation.members.length : undefined)
           }
-          size={68}
+          size={56}
           mediaCache={state.mediaCache}
         />
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[15.5px] font-bold text-foreground truncate max-w-[220px]">
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="max-w-[220px] truncate text-[18px] font-medium text-foreground">
             {thread.name || thread.id}
           </span>
           <button
@@ -112,9 +263,11 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
             <Pencil className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="text-xs text-muted-foreground">
+
+        {/* Subtitle */}
+        <div className="text-[13px] text-muted-foreground">
           {thread.is_group
-            ? `${thread.presentation.member_count || thread.presentation.members.length || 0} thành viên`
+            ? `${memberCount} thành viên`
             : isCloud
               ? "Lưu trữ đám mây cá nhân"
               : friendStatus === "Friend"
@@ -124,8 +277,9 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
                   : "Đang kiểm tra…"}
         </div>
 
+        {/* Friend action buttons (non-group, non-cloud, not Friend) */}
         {!thread.is_group && !isCloud && friendStatus !== "Friend" ? (
-          <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+          <div className="mt-2 flex flex-wrap justify-center gap-1.5">
             {friendStatus === "Stranger" ? (
               <Button
                 variant="default"
@@ -166,215 +320,214 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
         ) : null}
       </div>
 
-      {/* Quick Action Icons Row */}
-      <div className="grid grid-cols-4 border-b border-border/70 px-2 py-3">
-        <button
-          type="button"
-          onClick={handleToggleMute}
-          className="flex flex-col items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground group"
-        >
-          <div
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-              muted ? "bg-primary/20 text-primary" : "bg-muted/70 group-hover:bg-muted text-foreground/80",
-            )}
-          >
-            {muted ? <BellOff className="h-4.5 w-4.5" /> : <Bell className="h-4.5 w-4.5" />}
-          </div>
-          <span className="text-[11px] font-medium">{muted ? "Bật TB" : "Tắt TB"}</span>
-        </button>
+      {/* Quick action buttons */}
+      <div className="border-b border-border/60">{actionButtons}</div>
 
-        <button
-          type="button"
-          onClick={handleTogglePin}
-          className="flex flex-col items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground group"
-        >
-          <div
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-              pinned ? "bg-primary/20 text-primary" : "bg-muted/70 group-hover:bg-muted text-foreground/80",
-            )}
-          >
-            <Pin className="h-4.5 w-4.5" />
-          </div>
-          <span className="text-[11px] font-medium">{pinned ? "Bỏ ghim" : "Ghim"}</span>
-        </button>
+      {/* ---- Sections ---- */}
 
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
-          className="flex flex-col items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground group"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/70 text-foreground/80 transition-colors group-hover:bg-muted">
-            <UserPlus className="h-4.5 w-4.5" />
-          </div>
-          <span className="text-[11px] font-medium">Thêm TV</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })}
-          className="flex flex-col items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground group"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/70 text-foreground/80 transition-colors group-hover:bg-muted">
-            <Shield className="h-4.5 w-4.5" />
-          </div>
-          <span className="text-[11px] font-medium">Quản lý</span>
-        </button>
-      </div>
-
-      <div className="flex flex-col divide-y divide-border/60">
-        {/* Group members section */}
-        {thread.is_group ? (
-          <div className="flex flex-col py-2.5 px-3.5">
-            <button
-              type="button"
-              onClick={() => setMembersExpanded((prev) => !prev)}
-              className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold text-foreground hover:opacity-80"
-            >
-              <span>Thành viên nhóm</span>
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <span>
-                  {thread.presentation.member_count || thread.presentation.members.length || 0} thành viên
-                </span>
-                {membersExpanded ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
-              </div>
-            </button>
-            {membersExpanded && thread.presentation.members.length > 0 ? (
-              <div className="mt-2.5 flex max-h-44 flex-col gap-1.5 overflow-y-auto pr-1">
-                {thread.presentation.members.map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 text-xs py-0.5">
-                    <Avatar
-                      id={m.id}
-                      name={m.name}
-                      avatarUrl={m.avatar}
-                      size={28}
-                      mediaCache={state.mediaCache}
-                    />
-                    <span className="truncate text-foreground/90">{m.name || m.id}</span>
+      {/* Group-specific sections: Thành viên nhóm + Bảng tin nhóm */}
+      {thread.is_group ? (
+        <>
+          {/* Thành viên nhóm */}
+          <SectionBand />
+          <div className="bg-background">
+            <SectionHeader
+              label="Thành viên nhóm"
+              expanded={membersExpanded}
+              onToggle={() => setMembersExpanded((p) => !p)}
+            />
+            {membersExpanded ? (
+              <div className="flex flex-col px-4 pb-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+                >
+                  <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <span className="text-[14px]">{memberCount} thành viên</span>
+                </button>
+                {thread.presentation.members.length > 0 ? (
+                  <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto pt-1 pb-1">
+                    {thread.presentation.members.map((m) => (
+                      <div key={m.id} className="flex items-center gap-2.5 py-1">
+                        <Avatar
+                          id={m.id}
+                          name={m.name}
+                          avatarUrl={m.avatar}
+                          size={32}
+                          mediaCache={state.mediaCache}
+                        />
+                        <span className="truncate text-[14px] text-foreground">
+                          {m.name || m.id}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : null}
               </div>
             ) : null}
           </div>
-        ) : null}
 
-        {/* Group board section */}
-        <div className="flex flex-col py-2.5 px-3.5 gap-2">
-          <span className="text-xs font-semibold text-foreground">Bảng tin nhóm</span>
-          <div className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              className="flex items-center gap-2.5 py-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>Danh sách nhắc hẹn</span>
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-2.5 py-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span>Ghi chú, ghim, bình chọn</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Photos & Videos */}
-        <div className="flex flex-col py-2.5 px-3.5 gap-2">
-          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-            <span>Ảnh / Video</span>
-            <span className="text-muted-foreground font-normal">({sharedPhotos.length})</span>
-          </div>
-          {sharedPhotos.length === 0 ? (
-            <div className="text-xs text-muted-foreground py-2 text-center">Chưa có hình ảnh nào</div>
-          ) : (
-            <>
-              <div className="grid grid-cols-4 gap-1.5">
-                {sharedPhotos.map((m) => {
-                  const key = `img_${m.id || m.ts}`;
-                  const fullUrl = m.link_url ?? m.link_thumb ?? "";
-                  const thumbSrc =
-                    state.mediaCache[key] ?? jxlToJpgUrl(m.link_thumb ?? m.link_url ?? "");
-                  return (
-                    <div
-                      key={key}
-                      onClick={() =>
-                        dispatch({
-                          type: "SET_IMAGE_VIEWER",
-                          viewer: {
-                            texKey: key,
-                            fullUrl,
-                            title: m.link_title || "Hình ảnh",
-                            sender: m.sender,
-                            time: m.time,
-                          },
-                        })
-                      }
-                      className="grid aspect-square cursor-pointer place-items-center overflow-hidden rounded-md border border-border/80 bg-muted text-[10px] text-muted-foreground hover:opacity-90"
-                    >
-                      {thumbSrc ? (
-                        <img
-                          src={thumbSrc}
-                          alt="Ảnh"
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        "Ảnh"
-                      )}
-                    </div>
-                  );
-                })}
+          {/* Bảng tin nhóm */}
+          <SectionBand />
+          <div className="bg-background">
+            <SectionHeader
+              label="Bảng tin nhóm"
+              expanded={boardExpanded}
+              onToggle={() => setBoardExpanded((p) => !p)}
+            />
+            {boardExpanded ? (
+              <div className="flex flex-col px-4 pb-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+                >
+                  <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <span className="text-[14px]">Danh sách nhắc hẹn</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+                >
+                  <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <span className="text-[14px]">Ghi chú, ghim, bình chọn</span>
+                </button>
               </div>
-              <button
-                type="button"
-                className="mt-1 w-full rounded-md bg-muted/60 py-1.5 text-center text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer"
-              >
-                Xem tất cả
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* File and Link notices */}
-        <div className="flex flex-col py-2.5 px-3.5 gap-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-foreground">Tập tin</span>
-            <span className="text-[11px] text-muted-foreground">
-              Sử dụng ứng dụng Zalo trên máy tính để xem tập tin lưu trữ
-            </span>
+            ) : null}
           </div>
-          <div className="flex flex-col gap-1 mt-1">
-            <span className="text-xs font-semibold text-foreground">Liên kết</span>
-            <span className="text-[11px] text-muted-foreground">
-              Sử dụng ứng dụng Zalo trên máy tính để xem liên kết đã gửi
-            </span>
+        </>
+      ) : (
+        <>
+          {/* 1:1 chat reminders */}
+          <SectionBand />
+          <div className="flex flex-col bg-background px-4 py-1.5">
+            <button
+              type="button"
+              className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+            >
+              <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <span className="text-[14px]">Danh sách nhắc hẹn</span>
+            </button>
           </div>
-        </div>
+        </>
+      )}
+      {/* Ảnh / Video */}
+      <SectionBand />
+      <div className="bg-background">
+        <SectionHeader
+          label="Ảnh/Video"
+          expanded={photosExpanded}
+          onToggle={() => setPhotosExpanded((p) => !p)}
+        />
+        {photosExpanded ? (
+          <>
+            {sharedPhotos.length === 0 ? (
+              <p className="px-4 pb-3 text-[13px] text-muted-foreground text-center">
+                Chưa có hình ảnh nào
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-1 px-4 pb-2">
+                  {sharedPhotos.map((m) => {
+                    const key = `img_${m.id || m.ts}`;
+                    const fullUrl = m.link_url ?? m.link_thumb ?? "";
+                    const thumbSrc =
+                      state.mediaCache[key] ??
+                      jxlToJpgUrl(m.link_thumb ?? m.link_url ?? "");
+                    return (
+                      <div
+                        key={key}
+                        onClick={() =>
+                          dispatch({
+                            type: "SET_IMAGE_VIEWER",
+                            viewer: {
+                              texKey: key,
+                              fullUrl,
+                              title: m.link_title || "Hình ảnh",
+                              sender: m.sender,
+                              time: m.time,
+                            },
+                          })
+                        }
+                        className="h-[60px] cursor-pointer overflow-hidden rounded bg-muted text-[10px] text-muted-foreground hover:opacity-90"
+                      >
+                        {thumbSrc ? (
+                          <img
+                            src={thumbSrc}
+                            alt="Ảnh"
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            Ảnh
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <ViewAllButton />
+              </>
+            )}
+          </>
+        ) : null}
       </div>
 
-      <div className="mt-auto p-3.5">
-        <Button
-          variant="destructive"
-          className="w-full justify-center text-xs h-9 cursor-pointer"
-          onClick={() => {
-            const last = thread.messages.at(-1);
-            void ipc.deleteThread(
-              thread.id,
-              thread.is_group,
-              last?.client_message_id ?? last?.id ?? "",
-            );
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Xóa cuộc trò chuyện
-        </Button>
+      {/* File */}
+      <SectionBand />
+      <div className="bg-background">
+        <SectionHeader
+          label="File"
+          expanded={fileExpanded}
+          onToggle={() => setFileExpanded((p) => !p)}
+        />
+        {fileExpanded ? (
+          <>
+            <p className="px-4 pb-2 text-[13px] text-muted-foreground">
+              Chưa có file nào được chia sẻ
+            </p>
+            <ViewAllButton />
+          </>
+        ) : null}
       </div>
+
+      {/* Liên kết */}
+      <SectionBand />
+      <div className="bg-background">
+        <SectionHeader
+          label="Liên kết"
+          expanded={linkExpanded}
+          onToggle={() => setLinkExpanded((p) => !p)}
+        />
+        {linkExpanded ? (
+          <>
+            <p className="px-4 pb-2 text-[13px] text-muted-foreground">
+              Chưa có liên kết nào được chia sẻ
+            </p>
+            <ViewAllButton />
+          </>
+        ) : null}
+      </div>
+
+      {/* Delete conversation — quiet red text row */}
+      <SectionBand />
+      <button
+        type="button"
+        className="flex w-full cursor-pointer items-center justify-center gap-2 py-3.5 text-[14px] text-destructive hover:bg-destructive/5"
+        onClick={() => {
+          const last = thread.messages.at(-1);
+          void ipc.deleteThread(
+            thread.id,
+            thread.is_group,
+            last?.client_message_id ?? last?.id ?? "",
+          );
+        }}
+      >
+        <Trash2 className="h-4 w-4" />
+        Xóa cuộc trò chuyện
+      </button>
+      <SectionBand />
     </aside>
   );
 }

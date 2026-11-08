@@ -120,146 +120,150 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   };
 
   return (
-    <section className="flex h-full w-[340px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
-      <div className="flex flex-col gap-2.5 border-b border-border px-3 pt-3 pb-2">
-        <div className="flex items-center gap-1.5">
-          <div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-border/80 bg-muted/50 px-2.5 focus-within:border-primary/80 focus-within:bg-background">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              type="text"
-              value={state.searchQuery}
-              onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
-              onKeyDown={(e) => handleSearchKeyDown(e.key)}
-              placeholder="Tìm kiếm"
-              className="w-full bg-transparent text-[13.5px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-            />
-            {state.searchQuery ? (
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
-                title="Xóa tìm kiếm"
-                className="inline-flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-          </div>
+    <section className="flex h-full w-[345px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
+      {/* Search row — 64 px tall */}
+      <div className="flex h-16 shrink-0 items-center justify-between px-4">
+        <div className="flex h-8 w-[240px] shrink-0 items-center gap-1.5 rounded-[5px] bg-muted px-2.5">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            type="text"
+            value={state.searchQuery}
+            onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
+            onKeyDown={(e) => handleSearchKeyDown(e.key)}
+            placeholder="Tìm kiếm"
+            className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+          />
+          {state.searchQuery ? (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
+              title="Xóa tìm kiếm"
+              className="inline-flex h-4 w-4 cursor-pointer items-center justify-center text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
             title="Thêm bạn"
-            className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
           >
-            <UserPlus className="h-4.5 w-4.5" />
+            <UserPlus className="h-[18px] w-[18px]" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             title="Tạo nhóm"
-            className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
           >
-            <Users className="h-4.5 w-4.5" />
+            <Users className="h-[18px] w-[18px]" />
           </Button>
         </div>
+      </div>
 
-        <div className="flex items-center justify-between pt-0.5">
-          <div className="flex items-center gap-3.5 text-[13px] font-medium">
-            <button
-              type="button"
-              onClick={() => setUnreadOnly(false)}
-              className={cn(
-                "relative cursor-pointer pb-1.5 transition-colors",
-                !unreadOnly
-                  ? "font-bold text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Tất cả
-            </button>
-            <button
-              type="button"
-              onClick={() => setUnreadOnly(true)}
-              className={cn(
-                "relative cursor-pointer pb-1.5 transition-colors",
-                unreadOnly
-                  ? "font-bold text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Chưa đọc
-            </button>
-          </div>
+      {/* Tabs + filter row — 32 px tall */}
+      <div className="flex h-8 shrink-0 items-center justify-between border-b border-border/40 px-4">
+        <div className="flex h-full items-center gap-4 text-[14px]">
+          <button
+            type="button"
+            onClick={() => setUnreadOnly(false)}
+            className={cn(
+              "relative flex h-full cursor-pointer items-center transition-colors",
+              !unreadOnly
+                ? "font-medium text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-accent-foreground"
+                : "font-normal text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            onClick={() => setUnreadOnly(true)}
+            className={cn(
+              "relative flex h-full cursor-pointer items-center transition-colors",
+              unreadOnly
+                ? "font-medium text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-accent-foreground"
+                : "font-normal text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Chưa đọc
+          </button>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                >
-                  <span>
-                    {state.threadFilter === "direct"
-                      ? "Cá nhân"
-                      : state.threadFilter === "groups"
-                        ? "Nhóm"
-                        : "Phân loại"}
-                  </span>
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "all" })}
-                >
-                  Tất cả phân loại
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "direct" })}
-                >
-                  Tin nhắn cá nhân
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "groups" })}
-                >
-                  Tin nhắn nhóm
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-0.5 text-[13px] text-muted-foreground transition hover:text-foreground"
+              >
+                <span>
+                  {state.threadFilter === "direct"
+                    ? "Cá nhân"
+                    : state.threadFilter === "groups"
+                      ? "Nhóm"
+                      : "Phân loại"}
+                </span>
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "all" })}
+              >
+                Tất cả phân loại
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "direct" })}
+              >
+                Tin nhắn cá nhân
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "groups" })}
+              >
+                Tin nhắn nhóm
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  title="Tùy chọn khác"
-                  className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    for (const t of state.threads) {
-                      const unread = threadUnreadCount(t, state.unreadCounts);
-                      if (unread > 0) {
-                        const last = t.messages.at(-1);
-                        if (last?.id) void ipc.sendSeen(t.id, t.is_group, last.id);
-                      }
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title="Tùy chọn khác"
+                className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  for (const t of state.threads) {
+                    const unread = threadUnreadCount(t, state.unreadCounts);
+                    if (unread > 0) {
+                      const last = t.messages.at(-1);
+                      if (last?.id) void ipc.sendSeen(t.id, t.is_group, last.id);
                     }
-                  }}
-                >
-                  <CheckCheck className="h-4 w-4" /> Đánh dấu đã đọc tất cả
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  }
+                }}
+              >
+                <CheckCheck className="h-4 w-4" /> Đánh dấu đã đọc tất cả
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-1.5">
+
+      {/* Conversation list — virtualised, items use inset-x-2 for 8 px side margins */}
+      <div ref={listRef} className="flex-1 overflow-y-auto py-1">
         {visibleThreads.length === 0 ? (
-          <div className="p-6 text-center text-[13.5px] text-muted-foreground">
+          <div className="p-6 text-center text-[13px] text-muted-foreground">
             Không có hội thoại phù hợp
           </div>
         ) : (
@@ -289,10 +293,10 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         }
                       }}
                       className={cn(
-                        "absolute top-0 right-0 left-0 flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors select-none",
+                        "absolute inset-x-2 top-0 flex cursor-pointer items-center gap-3 rounded-[6px] px-2 transition-colors select-none",
                         selected
-                          ? "bg-[#1d2738] text-foreground shadow-2xs"
-                          : "hover:bg-muted/60",
+                          ? "bg-accent text-foreground"
+                          : "hover:bg-foreground/5 dark:hover:bg-[rgba(255,255,255,0.05)]",
                       )}
                     >
                       <Avatar
@@ -304,28 +308,32 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                           t.presentation.member_count ||
                           (t.is_group ? t.presentation.members.length : undefined)
                         }
-                        size={46}
+                        size={48}
                         mediaCache={state.mediaCache}
                       />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <div className="flex items-center justify-between gap-1">
                           <span
                             className={cn(
-                              "truncate text-[14px]",
-                              hasDot ? "font-bold text-foreground" : "font-semibold text-foreground/90",
+                              "truncate text-[16px] text-foreground",
+                              hasDot ? "font-semibold" : "font-normal",
                             )}
                           >
                             {t.name || t.id}
                           </span>
-                          <span className="shrink-0 text-[11.5px] text-muted-foreground">
+                          <span className="shrink-0 text-[12px] text-muted-foreground">
                             {t.time}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-1.5">
-                          <span className="truncate text-[12.5px] text-muted-foreground">
-                            {t.presentation.last_outgoing && !t.preview.startsWith("Bạn:") && !t.preview.startsWith("You:")
+                          <span className="truncate text-[14px] text-muted-foreground">
+                            {t.presentation.last_outgoing &&
+                            !t.preview.startsWith("Bạn:") &&
+                            !t.preview.startsWith("You:")
                               ? `You: ${t.preview || "Hình ảnh"}`
-                              : t.is_group && t.presentation.last_sender && !t.preview.includes(":")
+                              : t.is_group &&
+                                  t.presentation.last_sender &&
+                                  !t.preview.includes(":")
                                 ? `${t.presentation.last_sender}: ${t.preview}`
                                 : t.preview || "Chưa có tin nhắn"}
                           </span>
@@ -337,7 +345,10 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                             {unread > 0 ? (
                               <Badge
                                 variant="destructive"
-                                className="h-4.5 min-w-4.5 px-1.5 text-[10.5px] font-bold"
+                                className={cn(
+                                  "h-4 rounded-full text-[11px] font-bold leading-none",
+                                  unread > 9 ? "min-w-4 px-1" : "w-4 p-0",
+                                )}
                               >
                                 {unread > 99 ? "99+" : unread}
                               </Badge>
