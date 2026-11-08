@@ -4,6 +4,9 @@ version = "0.0.1"
 description = "AloLite Desktop UI Host (Tauri v2 + TypeScript)"
 authors = ["ngxc dev"]
 edition = "2021"
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
