@@ -13,7 +13,7 @@ custom-protocol = ["tauri/custom-protocol"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-alolite-core = { path = "../../../crates/alolite-core" }
+alolite-core = { path = "../alolite-core" }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

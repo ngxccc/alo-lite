@@ -15,9 +15,9 @@
 
 ## 2. Decision
 
-1. **Tauri Host (`apps/desktop/src-tauri/`):**
-   - `apps/desktop/src-tauri/Cargo.toml` depends exclusively on `alolite-core` inside the root Cargo workspace, keeping headless CLI/MCP builds free of `webkit2gtk-4.1`.
-   - `TauriEventSink` (`src-tauri/src/events.rs`) implements `CoreEventSink` and forwards `CoreEventDto` over `"core-event"`; `src-tauri/src/commands.rs` exposes 47 thin `#[tauri::command]` wrappers delegating directly to `CoreEngine`.
+1. **Tauri Host (`crates/alolite-desktop/`):**
+   - `crates/alolite-desktop/Cargo.toml` depends exclusively on `alolite-core` inside the root Cargo workspace, keeping headless CLI/MCP builds free of `webkit2gtk-4.1`.
+   - `TauriEventSink` (`crates/alolite-desktop/src/events.rs`) implements `CoreEventSink` and forwards `CoreEventDto` over `"core-event"`; `crates/alolite-desktop/src/commands.rs` exposes 47 thin `#[tauri::command]` wrappers delegating directly to `CoreEngine`.
 
 2. **WebView-Friendly Core Projections (`src/core/ipc.rs`, `settings.rs`, `stickers.rs`):**
    - `CoreImageData::to_png_data_url()` encodes decoded RGBA8 buffers into compact `data:image/png;base64,...` URLs before crossing IPC.

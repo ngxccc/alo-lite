@@ -19,13 +19,13 @@ During initial Tauri integration, the repository carried two separate Rust graph
 ## 2. Decision
 
 1. **Single Root Cargo Workspace (`Cargo.toml`):**
-   - `members = ["crates/alolite-core", "crates/alolite-cli", "apps/desktop/src-tauri"]`
-   - `default-members = ["crates/alolite-core", "crates/alolite-cli"]` so headless CI and `--mcp` servers compile/test cleanly without requiring `webkit2gtk-4.1`, while sharing a single `Cargo.lock` and `target/` directory when `alolite-desktop` is built.
+   - `members = ["crates/alolite-core", "crates/alolite-cli", "crates/alolite-desktop"]` so all three Rust crates share a single `Cargo.lock` and `target/` directory.
 2. **UI-Free Core (`crates/alolite-core/`):**
    - Owns `core/`, `protocol/`, `storage/`, `mcp/`, `services/`, `common/`, and `assets/` with zero `eframe`/`egui` or WebKit dependencies.
-3. **Dual Focused Binaries:**
+3. **Dual Focused Binaries & Pure TypeScript App:**
    - `crates/alolite-cli/` (`alolite`): lightweight headless CLI, `--mcp` stdio server, `--api-only` REST server, `--qr` terminal login, and desktop launcher.
-   - `apps/desktop/` (`alolite-desktop`): feature-based TypeScript (`src/{app,shared,features}/`) + Tauri v2 Rust host (`src-tauri/`).
+   - `crates/alolite-desktop/` (`alolite-desktop`): Tauri v2 Rust host embedding `../../apps/desktop/dist`.
+   - `apps/desktop/`: 100% pure feature-based TypeScript (`src/{app,shared,features}/`) with zero Rust files inside `apps/`.
 4. **Root Hygiene:**
    - Remove legacy `src/gui/` (`egui`, preserved on `main` at `ce798e6`), legacy `src/bin/` probes, and `egui`-only fonts (`BeVietnamPro`, `lucide.ttf`).
    - Move `book.toml`, `DESIGN.md`, `ROADMAP.md`, and `LEGAL.md` under `docs/`.

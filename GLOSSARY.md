@@ -38,7 +38,7 @@ Ubiquitous language for `alolite`. Use these terms verbatim in issues, ADRs, tes
 
 | Term | Definition | Avoid |
 | :--- | :--- | :--- |
-| **CoreEngine** | UI-independent Tokio runtime (`crates/alolite-core/src/core/`) owning `Session`, WebSocket/polling, SQLite, and MCP/REST; `apps/desktop/src-tauri` and `alolite-cli` act as thin adapters. | "backend", "service" |
+| **CoreEngine** | UI-independent Tokio runtime (`crates/alolite-core/src/core/`) owning `Session`, WebSocket/polling, SQLite, and MCP/REST; `crates/alolite-desktop` and `alolite-cli` act as thin adapters. | "backend", "service" |
 | **UI thread** | The Tauri WebView event loop (`apps/desktop/src/`); must never block on I/O. | "frontend" |
 | **Store** | Local SQLite database managed by `MessageStore` (`crates/alolite-core/src/storage/`), plus fast-startup JSON snapshot in `storage::thread_cache`. | "cache" (cache is non-authoritative) |
 

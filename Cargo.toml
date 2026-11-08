@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "crates/alolite-core",
     "crates/alolite-cli",
-    "apps/desktop/src-tauri",
+    "crates/alolite-desktop",
 ]
 
 [workspace.package]

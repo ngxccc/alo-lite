@@ -44,7 +44,7 @@ book/
 
 # Node / Vite frontend & Tauri generated schemas
 node_modules/
-apps/desktop/src-tauri/gen/
+crates/alolite-desktop/gen/
 # Logs & temporary files
 *.tmp
 *.bak
