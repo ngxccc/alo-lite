@@ -4,8 +4,6 @@ import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
 import type { AppAction, AppState } from "@/app/store/appReducer";
@@ -23,31 +21,44 @@ export function WipeConfirmModal({ state, dispatch }: WipeConfirmModalProps) {
       open={state.wipeConfirmOpen}
       onOpenChange={(open) => !open && dispatch({ type: "SET_WIPE_CONFIRM", open: false })}
     >
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-destructive">
-            <Trash2 className="h-4 w-4" /> Xóa dữ liệu tin nhắn cục bộ
+      <DialogContent className="w-[400px] max-w-[400px] rounded-lg p-0">
+        {/* Header */}
+        <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
+          <Trash2 className="h-5 w-5 shrink-0 text-destructive" />
+          <DialogTitle className="text-base font-medium text-foreground">
+            Xóa dữ liệu tin nhắn cục bộ
           </DialogTitle>
-        </DialogHeader>
-
-        <div className="p-4 text-xs leading-relaxed text-muted-foreground">
-          Xóa <code className="rounded bg-muted px-1 py-0.5 text-foreground">zalo_history.db</code>{" "}
-          và{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-foreground">threads_cache.json</code>{" "}
-          trên máy này. Không thể hoàn tác, nhưng phiên đăng nhập{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-foreground">session.json</code> vẫn
-          được giữ nguyên.
         </div>
 
-        <DialogFooter>
+        {/* Body */}
+        <div className="px-5 py-4 text-sm leading-relaxed text-muted-foreground">
+          Xóa{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+            zalo_history.db
+          </code>{" "}
+          và{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+            threads_cache.json
+          </code>{" "}
+          trên máy này. Không thể hoàn tác, nhưng phiên đăng nhập{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+            session.json
+          </code>{" "}
+          vẫn được giữ nguyên.
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
           <Button
-            variant="outline"
+            variant="secondary"
+            className="h-8 rounded-md px-4 text-sm"
             onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: false })}
           >
             Hủy
           </Button>
           <Button
             variant="destructive"
+            className="h-8 rounded-md px-4 text-sm"
             onClick={() => {
               dispatch({ type: "SET_WIPE_CONFIRM", open: false });
               void ipc.wipeLocalData();
@@ -55,7 +66,7 @@ export function WipeConfirmModal({ state, dispatch }: WipeConfirmModalProps) {
           >
             Xóa dữ liệu
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

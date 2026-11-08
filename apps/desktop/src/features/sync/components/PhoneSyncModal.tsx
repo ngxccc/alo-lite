@@ -1,11 +1,9 @@
-import { FolderOpen, RefreshCw, Smartphone, Square } from "lucide-react";
+import { FolderOpen, RefreshCw, Square } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
 import type { AppAction, AppState } from "@/app/store/appReducer";
@@ -21,23 +19,29 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
   return (
     <Dialog
       open={state.phoneSyncModalOpen}
-      onOpenChange={(open) => !open && dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false })}
+      onOpenChange={(open) =>
+        !open && dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false })
+      }
     >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            <Smartphone className="h-4 w-4 text-primary" /> Đồng bộ tin nhắn từ điện thoại
+      <DialogContent className="w-[480px] max-w-[480px] rounded-lg p-0">
+        {/* Header */}
+        <div className="border-b border-border px-5 py-4">
+          <DialogTitle className="text-base font-medium text-foreground">
+            Đồng bộ tin nhắn từ điện thoại
           </DialogTitle>
-        </DialogHeader>
+        </div>
 
-        <div className="flex flex-col gap-3 p-4">
-          <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/50 p-3 text-xs">
-            <div className="font-bold text-foreground">Các bước cần thực hiện trên điện thoại:</div>
-            <div>1. Mở ứng dụng Zalo trên điện thoại.</div>
-            <div className="font-semibold text-primary">
-              2. Khi màn hình hiện “Đồng bộ tin nhắn?”, bấm “Đồng bộ ngay”.
+        {/* Body */}
+        <div className="flex flex-col gap-3 px-5 py-4">
+          <div className="rounded-lg bg-card px-4 py-3 text-sm">
+            <div className="mb-2 font-medium text-foreground">
+              Các bước thực hiện trên điện thoại:
             </div>
-            <div className="font-semibold text-online">
+            <div className="text-muted-foreground">1. Mở ứng dụng Zalo trên điện thoại.</div>
+            <div className="mt-1 font-medium text-primary">
+              2. Khi màn hình hiện "Đồng bộ tin nhắn?", bấm "Đồng bộ ngay".
+            </div>
+            <div className="mt-1 font-medium text-[hsl(var(--online,142_71%_45%))]">
               3. Xác thực bằng FaceID / Vân tay / Mã PIN trên điện thoại.
             </div>
           </div>
@@ -59,9 +63,11 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
           ) : null}
         </div>
 
-        <DialogFooter className="justify-between">
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-border px-5 py-3">
           <Button
-            variant="outline"
+            variant="secondary"
+            className="h-8 rounded-md px-4 text-sm"
             onClick={() => {
               dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false });
               dispatch({ type: "OPEN_SETTINGS", open: true, tab: "sync" });
@@ -71,12 +77,17 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
           </Button>
 
           {state.phoneSyncRunning ? (
-            <Button variant="destructive" onClick={() => void ipc.cancelPhoneSync()}>
+            <Button
+              variant="destructive"
+              className="h-8 rounded-md px-4 text-sm"
+              onClick={() => void ipc.cancelPhoneSync()}
+            >
               <Square className="h-3.5 w-3.5" /> Dừng đồng bộ
             </Button>
           ) : (
             <Button
               variant="default"
+              className="h-8 rounded-md px-4 text-sm"
               onClick={() => {
                 dispatch({ type: "START_PHONE_SYNC" });
                 void ipc.syncPhoneMessages(state.threads, true);
@@ -85,7 +96,7 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
               <RefreshCw className="h-3.5 w-3.5" /> Bắt đầu đồng bộ ngay
             </Button>
           )}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
