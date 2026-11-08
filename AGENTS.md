@@ -30,7 +30,8 @@ Operating guide for AI agents and humans working in this repository.
 |:---|:---|
 |`crates/alolite-core/`|UI-independent `CoreEngine`, `protocol/`, `storage/`, `mcp/`, `services/`, `common/`, and `assets/`|
 |`crates/alolite-cli/`|`alolite` binary (`--mcp`, `--api-only`, `--qr`, `--phone`, desktop launcher)|
-|`apps/desktop/`|Feature-based TypeScript (`src/{app,shared,features}/`) + Tauri v2 host (`src-tauri/` → `alolite-desktop`) over `alolite-core`|
+|`crates/alolite-desktop/`|Tauri v2 native desktop host (`alolite-desktop`) over `alolite-core` embedding `apps/desktop/dist`|
+|`apps/desktop/`|Pure feature-based TypeScript + React frontend (`src/{app,shared,features}/`)|
 |`docs/`|Engineering standards, ADRs (`docs/adr/`), `book.toml`, `DESIGN.md`, `ROADMAP.md`, `LEGAL.md`|
 |`packaging/`|Linux `.deb`, `.rpm`, `.AppImage`, `.tar.gz` packaging scripts|
 

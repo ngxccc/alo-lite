@@ -5,10 +5,10 @@
   "identifier": "io.github.ngxccc.alolite",
   "mainBinaryName": "alolite-desktop",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "cd ../../apps/desktop && bun run dev",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "cd ../../apps/desktop && bun run build",
+    "frontendDist": "../../apps/desktop/dist"
   },
   "app": {
     "windows": [
@@ -29,8 +29,8 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "../../../crates/alolite-core/assets/app_icon.png",
-      "../../../crates/alolite-core/assets/app_icon.ico"
+      "../alolite-core/assets/app_icon.png",
+      "../alolite-core/assets/app_icon.ico"
     ]
   }
 }
