@@ -71,6 +71,9 @@ export function extractFirstUrl(text: string): string | null {
   return match[0].replace(/[.,!?;:'")]+$/, "");
 }
 
+export function jxlToJpgUrl(url: string): string {
+  return url.replace("/jxl/", "/jpg/").replace(/\.jxl(\?|$)/i, ".jpg$1");
+}
 export function avatarColor(name: string): string {
   const palette = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#DB2777", "#0891B2", "#DC2626"];
   let hash = 0;

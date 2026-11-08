@@ -12,7 +12,7 @@ use events::TauriEventSink;
 use tauri::Manager;
 use tokio::sync::Mutex;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     data_dir::initialize(&args)?;

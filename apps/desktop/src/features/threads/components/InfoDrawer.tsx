@@ -1,6 +1,7 @@
 import { BellOff, Pin, RefreshCw, Star, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
+import { jxlToJpgUrl } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { isPhotoMessage } from "../../chat/utils/messages";
 import { isThreadMuted } from "../utils/threads";
@@ -177,8 +178,8 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
             {sharedPhotos.map((m) => {
               const key = `img_${m.id || m.ts}`;
-              const dataUrl = state.mediaCache[key];
               const fullUrl = m.link_url || m.link_thumb || "";
+              const thumbSrc = state.mediaCache[key] || jxlToJpgUrl(m.link_thumb || m.link_url || "");
               return (
                 <div
                   key={key}
@@ -207,8 +208,8 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
                     color: "var(--text-muted)",
                   }}
                 >
-                  {dataUrl ? (
-                    <img src={dataUrl} alt="Ảnh" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  {thumbSrc ? (
+                    <img src={thumbSrc} alt="Ảnh" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     "Ảnh"
                   )}

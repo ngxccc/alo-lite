@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
-import { ipc, isTauriRuntime } from "../api/ipc";
+import { ipc } from "../api/ipc";
+import { jxlToJpgUrl } from "../utils/text";
 import type { ImageViewerState } from "../../app/store/appReducer";
 
 interface ImageViewerModalProps {
@@ -22,19 +23,10 @@ export function ImageViewerModal({
     setZoom(1);
   }, [viewer?.texKey, viewer?.fullUrl]);
 
-  useEffect(() => {
-    if (!viewer || !viewer.fullUrl || !isTauriRuntime()) return;
-    const hdKey = `hd_${viewer.texKey}`;
-    if (!mediaCache[hdKey]) {
-      void ipc.fetchMediaData(hdKey, viewer.fullUrl);
-    }
-  }, [viewer?.texKey, viewer?.fullUrl, mediaCache]);
-
   if (!viewer) return null;
 
   const hdKey = `hd_${viewer.texKey}`;
-  const src = mediaCache[hdKey] ?? mediaCache[viewer.texKey] ?? viewer.fullUrl;
-
+  const src = mediaCache[hdKey] ?? mediaCache[viewer.texKey] ?? jxlToJpgUrl(viewer.fullUrl);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
