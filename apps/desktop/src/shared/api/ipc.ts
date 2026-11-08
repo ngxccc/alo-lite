@@ -12,7 +12,7 @@ import type {
   DevDiagnosticsSnapshot,
   ImportSummaryDto,
   Thread,
-} from "../types/ipc";
+} from "@/shared/types/ipc";
 
 declare global {
   interface Window {

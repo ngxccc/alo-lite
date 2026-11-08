@@ -1,10 +1,10 @@
 import { Bug, Cloud, MessageSquare, Moon, Settings, Smartphone, Sun, Users } from "lucide-react";
-import { ipc } from "../../../shared/api/ipc";
-import { Avatar } from "../../../shared/ui/Avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../../shared/ui/tooltip";
-import { cn } from "../../../shared/utils/cn";
-import type { AppAction, AppState } from "../../../app/store/appReducer";
-import { threadUnreadCount } from "../../threads/utils/threads";
+import { ipc } from "@/shared/api/ipc";
+import { Avatar } from "@/shared/ui/Avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
+import { cn } from "@/shared/utils/cn";
+import type { AppAction, AppState } from "@/app/store/appReducer";
+import { threadUnreadCount } from "@/features/threads/utils/threads";
 
 interface NavRailProps {
   state: AppState;
@@ -30,10 +30,10 @@ function RailButton({
           onClick={onClick}
           aria-label={label}
           className={cn(
-            "relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl transition-colors select-none",
+            "relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-all duration-150 select-none",
             active
-              ? "bg-rail-muted text-white shadow-xs"
-              : "text-rail-foreground/80 hover:bg-rail-muted hover:text-white",
+              ? "bg-white/15 text-white shadow-xs"
+              : "text-rail-foreground/75 hover:bg-white/8 hover:text-white",
           )}
         >
           {children}

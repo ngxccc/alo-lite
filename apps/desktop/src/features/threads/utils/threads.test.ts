@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { AppSettings, Thread } from "../../../shared/types/ipc";
+import type { AppSettings, Thread } from "@/shared/types/ipc";
 import { isThreadMuted, mergeThreadInto, reconcileSentMessage, sortThreads } from "./threads";
 
 const baseSettings: AppSettings = {

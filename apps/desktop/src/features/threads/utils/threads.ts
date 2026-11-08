@@ -1,5 +1,5 @@
-import type { AppSettings, ChatMessage, Thread } from "../../../shared/types/ipc";
-import { normalizeTsMs } from "../../../shared/utils/text";
+import type { AppSettings, ChatMessage, Thread } from "@/shared/types/ipc";
+import { normalizeTsMs } from "@/shared/utils/text";
 
 export function isThreadMuted(
   thread: Thread,

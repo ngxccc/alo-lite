@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Download, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
-import { ipc } from "../api/ipc";
-import { jxlToJpgUrl } from "../utils/text";
+import { ipc } from "@/shared/api/ipc";
+import { jxlToJpgUrl } from "@/shared/utils/text";
 import { Button } from "./button";
 import { Dialog, DialogContent } from "./dialog";
-import type { ImageViewerState } from "../../app/store/appReducer";
+import type { ImageViewerState } from "@/app/store/appReducer";
 
 interface ImageViewerModalProps {
   viewer: ImageViewerState | null;

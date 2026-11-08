@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
-import { ipc, isTauriRuntime } from "../shared/api/ipc";
-import { ImageViewerModal } from "../shared/ui/ImageViewerModal";
-import { TooltipProvider } from "../shared/ui/tooltip";
-import { LoginView } from "../features/auth/components/LoginView";
-import { NavRail } from "../features/navigation/components/NavRail";
-import { ThreadsSidebar } from "../features/threads/components/ThreadsSidebar";
-import { InfoDrawer } from "../features/threads/components/InfoDrawer";
-import { ChatArea } from "../features/chat/components/ChatArea";
-import { ForwardModal } from "../features/chat/components/ForwardModal";
-import { ContactsView } from "../features/contacts/components/ContactsView";
-import { PhoneLookupModal } from "../features/contacts/components/PhoneLookupModal";
-import { PhoneSyncModal } from "../features/sync/components/PhoneSyncModal";
-import { SettingsModal } from "../features/settings/components/SettingsModal";
-import { WipeConfirmModal } from "../features/settings/components/WipeConfirmModal";
-import { DevToolsModal } from "../features/devtools/components/DevToolsModal";
-import { useAppStore } from "./store/useAppStore";
+import { ipc, isTauriRuntime } from "@/shared/api/ipc";
+import { ImageViewerModal } from "@/shared/ui/ImageViewerModal";
+import { TooltipProvider } from "@/shared/ui/tooltip";
+import { LoginView } from "@/features/auth/components/LoginView";
+import { NavRail } from "@/features/navigation/components/NavRail";
+import { ThreadsSidebar } from "@/features/threads/components/ThreadsSidebar";
+import { InfoDrawer } from "@/features/threads/components/InfoDrawer";
+import { ChatArea } from "@/features/chat/components/ChatArea";
+import { ForwardModal } from "@/features/chat/components/ForwardModal";
+import { ContactsView } from "@/features/contacts/components/ContactsView";
+import { PhoneLookupModal } from "@/features/contacts/components/PhoneLookupModal";
+import { PhoneSyncModal } from "@/features/sync/components/PhoneSyncModal";
+import { SettingsModal } from "@/features/settings/components/SettingsModal";
+import { WipeConfirmModal } from "@/features/settings/components/WipeConfirmModal";
+import { DevToolsModal } from "@/features/devtools/components/DevToolsModal";
+import { useAppStore } from "@/app/store/useAppStore";
 
 export function App() {
   const state = useAppStore();

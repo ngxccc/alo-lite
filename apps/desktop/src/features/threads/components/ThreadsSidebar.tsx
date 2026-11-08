@@ -1,34 +1,43 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   BellOff,
+  CheckCheck,
+  ChevronDown,
   EyeOff,
   MailCheck,
   MailOpen,
+  MoreHorizontal,
   Pin,
   PinOff,
   Search,
   Trash2,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
-import { ipc } from "../../../shared/api/ipc";
-import type { Thread } from "../../../shared/types/ipc";
-import { Avatar } from "../../../shared/ui/Avatar";
-import { Badge } from "../../../shared/ui/badge";
-import { Button } from "../../../shared/ui/button";
+import { ipc } from "@/shared/api/ipc";
+import type { Thread } from "@/shared/types/ipc";
+import { Avatar } from "@/shared/ui/Avatar";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "../../../shared/ui/context-menu";
-import { Tabs, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
-import { cn } from "../../../shared/utils/cn";
-import { matchesVnQuery } from "../../../shared/utils/text";
-import type { AppAction, AppState } from "../../../app/store/appReducer";
-import { isThreadMuted, threadUnreadCount } from "../utils/threads";
+} from "@/shared/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
+import { cn } from "@/shared/utils/cn";
+import { matchesVnQuery } from "@/shared/utils/text";
+import type { AppAction, AppState } from "@/app/store/appReducer";
+import { isThreadMuted, threadUnreadCount } from "@/features/threads/utils/threads";
 
 interface ThreadsSidebarProps {
   state: AppState;
@@ -37,6 +46,7 @@ interface ThreadsSidebarProps {
 
 export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const settings = state.settings;
 
   const hiddenSet = new Set(settings?.hidden_threads ?? []);
@@ -46,6 +56,10 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
     if (hiddenSet.has(t.id) || t.presentation.hidden) return false;
     if (state.threadFilter === "direct" && t.is_group) return false;
     if (state.threadFilter === "groups" && !t.is_group) return false;
+    if (unreadOnly) {
+      const unread = threadUnreadCount(t, state.unreadCounts);
+      if (unread === 0 && !t.unread.marked_unread) return false;
+    }
     if (!state.searchQuery.trim()) return true;
     return (
       matchesVnQuery(t.name, state.searchQuery) ||
@@ -57,10 +71,9 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   const virtualizer = useVirtualizer({
     count: visibleThreads.length,
     getScrollElement: () => listRef.current,
-    estimateSize: () => 68,
+    estimateSize: () => 70,
     overscan: 8,
   });
-
   const handleSearchKeyDown = (key: string) => {
     if (key !== "Enter") return;
     const digits = state.searchQuery.replace(/\D/g, "");
@@ -107,17 +120,17 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   };
 
   return (
-    <section className="flex h-full w-[330px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
-      <div className="flex flex-col gap-2.5 border-b border-border p-3">
+    <section className="flex h-full w-[340px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
+      <div className="flex flex-col gap-2.5 border-b border-border px-3 pt-3 pb-2">
         <div className="flex items-center gap-1.5">
-          <div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-border bg-muted/60 px-3 focus-within:border-ring focus-within:bg-background">
+          <div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-border/80 bg-muted/50 px-2.5 focus-within:border-primary/80 focus-within:bg-background">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="text"
               value={state.searchQuery}
               onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
               onKeyDown={(e) => handleSearchKeyDown(e.key)}
-              placeholder="Tìm hội thoại, tin nhắn, SĐT…"
+              placeholder="Tìm kiếm"
               className="w-full bg-transparent text-[13.5px] text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {state.searchQuery ? (
@@ -134,30 +147,116 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            title="Tra cứu SĐT & Kết bạn"
+            title="Thêm bạn"
+            className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
             onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
           >
             <UserPlus className="h-4.5 w-4.5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Tạo nhóm"
+            className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+            onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
+          >
+            <Users className="h-4.5 w-4.5" />
+          </Button>
         </div>
 
-        <Tabs
-          value={state.threadFilter}
-          onValueChange={(v) =>
-            dispatch({
-              type: "SET_THREAD_FILTER",
-              filter: v as "all" | "direct" | "groups",
-            })
-          }
-        >
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">Tất cả</TabsTrigger>
-            <TabsTrigger value="direct">Cá nhân</TabsTrigger>
-            <TabsTrigger value="groups">Nhóm</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+        <div className="flex items-center justify-between pt-0.5">
+          <div className="flex items-center gap-3.5 text-[13px] font-medium">
+            <button
+              type="button"
+              onClick={() => setUnreadOnly(false)}
+              className={cn(
+                "relative cursor-pointer pb-1.5 transition-colors",
+                !unreadOnly
+                  ? "font-bold text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Tất cả
+            </button>
+            <button
+              type="button"
+              onClick={() => setUnreadOnly(true)}
+              className={cn(
+                "relative cursor-pointer pb-1.5 transition-colors",
+                unreadOnly
+                  ? "font-bold text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Chưa đọc
+            </button>
+          </div>
 
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                >
+                  <span>
+                    {state.threadFilter === "direct"
+                      ? "Cá nhân"
+                      : state.threadFilter === "groups"
+                        ? "Nhóm"
+                        : "Phân loại"}
+                  </span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "all" })}
+                >
+                  Tất cả phân loại
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "direct" })}
+                >
+                  Tin nhắn cá nhân
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: "groups" })}
+                >
+                  Tin nhắn nhóm
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  title="Tùy chọn khác"
+                  className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    for (const t of state.threads) {
+                      const unread = threadUnreadCount(t, state.unreadCounts);
+                      if (unread > 0) {
+                        const last = t.messages.at(-1);
+                        if (last?.id) void ipc.sendSeen(t.id, t.is_group, last.id);
+                      }
+                    }
+                  }}
+                >
+                  <CheckCheck className="h-4 w-4" /> Đánh dấu đã đọc tất cả
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
       <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-1.5">
         {visibleThreads.length === 0 ? (
           <div className="p-6 text-center text-[13.5px] text-muted-foreground">
@@ -190,8 +289,10 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         }
                       }}
                       className={cn(
-                        "absolute top-0 right-0 left-0 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors",
-                        selected ? "bg-accent text-accent-foreground" : "hover:bg-muted/70",
+                        "absolute top-0 right-0 left-0 flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors select-none",
+                        selected
+                          ? "bg-[#1d2738] text-foreground shadow-2xs"
+                          : "hover:bg-muted/60",
                       )}
                     >
                       <Avatar
@@ -199,39 +300,49 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         name={t.name}
                         avatarUrl={t.avatar}
                         isGroup={t.is_group}
-                        size={44}
+                        memberCount={
+                          t.presentation.member_count ||
+                          (t.is_group ? t.presentation.members.length : undefined)
+                        }
+                        size={46}
                         mediaCache={state.mediaCache}
                       />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center justify-between gap-1">
                           <span
                             className={cn(
-                              "truncate text-[14.5px] text-foreground",
-                              hasDot ? "font-bold" : "font-semibold",
+                              "truncate text-[14px]",
+                              hasDot ? "font-bold text-foreground" : "font-semibold text-foreground/90",
                             )}
                           >
                             {t.name || t.id}
                           </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">{t.time}</span>
+                          <span className="shrink-0 text-[11.5px] text-muted-foreground">
+                            {t.time}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between gap-1.5">
-                          <span className="truncate text-[13px] text-muted-foreground">
-                            {t.preview || "Chưa có tin nhắn"}
+                          <span className="truncate text-[12.5px] text-muted-foreground">
+                            {t.presentation.last_outgoing && !t.preview.startsWith("Bạn:") && !t.preview.startsWith("You:")
+                              ? `You: ${t.preview || "Hình ảnh"}`
+                              : t.is_group && t.presentation.last_sender && !t.preview.includes(":")
+                                ? `${t.presentation.last_sender}: ${t.preview}`
+                                : t.preview || "Chưa có tin nhắn"}
                           </span>
                           <div className="inline-flex shrink-0 items-center gap-1">
-                            {pinned ? <Pin className="h-3.5 w-3.5 text-primary" /> : null}
+                            {pinned ? <Pin className="h-3 w-3 text-muted-foreground" /> : null}
                             {muted ? (
-                              <BellOff className="h-3.5 w-3.5 text-muted-foreground" />
+                              <BellOff className="h-3 w-3 text-muted-foreground" />
                             ) : null}
                             {unread > 0 ? (
                               <Badge
                                 variant="destructive"
-                                className="h-4.5 min-w-4.5 px-1.5 text-[11px]"
+                                className="h-4.5 min-w-4.5 px-1.5 text-[10.5px] font-bold"
                               >
                                 {unread > 99 ? "99+" : unread}
                               </Badge>
                             ) : t.unread.marked_unread ? (
-                              <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                              <span className="h-2 w-2 rounded-full bg-primary" />
                             ) : null}
                           </div>
                         </div>

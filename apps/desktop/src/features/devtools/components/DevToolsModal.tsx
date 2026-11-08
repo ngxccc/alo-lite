@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Bug, RefreshCw, ShieldAlert, Terminal } from "lucide-react";
-import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
-import type { DevDiagnosticsSnapshot, LogEntry } from "../../../shared/types/ipc";
-import { Badge } from "../../../shared/ui/badge";
-import { Button } from "../../../shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
-import { cn } from "../../../shared/utils/cn";
-import type { AppAction, AppState } from "../../../app/store/appReducer";
+import { ipc, isTauriRuntime } from "@/shared/api/ipc";
+import type { DevDiagnosticsSnapshot, LogEntry } from "@/shared/types/ipc";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { cn } from "@/shared/utils/cn";
+import type { AppAction, AppState } from "@/app/store/appReducer";
 
 interface DevToolsModalProps {
   state: AppState;

@@ -15,16 +15,16 @@ import {
   User,
   Wrench,
 } from "lucide-react";
-import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
-import type { AppSettings, AutoReplyRule } from "../../../shared/types/ipc";
-import { Avatar } from "../../../shared/ui/Avatar";
-import { Badge } from "../../../shared/ui/badge";
-import { Button } from "../../../shared/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "../../../shared/ui/dialog";
-import { Input } from "../../../shared/ui/input";
-import { Switch } from "../../../shared/ui/switch";
-import { cn } from "../../../shared/utils/cn";
-import type { AppAction, AppState, SettingsTab } from "../../../app/store/appReducer";
+import { ipc, isTauriRuntime } from "@/shared/api/ipc";
+import type { AppSettings, AutoReplyRule } from "@/shared/types/ipc";
+import { Avatar } from "@/shared/ui/Avatar";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { Switch } from "@/shared/ui/switch";
+import { cn } from "@/shared/utils/cn";
+import type { AppAction, AppState, SettingsTab } from "@/app/store/appReducer";
 
 interface SettingsModalProps {
   state: AppState;

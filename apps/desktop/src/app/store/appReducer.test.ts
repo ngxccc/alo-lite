@@ -4,9 +4,9 @@ import type {
   ChatMessage,
   CoreBootstrapSnapshot,
   Thread,
-} from "../../shared/types/ipc";
-import { matchesVnQuery } from "../../shared/utils/text";
-import { uniqueReferenceIndex } from "../../features/chat/utils/messages";
+} from "@/shared/types/ipc";
+import { matchesVnQuery } from "@/shared/utils/text";
+import { uniqueReferenceIndex } from "@/features/chat/utils/messages";
 import { appReducer, initialAppState } from "./appReducer";
 
 function makeSettings(): AppSettings {

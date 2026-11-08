@@ -1,4 +1,4 @@
-import type { ChatMessage, StickerItem } from "../../../shared/types/ipc";
+import type { ChatMessage, StickerItem } from "@/shared/types/ipc";
 
 export function stickerCacheKey(stickerId: number, cateId = 0): string {
   return `stk_${cateId}_${stickerId}`;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ChatMessage } from "../../../shared/types/ipc";
+import type { ChatMessage } from "@/shared/types/ipc";
 import { isFileMessage, isPhotoMessage, parseCallCard, stickerThumbnailUrl } from "./messages";
 
 function msg(patch: Partial<ChatMessage>): ChatMessage {

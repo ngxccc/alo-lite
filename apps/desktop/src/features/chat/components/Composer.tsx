@@ -6,16 +6,29 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
-import { CornerUpLeft, Image, Paperclip, Send, Smile, X } from "lucide-react";
-import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
-import type { StickerItem, Thread } from "../../../shared/types/ipc";
-import { Button } from "../../../shared/ui/button";
-import { Input } from "../../../shared/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../shared/ui/popover";
-import { cn } from "../../../shared/utils/cn";
-import { extractFirstUrl } from "../../../shared/utils/text";
-import type { AppAction, AppState } from "../../../app/store/appReducer";
-import { stickerThumbnailUrl } from "../utils/messages";
+import {
+  Clock,
+  CornerUpLeft,
+  Crop,
+  Image,
+  MoreHorizontal,
+  Paperclip,
+  Send,
+  Smile,
+  ThumbsUp,
+  Type,
+  Vote,
+  X,
+} from "lucide-react";
+import { ipc, isTauriRuntime } from "@/shared/api/ipc";
+import type { StickerItem, Thread } from "@/shared/types/ipc";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { cn } from "@/shared/utils/cn";
+import { extractFirstUrl } from "@/shared/utils/text";
+import type { AppAction, AppState } from "@/app/store/appReducer";
+import { stickerThumbnailUrl } from "@/features/chat/utils/messages";
 
 interface ComposerProps {
   state: AppState;
@@ -264,11 +277,16 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
         </div>
       ) : null}
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 border-b border-border/50 pb-1.5 text-muted-foreground">
         <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
           <PopoverTrigger asChild>
-            <Button variant={stickerOpen ? "accent" : "ghost"} size="icon-sm" title="Gửi nhãn dán">
-              <Smile className="h-4 w-4" />
+            <Button
+              variant={stickerOpen ? "accent" : "ghost"}
+              size="icon-sm"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Gửi nhãn dán"
+            >
+              <Smile className="h-4.5 w-4.5" />
             </Button>
           </PopoverTrigger>
           <PopoverContent
@@ -388,41 +406,114 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
         <Button
           variant="ghost"
           size="icon-sm"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           title="Gửi hình ảnh"
           onClick={() => void pickAndUpload(true)}
         >
-          <Image className="h-4 w-4" />
+          <Image className="h-4.5 w-4.5" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon-sm"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           title="Đính kèm tập tin"
           onClick={() => void pickAndUpload(false)}
         >
-          <Paperclip className="h-4 w-4" />
+          <Paperclip className="h-4.5 w-4.5" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Chụp ảnh màn hình"
+          onClick={() => void pickAndUpload(true)}
+        >
+          <Crop className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Định dạng văn bản"
+        >
+          <Type className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Tạo nhắc hẹn"
+        >
+          <Clock className="h-4 w-4" />
+        </Button>
+
+        {thread.is_group ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Tạo bình chọn"
+          >
+            <Vote className="h-4 w-4" />
+          </Button>
+        ) : null}
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Tùy chọn khác"
+        >
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-2 pt-0.5">
         <textarea
           rows={1}
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={(e) => void handlePaste(e)}
-          placeholder={`Nhập tin nhắn tới ${thread.name || thread.id}…`}
-          className="max-h-28 min-h-10 flex-1 resize-none rounded-lg border border-input bg-background px-3.5 py-2 text-[14px] text-foreground select-text placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+          placeholder={`@, Nhập tin nhắn tới ${thread.name || thread.id}`}
+          className="max-h-28 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-[14px] text-foreground select-text placeholder:text-muted-foreground/75 focus:outline-none"
         />
-        <Button
-          variant="default"
-          disabled={!text.trim() && !pendingUpload}
-          onClick={() => void sendNow()}
-          title="Gửi tin nhắn"
-          className="h-9 px-3.5"
-        >
-          <Send className="h-3.5 w-3.5" /> Gửi
-        </Button>
+        <div className="flex items-center gap-1 shrink-0 pr-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Biểu tượng cảm xúc"
+            onClick={() => setStickerOpen((prev) => !prev)}
+          >
+            <Smile className="h-4.5 w-4.5" />
+          </Button>
+
+          {text.trim() || pendingUpload ? (
+            <Button
+              variant="default"
+              size="icon"
+              onClick={() => void sendNow()}
+              title="Gửi tin nhắn"
+              className="h-8.5 w-8.5 rounded-full shadow-xs cursor-pointer"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void ipc.sendMessage(thread.id, "👍", thread.is_group)}
+              title="Gửi Like nhanh"
+              className="flex h-8.5 w-8.5 cursor-pointer items-center justify-center rounded-full text-yellow-500 transition hover:scale-110 active:scale-95"
+            >
+              <ThumbsUp className="h-5 w-5 fill-yellow-500" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

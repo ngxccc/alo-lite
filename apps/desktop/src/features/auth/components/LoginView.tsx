@@ -1,10 +1,10 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { KeyRound, QrCode, RefreshCw, Shield } from "lucide-react";
-import { ipc } from "../../../shared/api/ipc";
-import { Button } from "../../../shared/ui/button";
-import { Input } from "../../../shared/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
-import type { AppAction, AppState } from "../../../app/store/appReducer";
+import { ipc } from "@/shared/api/ipc";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import type { AppAction, AppState } from "@/app/store/appReducer";
 
 interface LoginViewProps {
   state: AppState;

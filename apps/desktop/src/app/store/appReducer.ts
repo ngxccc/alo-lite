@@ -12,13 +12,13 @@ import type {
   StickerPackInfo,
   Thread,
   UpdateCheckResult,
-} from "../../shared/types/ipc";
-import { formatClockNow } from "../../shared/utils/text";
+} from "@/shared/types/ipc";
+import { formatClockNow } from "@/shared/utils/text";
 import {
   mergeThreadInto,
   reconcileSentMessage,
   sortThreads,
-} from "../../features/threads/utils/threads";
+} from "@/features/threads/utils/threads";
 
 export type NavSection = "chat" | "contacts";
 export type ContactsSubTab = "friends" | "groups" | "friend_requests" | "group_invites";

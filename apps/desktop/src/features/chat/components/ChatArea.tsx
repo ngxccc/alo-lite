@@ -1,36 +1,40 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ChevronDown,
   ChevronUp,
   CornerUpLeft,
   Download,
   ExternalLink,
   FileText,
   Forward,
-  Info,
+  PanelRight,
   Phone,
+  Pin,
   Play,
   RotateCcw,
   Search,
   SmilePlus,
   Star,
   Trash2,
+  UserPlus,
+  Users,
   Video,
   X,
 } from "lucide-react";
-import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
-import { REACTION_LIST, type ChatMessage, type Thread } from "../../../shared/types/ipc";
-import { Avatar } from "../../../shared/ui/Avatar";
-import { Button } from "../../../shared/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../shared/ui/popover";
-import { cn } from "../../../shared/utils/cn";
-import { dayKey, formatDayDivider, jxlToJpgUrl, matchesVnQuery } from "../../../shared/utils/text";
-import type { AppAction, AppState } from "../../../app/store/appReducer";
-import likeIcon from "../../../assets/reactions/like.png";
-import heartIcon from "../../../assets/reactions/heart.png";
-import smileIcon from "../../../assets/reactions/smile.png";
-import surprisedIcon from "../../../assets/reactions/surprised.png";
-import cryIcon from "../../../assets/reactions/cry.png";
-import rageIcon from "../../../assets/reactions/rage.png";
+import { ipc, isTauriRuntime } from "@/shared/api/ipc";
+import { REACTION_LIST, type ChatMessage, type Thread } from "@/shared/types/ipc";
+import { Avatar } from "@/shared/ui/Avatar";
+import { Button } from "@/shared/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { cn } from "@/shared/utils/cn";
+import { dayKey, formatDayDivider, jxlToJpgUrl, matchesVnQuery } from "@/shared/utils/text";
+import type { AppAction, AppState } from "@/app/store/appReducer";
+import likeIcon from "@/assets/reactions/like.png";
+import heartIcon from "@/assets/reactions/heart.png";
+import smileIcon from "@/assets/reactions/smile.png";
+import surprisedIcon from "@/assets/reactions/surprised.png";
+import cryIcon from "@/assets/reactions/cry.png";
+import rageIcon from "@/assets/reactions/rage.png";
 import {
   isFileMessage,
   isGifUrl,
@@ -40,7 +44,7 @@ import {
   shouldHideMediaCaption,
   stickerThumbnailUrl,
   uniqueReferenceIndex,
-} from "../utils/messages";
+} from "@/features/chat/utils/messages";
 
 const REACTION_ICONS = {
   like: likeIcon,
@@ -67,7 +71,7 @@ function StickerMessageMedia({ msg }: { msg: ChatMessage }) {
       alt={msg.text}
       loading="lazy"
       decoding="async"
-      className="h-30 w-30 object-contain"
+      className="h-32 w-32 object-contain select-none transition-transform hover:scale-105"
     />
   );
 }
@@ -263,7 +267,20 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
     () => state.threads.find((t) => t.id === state.selectedThreadId),
     [state.threads, state.selectedThreadId],
   );
-
+  const pinnedMessages = useMemo(
+    () => thread?.messages.filter((m) => m.is_pinned) ?? [],
+    [thread?.messages],
+  );
+  const pinnedMessage =
+    pinnedMessages[0] ??
+    (thread?.is_group && thread.messages.length > 0
+      ? thread.messages.find(
+          (m) =>
+            m.text?.toLowerCase().includes("lưu ý") ||
+            m.text?.toLowerCase().includes("thông báo") ||
+            m.text?.toLowerCase().includes("chú ý"),
+        )
+      : undefined);
   const senderLookup = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; avatar?: string | null }>();
     const byName = new Map<string, { id: string; name: string; avatar?: string | null }>();
@@ -491,33 +508,56 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             name={thread.name}
             avatarUrl={thread.avatar}
             isGroup={thread.is_group}
-            size={40}
+            memberCount={
+              thread.presentation.member_count ||
+              (thread.is_group ? thread.presentation.members.length : undefined)
+            }
+            size={42}
             mediaCache={state.mediaCache}
           />
           <div className="min-w-0">
-            <div className="truncate text-[15.5px] font-bold text-foreground">
+            <div className="truncate text-[15px] font-bold text-foreground">
               {thread.name || thread.id}
             </div>
             <div
               className={cn(
-                "truncate text-xs",
+                "flex items-center gap-1.5 truncate text-xs",
                 onlineInfo?.[0] ? "font-medium text-online" : "text-muted-foreground",
               )}
             >
-              {thread.is_group
-                ? thread.presentation.member_count
-                  ? `${thread.presentation.member_count} thành viên`
-                  : "Nhóm trò chuyện"
-                : thread.name.includes("Cloud của tôi")
-                  ? "Lưu trữ đám mây cá nhân"
-                  : onlineInfo?.[1] || (friendStatus === "Stranger" ? "Người lạ" : "Trực tuyến")}
+              {thread.is_group ? (
+                <>
+                  <Users className="h-3 w-3 shrink-0" />
+                  <span>
+                    {thread.presentation.member_count
+                      ? `${thread.presentation.member_count} thành viên`
+                      : "Nhóm trò chuyện"}
+                  </span>
+                </>
+              ) : thread.name.includes("Cloud của tôi") ? (
+                "Lưu trữ đám mây cá nhân"
+              ) : (
+                onlineInfo?.[1] || (friendStatus === "Stranger" ? "Người lạ" : "Trực tuyến")
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          {thread.is_group ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Thêm thành viên vào nhóm"
+              className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+              onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
+            >
+              <UserPlus className="h-4.5 w-4.5" />
+            </Button>
+          ) : null}
+
           {state.inChatSearchOpen ? (
-            <div className="flex h-9 w-60 items-center gap-2 rounded-md border border-border bg-muted/60 px-3 focus-within:border-ring focus-within:bg-background">
+            <div className="flex h-8.5 w-60 items-center gap-2 rounded-md border border-border bg-muted/60 px-2.5 focus-within:border-primary/80 focus-within:bg-background">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
               <input
                 autoFocus
@@ -528,13 +568,13 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                     query: e.target.value,
                   })
                 }
-                placeholder="Tìm trong hội thoại…"
-                className="w-full bg-transparent text-[13.5px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                placeholder="Tìm trong cuộc trò chuyện…"
+                className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: false })}
-                className="inline-flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                className="inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -543,7 +583,8 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             <Button
               variant="ghost"
               size="icon"
-              title="Tìm tin nhắn trong hội thoại"
+              title="Tìm kiếm tin nhắn"
+              className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
               onClick={() => dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: true })}
             >
               <Search className="h-4.5 w-4.5" />
@@ -554,22 +595,62 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             variant={state.filterStarredOnly ? "accent" : "ghost"}
             size="icon"
             title="Lọc tin nhắn đã gắn sao"
+            className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
             onClick={() => dispatch({ type: "TOGGLE_STARRED_FILTER" })}
           >
             <Star className={cn("h-4.5 w-4.5", state.filterStarredOnly && "text-warning")} />
           </Button>
 
           <Button
-            variant={state.infoDrawerOpen ? "accent" : "ghost"}
+            variant={state.infoDrawerOpen ? "default" : "ghost"}
             size="icon"
             title="Thông tin hội thoại"
+            className={cn(
+              "h-8.5 w-8.5 transition-colors",
+              state.infoDrawerOpen
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
             onClick={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
           >
-            <Info className="h-4.5 w-4.5" />
+            <PanelRight className="h-4.5 w-4.5" />
           </Button>
         </div>
       </header>
 
+      {pinnedMessage ? (
+        <div className="flex items-center justify-between border-b border-border/70 bg-[#16171b] px-4 py-2 text-xs">
+          <div
+            onClick={() => jumpToQuoted({ id: pinnedMessage.id, ts: pinnedMessage.ts } as ChatMessage)}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 overflow-hidden hover:opacity-90"
+          >
+            <Pin className="h-3.5 w-3.5 shrink-0 text-primary rotate-45" />
+            <div className="min-w-0 truncate">
+              <span className="font-bold text-primary mr-1.5">Tin nhắn ghim</span>
+              <span className="truncate text-foreground/90">
+                {pinnedMessage.sender ? `${pinnedMessage.sender}: ` : ""}
+                {pinnedMessage.text || "[Hình ảnh/Tập tin]"}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            {pinnedMessages.length > 1 ? (
+              <span className="rounded bg-muted/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                +{pinnedMessages.length - 1} ghim
+              </span>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              title="Mở bảng tin ghim"
+              onClick={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
         {(canShowMoreLocal || !reachedStart) && (
           <div className="mb-2 flex justify-center gap-2">
@@ -620,7 +701,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
           return (
             <div key={msgKey} className="flex flex-col">
               {showDivider ? (
-                <div className="my-3 self-center rounded-full border border-border bg-card/90 px-3.5 py-0.5 text-xs font-medium text-muted-foreground shadow-2xs">
+                <div className="my-3 self-center rounded-full border border-border/70 bg-[#1f2126] px-3.5 py-0.5 text-[11.5px] font-medium text-muted-foreground shadow-2xs">
                   {formatDayDivider(msg.ts)}
                 </div>
               ) : null}
@@ -670,10 +751,14 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   <div className="relative flex items-center gap-1.5">
                     <div
                       className={cn(
-                        "relative rounded-xl border px-3.5 py-2 text-[14.5px] leading-relaxed break-words whitespace-pre-wrap shadow-2xs",
-                        msg.is_outgoing
-                          ? "rounded-br-[4px] border-bubble-out-border bg-bubble-out text-bubble-out-foreground"
-                          : "rounded-bl-[4px] border-bubble-in-border bg-bubble-in text-bubble-in-foreground",
+                        msg.sticker_id
+                          ? "relative bg-transparent p-0 border-0 shadow-none"
+                          : cn(
+                              "relative rounded-2xl border px-3.5 py-2 text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-2xs",
+                              msg.is_outgoing
+                                ? "rounded-br-xs border-bubble-out-border bg-bubble-out text-bubble-out-foreground"
+                                : "rounded-bl-xs border-bubble-in-border bg-bubble-in text-bubble-in-foreground",
+                            ),
                         isRecalled && "text-muted-foreground italic opacity-75",
                       )}
                     >
@@ -915,7 +1000,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   {msg.reactions && msg.reactions.length > 0 ? (
                     <div
                       className={cn(
-                        "absolute -bottom-2 z-10 flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs shadow-xs select-none",
+                        "absolute -bottom-2.5 z-10 flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-[#212328] px-2 py-0.5 text-xs shadow-xs select-none hover:bg-[#282a30] transition-colors",
                         msg.is_outgoing ? "right-2" : "left-2",
                       )}
                     >
