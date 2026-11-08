@@ -10,6 +10,10 @@ inputs:
     description: "Enable Swatinem/rust-cache"
     required: false
     default: "true"
+  cache-all-targets:
+    description: "Cache all build targets (debug, release, tests)"
+    required: false
+    default: "true"
   packaging-tools:
     description: "Install additional Linux packaging tools (rpm, desktop-file-utils, libfuse2, jq)"
     required: false
@@ -26,7 +30,9 @@ runs:
     - name: High-performance Rust Cache
       if: inputs.cache == 'true'
       uses: Swatinem/rust-cache@v2
-
+      with:
+        cache-all-targets: ${{ inputs.cache-all-targets }}
+        cache-on-failure: "true"
     - name: Install system build dependencies
       shell: bash
       run: |
