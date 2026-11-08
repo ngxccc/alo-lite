@@ -48,7 +48,8 @@ export interface AppState {
   devMode: boolean;
   appLogoDataUrl: string;
   activeDbPath: string;
-
+  inlineVideoSupported: boolean;
+  inlineVideoReason: string | null;
   loggedIn: boolean;
   uin: string;
   displayName: string;
@@ -169,6 +170,8 @@ export const initialAppState: AppState = {
   devMode: false,
   appLogoDataUrl: "",
   activeDbPath: "zalo_history.db",
+  inlineVideoSupported: true,
+  inlineVideoReason: null,
   loggedIn: false,
   uin: "",
   displayName: "",
@@ -811,6 +814,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         devMode: snap.dev_mode,
         appLogoDataUrl: snap.app_logo_data_url,
         activeDbPath: snap.active_db_path,
+        inlineVideoSupported: snap.inline_video_supported,
+        inlineVideoReason: snap.inline_video_reason ?? null,
         loggedIn: snap.logged_in,
         uin: snap.uin,
         displayName: snap.display_name,
