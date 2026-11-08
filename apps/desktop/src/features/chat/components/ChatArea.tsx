@@ -7,14 +7,15 @@ import {
   ExternalLink,
   FileText,
   Forward,
+  MessageSquare,
   PanelRight,
   Phone,
-  Pin,
   Play,
   RotateCcw,
   Search,
   SmilePlus,
   Star,
+  Tag,
   Trash2,
   UserPlus,
   Users,
@@ -99,20 +100,26 @@ function PhotoMessageMedia({
   return (
     <div className="flex flex-col gap-1.5">
       {src ? (
-        <img
-          src={src}
-          alt={msg.link_title ?? "Hình ảnh"}
-          loading="lazy"
-          decoding="async"
-          onError={() => {
-            const fallback = jxlToJpgUrl(rawUrl);
-            if (fallback && fallback !== src) {
-              setSrc(fallback);
-            }
-          }}
-          onClick={() => onOpenViewer(key, fullUrl)}
-          className="max-h-[280px] max-w-[300px] cursor-zoom-in rounded-lg object-contain"
-        />
+        <div className="relative">
+          {/* HD badge as in Zalo */}
+          <span className="absolute left-2 top-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
+            HD
+          </span>
+          <img
+            src={src}
+            alt={msg.link_title ?? "Hình ảnh"}
+            loading="lazy"
+            decoding="async"
+            onError={() => {
+              const fallback = jxlToJpgUrl(rawUrl);
+              if (fallback && fallback !== src) {
+                setSrc(fallback);
+              }
+            }}
+            onClick={() => onOpenViewer(key, fullUrl)}
+            className="max-h-[320px] max-w-[480px] min-w-[80px] cursor-zoom-in rounded-[6px] object-contain"
+          />
+        </div>
       ) : (
         <Button variant="outline" size="sm" onClick={() => onOpenViewer(key, fullUrl)}>
           Xem hình ảnh
@@ -173,7 +180,7 @@ function VideoMessageMedia({
             setPlaybackError(true);
             onNotify("Không thể phát trực tiếp video này — hãy thử mở ngoài hoặc tải về.");
           }}
-          className="max-h-[300px] max-w-[340px] rounded-lg bg-black/90 object-contain"
+          className="max-h-[300px] max-w-[340px] rounded-[6px] bg-black/90 object-contain"
         />
       ) : videoUrl ? (
         <button
@@ -192,8 +199,12 @@ function VideoMessageMedia({
               setPlaying(true);
             }
           }}
-          className="group/vid relative flex min-h-[150px] max-w-[320px] min-w-[220px] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-border bg-black/80"
+          className="group/vid relative flex min-h-[150px] max-w-[320px] min-w-[220px] cursor-pointer items-center justify-center overflow-hidden rounded-[6px] border border-border bg-black/80"
         >
+          {/* HD badge */}
+          <span className="absolute left-2 top-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
+            HD
+          </span>
           {posterUrl ? (
             <img
               src={posterUrl}
@@ -203,52 +214,34 @@ function VideoMessageMedia({
               className="max-h-[260px] w-full object-cover opacity-85 transition group-hover/vid:opacity-100"
             />
           ) : null}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/30 p-3 text-white">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 ring-1 ring-white/40 transition group-hover/vid:scale-105 group-hover/vid:bg-primary">
-              <Play className="ml-0.5 h-5 w-5 fill-current" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 shadow-md backdrop-blur-sm transition group-hover/vid:bg-black/70">
+              <Play className="h-5 w-5 fill-white text-white" />
             </div>
-            {!inlineVideoSupported && blockedClick ? (
-              <span className="rounded bg-black/80 px-2.5 py-1 text-center text-[11.5px] leading-snug text-amber-200">
-                {unsupportedMessage} (Bấm lần nữa để mở ngoài)
-              </span>
-            ) : playbackError ? (
-              <span className="rounded bg-black/80 px-2.5 py-1 text-[11.5px] text-amber-200">
-                Không thể phát trực tiếp · Bấm để mở ngoài
-              </span>
-            ) : !inlineVideoSupported ? (
-              <span className="rounded bg-black/65 px-2 py-0.5 text-[11px] text-white/90">
-                Thiếu codec GStreamer · Bấm để xem chi tiết
-              </span>
-            ) : null}
           </div>
+          {!inlineVideoSupported || playbackError ? (
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+              <span className="rounded bg-black/60 px-2 py-0.5 text-[11px] text-white/80">
+                {playbackError ? "Nhấn để mở ngoài" : "Nhấn để xem"}
+              </span>
+            </div>
+          ) : null}
         </button>
       ) : null}
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Video className="h-3.5 w-3.5 text-primary" />
-          {!shouldHideMediaCaption(msg) ? msg.text : "Video"}
-        </span>
-        {videoUrl ? (
-          <div className="flex items-center gap-1.5">
-            {!inlineVideoSupported || playbackError ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void ipc.openExternalUrl(videoUrl)}
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Mở ngoài
-              </Button>
-            ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void ipc.downloadFile(videoUrl, fileName, downloadDir)}
-            >
-              <Download className="h-3.5 w-3.5" /> Tải về
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      {!shouldHideMediaCaption(msg) ? (
+        <span className="select-text text-[15px]">{msg.text}</span>
+      ) : null}
+      {/* Download button for videos */}
+      {videoUrl ? (
+        <button
+          type="button"
+          className="flex w-fit items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
+          onClick={() => void ipc.downloadFile(videoUrl, fileName, downloadDir)}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Tải xuống
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -256,6 +249,30 @@ function VideoMessageMedia({
 function isNumericUid(val: string): boolean {
   const trimmed = val.trim();
   return trimmed.length >= 6 && /^\d+$/.test(trimmed);
+}
+
+/** Derive file extension color for the file icon badge */
+function fileIconColor(fileName?: string): string {
+  const ext = (fileName ?? "").split(".").pop()?.toLowerCase() ?? "";
+  if (["pdf"].includes(ext)) return "bg-red-500";
+  if (["doc", "docx"].includes(ext)) return "bg-blue-600";
+  if (["xls", "xlsx"].includes(ext)) return "bg-green-600";
+  if (["ppt", "pptx"].includes(ext)) return "bg-orange-500";
+  if (["zip", "rar", "7z"].includes(ext)) return "bg-yellow-600";
+  if (["mp3", "ogg", "wav", "aac"].includes(ext)) return "bg-purple-500";
+  return "bg-primary";
+}
+
+/** Format file size from bytes string */
+function formatFileSize(desc?: string): string {
+  if (!desc) return "";
+  // If desc already has KB/MB, just return it
+  if (/[KMG]B/i.test(desc)) return desc;
+  const n = parseFloat(desc);
+  if (isNaN(n)) return desc;
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
 export function ChatArea({ state, dispatch }: ChatAreaProps) {
@@ -469,7 +486,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
     }
     if (
       clean === "\u{1F622}" ||
-      clean === ":-((" ||
+      clean === ":-" ||
       clean === "cry" ||
       clean === "buồn" ||
       clean === "2"
@@ -501,7 +518,8 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-canvas">
-      <header className="flex h-15 shrink-0 items-center justify-between border-b border-border bg-sidebar px-4">
+      {/* ── Chat Header ── 68px per spec ── */}
+      <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-border bg-sidebar px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar
             id={thread.id}
@@ -512,27 +530,28 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
               thread.presentation.member_count ||
               (thread.is_group ? thread.presentation.members.length : undefined)
             }
-            size={42}
+            size={48}
             mediaCache={state.mediaCache}
           />
           <div className="min-w-0">
-            <div className="truncate text-[15px] font-bold text-foreground">
+            <div className="truncate text-[18px] font-semibold text-foreground">
               {thread.name || thread.id}
             </div>
             <div
               className={cn(
-                "flex items-center gap-1.5 truncate text-xs",
+                "flex items-center gap-1 text-[14px]",
                 onlineInfo?.[0] ? "font-medium text-online" : "text-muted-foreground",
               )}
             >
               {thread.is_group ? (
                 <>
-                  <Users className="h-3 w-3 shrink-0" />
-                  <span>
+                  <Users className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">
                     {thread.presentation.member_count
                       ? `${thread.presentation.member_count} thành viên`
                       : "Nhóm trò chuyện"}
                   </span>
+                  <Tag className="ml-0.5 h-3.5 w-3.5 shrink-0 opacity-60" />
                 </>
               ) : thread.name.includes("Cloud của tôi") ? (
                 "Lưu trữ đám mây cá nhân"
@@ -543,21 +562,22 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Right-side icon buttons — 32px each */}
+        <div className="flex items-center gap-1">
           {thread.is_group ? (
             <Button
               variant="ghost"
               size="icon"
               title="Thêm thành viên vào nhóm"
-              className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
             >
-              <UserPlus className="h-4.5 w-4.5" />
+              <UserPlus className="h-5 w-5" />
             </Button>
           ) : null}
 
           {state.inChatSearchOpen ? (
-            <div className="flex h-8.5 w-60 items-center gap-2 rounded-md border border-border bg-muted/60 px-2.5 focus-within:border-primary/80 focus-within:bg-background">
+            <div className="flex h-8 w-56 items-center gap-2 rounded-md border border-border bg-muted px-2.5 focus-within:border-primary/80">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
               <input
                 autoFocus
@@ -584,10 +604,10 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
               variant="ghost"
               size="icon"
               title="Tìm kiếm tin nhắn"
-              className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={() => dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: true })}
             >
-              <Search className="h-4.5 w-4.5" />
+              <Search className="h-5 w-5" />
             </Button>
           )}
 
@@ -595,69 +615,83 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             variant={state.filterStarredOnly ? "accent" : "ghost"}
             size="icon"
             title="Lọc tin nhắn đã gắn sao"
-            className="h-8.5 w-8.5 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => dispatch({ type: "TOGGLE_STARRED_FILTER" })}
           >
-            <Star className={cn("h-4.5 w-4.5", state.filterStarredOnly && "text-warning")} />
+            <Star className={cn("h-5 w-5", state.filterStarredOnly && "text-warning")} />
           </Button>
 
-          <Button
-            variant={state.infoDrawerOpen ? "default" : "ghost"}
-            size="icon"
+          {/* Info panel toggle — filled blue square when active */}
+          <button
+            type="button"
             title="Thông tin hội thoại"
             className={cn(
-              "h-8.5 w-8.5 transition-colors",
+              "flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition-colors",
               state.infoDrawerOpen
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-[rgba(255,255,255,0.05)] hover:text-foreground",
             )}
             onClick={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
           >
-            <PanelRight className="h-4.5 w-4.5" />
-          </Button>
+            <PanelRight className="h-5 w-5" />
+          </button>
         </div>
       </header>
 
+      {/* ── Pinned message bar ── */}
       {pinnedMessage ? (
-        <div className="flex items-center justify-between border-b border-border/70 bg-[#16171b] px-4 py-2 text-xs">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/40 bg-sidebar px-4 py-1.5">
           <div
-            onClick={() => jumpToQuoted({ id: pinnedMessage.id, ts: pinnedMessage.ts } as ChatMessage)}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 overflow-hidden hover:opacity-90"
+            onClick={() => jumpToQuoted(pinnedMessage)}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 overflow-hidden hover:opacity-90"
           >
-            <Pin className="h-3.5 w-3.5 shrink-0 text-primary rotate-45" />
-            <div className="min-w-0 truncate">
-              <span className="font-bold text-primary mr-1.5">Tin nhắn ghim</span>
-              <span className="truncate text-foreground/90">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold leading-tight text-foreground">
+                Tin nhắn
+              </div>
+              <div className="truncate text-[12px] leading-tight text-muted-foreground">
                 {pinnedMessage.sender ? `${pinnedMessage.sender}: ` : ""}
                 {pinnedMessage.text || "[Hình ảnh/Tập tin]"}
-              </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          <div className="ml-2 flex shrink-0 items-center gap-1.5">
             {pinnedMessages.length > 1 ? (
-              <span className="rounded bg-muted/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
+                className="flex items-center gap-1 rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted"
+              >
                 +{pinnedMessages.length - 1} ghim
-              </span>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              title="Mở bảng tin ghim"
-              onClick={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                title="Xem tất cả tin ghim"
+                onClick={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
       ) : null}
-      <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
+
+      {/* ── Message list ── */}
+      <div ref={scrollRef} className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-4 py-3">
+        {/* Load history banners — styled as quiet chips */}
         {(canShowMoreLocal || !reachedStart) && (
-          <div className="mb-2 flex justify-center gap-2">
+          <div className="mb-3 flex flex-col items-center gap-2">
             {canShowMoreLocal ? (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1.5 self-center rounded-full bg-[rgba(255,255,255,0.05)] px-4 py-1 text-[12px] text-muted-foreground transition hover:bg-[rgba(255,255,255,0.09)] active:scale-95"
                 onClick={() =>
                   dispatch({
                     type: "EXPAND_RENDER_LIMIT",
@@ -666,19 +700,21 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   })
                 }
               >
-                <ChevronUp className="h-3.5 w-3.5" /> Xem thêm tin cũ trong máy
-              </Button>
+                <ChevronUp className="h-3 w-3" />
+                Xem thêm tin cũ trong máy
+              </button>
             ) : null}
             {!reachedStart && (thread.is_group || thread.name.includes("Cloud của tôi")) ? (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1.5 self-center rounded-full bg-[rgba(255,255,255,0.05)] px-4 py-1 text-[12px] text-muted-foreground transition hover:bg-[rgba(255,255,255,0.09)] active:scale-95"
                 onClick={() =>
                   void ipc.loadGroupHistory(thread.id, thread.is_group, thread.messages.length)
                 }
               >
-                <ChevronUp className="h-3.5 w-3.5" /> Tải lịch sử cũ từ máy chủ
-              </Button>
+                <ChevronUp className="h-3 w-3" />
+                Tải lịch sử cũ từ máy chủ
+              </button>
             ) : null}
           </div>
         )}
@@ -698,14 +734,20 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
           const highlighted = state.quoteHighlightId === msgKey;
           const senderInfo = !msg.is_outgoing ? resolveSender(msg, thread) : null;
 
+          // Whether this message has bubble container (not bare sticker/special)
+          const isBareSticker = Boolean(msg.sticker_id);
+          const isTextOrRich = !isBareSticker;
+
           return (
-            <div key={msgKey} className="flex flex-col">
+            <div key={msgKey} className={cn("flex flex-col", isGroupedWithPrev ? "mt-0.5" : "mt-2")}>
+              {/* Date divider chip */}
               {showDivider ? (
-                <div className="my-3 self-center rounded-full border border-border/70 bg-[#1f2126] px-3.5 py-0.5 text-[11.5px] font-medium text-muted-foreground shadow-2xs">
+                <div className="my-3 self-center rounded-xl bg-[rgba(255,255,255,0.05)] px-3 py-0.5 text-[13px] text-muted-foreground">
                   {formatDayDivider(msg.ts)}
                 </div>
               ) : null}
 
+              {/* Message row */}
               <div
                 ref={(el) => {
                   msgRefs.current[msgKey] = el;
@@ -716,292 +758,293 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   }
                 }}
                 className={cn(
-                  "group relative flex max-w-[76%] items-start gap-2.5 rounded-xl transition-colors",
+                  "group relative flex max-w-[76%] items-end gap-2 transition-colors",
                   msg.is_outgoing ? "flex-row-reverse self-end" : "self-start",
-                  highlighted && "bg-primary/10 p-1 ring-2 ring-primary/60",
+                  highlighted && "rounded-lg bg-primary/10 p-1 ring-2 ring-primary/60",
                 )}
               >
+                {/* Incoming avatar — 32px */}
                 {!msg.is_outgoing && senderInfo ? (
                   !isGroupedWithPrev ? (
                     <Avatar
                       id={senderInfo.id}
                       name={senderInfo.name}
                       avatarUrl={senderInfo.avatar}
-                      size={34}
+                      size={32}
                       mediaCache={state.mediaCache}
-                      className="mt-0.5"
+                      className="mb-1 shrink-0"
                     />
                   ) : (
-                    <div className="w-[34px] shrink-0" />
+                    <div className="w-8 shrink-0" />
                   )
                 ) : null}
 
+                {/* Bubble column */}
                 <div
                   className={cn(
-                    "flex min-w-0 flex-col gap-0.5",
+                    "relative flex min-w-0 flex-col",
                     msg.is_outgoing ? "items-end" : "items-start",
                   )}
                 >
-                  {!msg.is_outgoing && thread.is_group && !isGroupedWithPrev && senderInfo ? (
-                    <div className="px-1 text-xs font-semibold text-muted-foreground">
-                      {senderInfo.name}
-                    </div>
-                  ) : null}
+                  {/* Bubble */}
+                  <div
+                    className={cn(
+                      isBareSticker
+                        ? "relative"
+                        : cn(
+                            "relative max-w-[640px] break-words rounded-[6px] text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm",
+                            isRecalled
+                              ? "px-3 py-2.5 italic text-muted-foreground opacity-70 bg-bubble-in"
+                              : msg.is_outgoing
+                                ? "bg-bubble-out text-bubble-out-foreground px-3 py-2.5"
+                                : "bg-bubble-in text-bubble-in-foreground px-3 py-2.5",
+                          ),
+                    )}
+                  >
+                    {/* Sender name inside bubble top — groups only, incoming, first in run */}
+                    {!msg.is_outgoing &&
+                    thread.is_group &&
+                    !isGroupedWithPrev &&
+                    senderInfo &&
+                    isTextOrRich &&
+                    !isRecalled ? (
+                      <div className="mb-1 text-[13px] font-semibold text-accent-foreground">
+                        {senderInfo.name}
+                      </div>
+                    ) : null}
 
-                  <div className="relative flex items-center gap-1.5">
-                    <div
-                      className={cn(
-                        msg.sticker_id
-                          ? "relative bg-transparent p-0 border-0 shadow-none"
-                          : cn(
-                              "relative rounded-2xl border px-3.5 py-2 text-[14px] leading-relaxed break-words whitespace-pre-wrap shadow-2xs",
-                              msg.is_outgoing
-                                ? "rounded-br-xs border-bubble-out-border bg-bubble-out text-bubble-out-foreground"
-                                : "rounded-bl-xs border-bubble-in-border bg-bubble-in text-bubble-in-foreground",
-                            ),
-                        isRecalled && "text-muted-foreground italic opacity-75",
-                      )}
-                    >
-                      {msg.reply_to_text ? (
+                    {/* Reply quote */}
+                    {msg.reply_to_text ? (
+                      <div
+                        onClick={() => jumpToQuoted(msg)}
+                        className="mb-2 cursor-pointer rounded-md border-l-[3px] border-primary bg-background/40 px-2.5 py-1.5 text-[13px] hover:bg-background/70"
+                      >
+                        <div className="text-[12px] font-bold text-primary">
+                          {resolveReplySenderName(msg.reply_to_sender)}
+                        </div>
+                        <div className="max-w-[300px] truncate text-muted-foreground">
+                          {msg.reply_to_text}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Message body */}
+                    {isRecalled ? (
+                      <span>Tin nhắn đã được thu hồi</span>
+                    ) : msg.sticker_id ? (
+                      <StickerMessageMedia msg={msg} />
+                    ) : callCard ? (
+                      <div className="flex min-w-[200px] items-center gap-2.5">
                         <div
-                          onClick={() => jumpToQuoted(msg)}
-                          className="mb-1.5 cursor-pointer rounded-md border-l-3 border-primary bg-background/55 px-2.5 py-1.5 text-[13px] hover:bg-background/85"
+                          className={cn(
+                            "grid h-9 w-9 shrink-0 place-items-center rounded-full",
+                            callCard.isMissedOrFailed
+                              ? "bg-destructive/15 text-destructive"
+                              : "bg-online/15 text-online",
+                          )}
                         >
-                          <div className="text-xs font-bold text-primary">
-                            {resolveReplySenderName(msg.reply_to_sender)}
-                          </div>
-                          <div className="max-w-[300px] truncate text-muted-foreground">
-                            {msg.reply_to_text}
-                          </div>
+                          {callCard.isVideo ? (
+                            <Video className="h-4.5 w-4.5" />
+                          ) : (
+                            <Phone className="h-4.5 w-4.5" />
+                          )}
                         </div>
-                      ) : null}
-
-                      {isRecalled ? (
-                        <span>Tin nhắn đã được thu hồi</span>
-                      ) : msg.sticker_id ? (
-                        <StickerMessageMedia msg={msg} />
-                      ) : callCard ? (
-                        <div className="flex min-w-[200px] items-center gap-2.5">
-                          <div
-                            className={cn(
-                              "grid h-9 w-9 shrink-0 place-items-center rounded-full",
-                              callCard.isMissedOrFailed
-                                ? "bg-destructive/15 text-destructive"
-                                : "bg-online/15 text-online",
-                            )}
-                          >
-                            {callCard.isVideo ? (
-                              <Video className="h-4.5 w-4.5" />
-                            ) : (
-                              <Phone className="h-4.5 w-4.5" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-[13.5px] font-bold">{callCard.title}</div>
-                            <div className="text-xs text-muted-foreground">{callCard.subtitle}</div>
-                          </div>
-                        </div>
-                      ) : isVideoMessage(msg) && msg.link_url ? (
-                        <VideoMessageMedia
-                          msg={msg}
-                          downloadDir={state.settings?.download_dir ?? ""}
-                          inlineVideoSupported={state.inlineVideoSupported}
-                          inlineVideoReason={state.inlineVideoReason}
-                          onNotify={(message) => dispatch({ type: "SHOW_TOAST", message })}
-                        />
-                      ) : isPhotoMessage(msg) &&
-                        Boolean(msg.link_thumb ?? msg.link_url ?? isGifUrl(msg.text)) ? (
-                        <PhotoMessageMedia
-                          msg={msg}
-                          onOpenViewer={(texKey, fullUrl) =>
-                            dispatch({
-                              type: "SET_IMAGE_VIEWER",
-                              viewer: {
-                                texKey,
-                                fullUrl,
-                                title: msg.link_title ?? "Hình ảnh",
-                                sender: senderInfo?.name ?? msg.sender,
-                                time: msg.time,
-                              },
-                            })
-                          }
-                        />
-                      ) : isFileMessage(msg) && msg.link_url ? (
-                        <div className="flex min-w-[220px] items-center gap-2.5">
-                          <FileText className="h-6 w-6 shrink-0 text-primary" />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-semibold">
-                              {msg.link_title ?? msg.text}
-                            </div>
-                            {msg.link_desc ? (
-                              <div className="text-xs text-muted-foreground">{msg.link_desc}</div>
-                            ) : null}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Tải xuống"
-                            onClick={() =>
-                              void ipc.downloadFile(
-                                msg.link_url!,
-                                msg.link_title ?? "attachment",
-                                state.settings?.download_dir ?? "",
-                              )
-                            }
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
                         <div>
-                          <div className="select-text">{msg.text}</div>
-                          {msg.link_url ? (
-                            <div
-                              onClick={() => void ipc.openExternalUrl(msg.link_url!)}
-                              className="mt-1.5 max-w-[340px] cursor-pointer rounded-lg border border-border bg-background/60 p-2.5 hover:bg-background/90"
-                            >
-                              <div className="flex items-center gap-1.5 text-[13px] font-bold text-foreground">
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                <span className="truncate">{msg.link_title ?? msg.link_url}</span>
-                              </div>
-                              {msg.link_desc ? (
-                                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                  {msg.link_desc}
-                                </div>
-                              ) : null}
-                              {msg.link_src ? (
-                                <div className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
-                                  {msg.link_src}
-                                </div>
-                              ) : null}
+                          <div className="text-[13.5px] font-bold">{callCard.title}</div>
+                          <div className="text-[13px] text-muted-foreground">
+                            {callCard.subtitle}
+                          </div>
+                        </div>
+                      </div>
+                    ) : isVideoMessage(msg) && msg.link_url ? (
+                      <VideoMessageMedia
+                        msg={msg}
+                        downloadDir={state.settings?.download_dir ?? ""}
+                        inlineVideoSupported={state.inlineVideoSupported}
+                        inlineVideoReason={state.inlineVideoReason}
+                        onNotify={(message) => dispatch({ type: "SHOW_TOAST", message })}
+                      />
+                    ) : isPhotoMessage(msg) &&
+                      Boolean(msg.link_thumb ?? msg.link_url ?? isGifUrl(msg.text)) ? (
+                      <PhotoMessageMedia
+                        msg={msg}
+                        onOpenViewer={(texKey, fullUrl) =>
+                          dispatch({
+                            type: "SET_IMAGE_VIEWER",
+                            viewer: {
+                              texKey,
+                              fullUrl,
+                              title: msg.link_title ?? "Hình ảnh",
+                              sender: senderInfo?.name ?? msg.sender,
+                              time: msg.time,
+                            },
+                          })
+                        }
+                      />
+                    ) : isFileMessage(msg) && msg.link_url ? (
+                      /* File card — 40px colored icon */
+                      <div className="flex min-w-[220px] max-w-[340px] items-center gap-3">
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                            fileIconColor(msg.link_title ?? msg.text),
+                          )}
+                        >
+                          <FileText className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[14px] font-medium">
+                            {msg.link_title ?? msg.text}
+                          </div>
+                          {msg.link_desc ? (
+                            <div className="text-[12px] text-muted-foreground">
+                              {formatFileSize(msg.link_desc)}
                             </div>
                           ) : null}
                         </div>
-                      )}
-                    </div>
-
-                    {!isRecalled ? (
-                      <div
-                        className={cn(
-                          "absolute -top-4 z-10 hidden items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 shadow-md group-hover:flex",
-                          msg.is_outgoing ? "right-2" : "left-2",
-                        )}
-                      >
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="h-6.5 w-6.5"
-                          title="Trả lời"
-                          onClick={() => dispatch({ type: "SET_REPLYING_TO", msg })}
-                        >
-                          <CornerUpLeft className="h-3.5 w-3.5" />
-                        </Button>
-
-                        <Popover
-                          open={reactPickerFor === msgKey}
-                          onOpenChange={(open) => setReactPickerFor(open ? msgKey : null)}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="h-6.5 w-6.5"
-                              title="Thả cảm xúc"
-                            >
-                              <SmilePlus className="h-3.5 w-3.5" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent side="top" className="flex items-center gap-1 p-1.5">
-                            {REACTION_LIST.map((r) => (
-                              <Button
-                                key={r.key}
-                                variant="ghost"
-                                size="icon-sm"
-                                title={r.label}
-                                onClick={() => {
-                                  dispatch({
-                                    type: "CORE_EVENT",
-                                    event: {
-                                      type: "Reacted",
-                                      payload: {
-                                        thread_id: thread.id,
-                                        msg_id: msg.id,
-                                        ts: msg.ts,
-                                        reaction: r.emoji,
-                                      },
-                                    },
-                                  });
-                                  void ipc.reactMessage(thread.id, thread.is_group, msg, r.emoji);
-                                  setReactPickerFor(null);
-                                }}
-                              >
-                                {renderReactionBadge(r.emoji)}
-                              </Button>
-                            ))}
-                          </PopoverContent>
-                        </Popover>
-
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-6.5 w-6.5"
-                          title="Chuyển tiếp"
-                          onClick={() => dispatch({ type: "SET_FORWARD_MSG", msg })}
-                        >
-                          <Forward className="h-3.5 w-3.5" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-6.5 w-6.5"
-                          title="Gắn sao"
+                          title="Tải xuống"
+                          className="h-8 w-8 shrink-0"
                           onClick={() =>
-                            dispatch({
-                              type: "TOGGLE_LOCAL_STAR",
-                              threadId: thread.id,
-                              msgId: msg.id,
-                            })
+                            void ipc.downloadFile(
+                              msg.link_url!,
+                              msg.link_title ?? "attachment",
+                              state.settings?.download_dir ?? "",
+                            )
                           }
                         >
-                          <Star className={cn("h-3.5 w-3.5", msg.is_starred && "text-warning")} />
-                        </Button>
-
-                        {msg.is_outgoing ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-6.5 w-6.5"
-                            title="Thu hồi tin nhắn"
-                            onClick={() => void ipc.recallMessage(thread.id, thread.is_group, msg)}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : null}
-
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-6.5 w-6.5 text-destructive hover:text-destructive"
-                          title="Xóa chỉ ở phía tôi"
-                          onClick={() => void ipc.deleteForMe(thread.id, thread.is_group, msg)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Download className="h-4 w-4" />
                         </Button>
                       </div>
+                    ) : (
+                      /* Plain text + optional link card */
+                      <div>
+                        <div className="select-text">{msg.text}</div>
+                        {msg.link_url ? (
+                          <div
+                            onClick={() => void ipc.openExternalUrl(msg.link_url!)}
+                            className="mt-2 max-w-[360px] cursor-pointer rounded-[6px] border border-border/60 bg-background/50 p-2.5 hover:bg-background/80 transition-colors"
+                          >
+                            {msg.link_thumb ? (
+                              <img
+                                src={msg.link_thumb}
+                                alt={msg.link_title ?? ""}
+                                loading="lazy"
+                                className="mb-2 w-full rounded-[4px] object-cover"
+                                style={{ maxHeight: 140 }}
+                              />
+                            ) : null}
+                            <div className="flex items-start gap-1.5">
+                              {!msg.link_thumb ? (
+                                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                              ) : null}
+                              <div className="min-w-0">
+                                <div className="truncate text-[14px] font-semibold text-foreground">
+                                  {msg.link_title ?? msg.link_url}
+                                </div>
+                                {msg.link_desc ? (
+                                  <div className="mt-0.5 line-clamp-2 text-[13px] text-muted-foreground">
+                                    {msg.link_desc}
+                                  </div>
+                                ) : null}
+                                {msg.link_src ? (
+                                  <div className="mt-1 truncate text-[12px] text-primary">
+                                    {msg.link_src}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Timestamp inside bubble — bottom, after content */}
+                    {isTextOrRich && !isRecalled ? (
+                      <div
+                        className={cn(
+                          "mt-1.5 flex items-center gap-1 text-[12px]",
+                          msg.is_outgoing ? "justify-end text-bubble-out-foreground/60" : "text-muted-foreground",
+                        )}
+                      >
+                        <span>{msg.time}</span>
+                        {msg.is_starred ? <Star className="h-3 w-3 text-warning" /> : null}
+                        {msg.is_outgoing && msg.delivery === "seen" ? (
+                          <span className="opacity-80">· Đã xem</span>
+                        ) : msg.is_outgoing && msg.delivery === "sent" ? (
+                          <span className="opacity-60">· Đã gửi</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {/* Quick reaction/like button — small circle, bottom-right corner of bubble, appears on group hover */}
+                    {isTextOrRich && !isRecalled ? (
+                      <Popover
+                        open={reactPickerFor === `quick_${msgKey}`}
+                        onOpenChange={(open) =>
+                          setReactPickerFor(open ? `quick_${msgKey}` : null)
+                        }
+                      >
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            title="Thả cảm xúc"
+                            className={cn(
+                              "absolute -bottom-2.5 -right-2.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-sidebar shadow-sm transition-opacity",
+                              "opacity-0 group-hover:opacity-100",
+                            )}
+                          >
+                            <SmilePlus className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" className="flex items-center gap-1 p-1.5">
+                          {REACTION_LIST.map((r) => (
+                            <Button
+                              key={r.key}
+                              variant="ghost"
+                              size="icon-sm"
+                              title={r.label}
+                              onClick={() => {
+                                dispatch({
+                                  type: "CORE_EVENT",
+                                  event: {
+                                    type: "Reacted",
+                                    payload: {
+                                      thread_id: thread.id,
+                                      msg_id: msg.id,
+                                      ts: msg.ts,
+                                      reaction: r.emoji,
+                                    },
+                                  },
+                                });
+                                void ipc.reactMessage(thread.id, thread.is_group, msg, r.emoji);
+                                setReactPickerFor(null);
+                              }}
+                            >
+                              {renderReactionBadge(r.emoji)}
+                            </Button>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
                     ) : null}
                   </div>
 
-                  <div className="flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground">
-                    <span>{msg.time}</span>
-                    {msg.is_starred ? <Star className="h-3 w-3 text-warning" /> : null}
-                  </div>
+                  {/* Sticker time below */}
+                  {isBareSticker || isRecalled ? (
+                    <div className="flex items-center gap-1 px-1 pt-0.5 text-[11.5px] text-muted-foreground">
+                      <span>{msg.time}</span>
+                      {msg.is_starred ? <Star className="h-3 w-3 text-warning" /> : null}
+                    </div>
+                  ) : null}
 
+                  {/* Reactions chip — overlaps bubble bottom edge */}
                   {msg.reactions && msg.reactions.length > 0 ? (
                     <div
                       className={cn(
-                        "absolute -bottom-2.5 z-10 flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-[#212328] px-2 py-0.5 text-xs shadow-xs select-none hover:bg-[#282a30] transition-colors",
-                        msg.is_outgoing ? "right-2" : "left-2",
+                        "-mt-1.5 flex cursor-pointer items-center gap-0.5 rounded-full border border-border/80 bg-sidebar px-2 py-0.5 text-xs shadow-sm select-none hover:bg-secondary transition-colors",
+                        msg.is_outgoing ? "self-end mr-1" : "self-start ml-1",
                       )}
                     >
                       {Array.from(new Set(msg.reactions))
@@ -1012,13 +1055,125 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                           </span>
                         ))}
                       {msg.reactions.length > 1 ? (
-                        <span className="text-[11px] font-semibold text-muted-foreground">
+                        <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
                           {msg.reactions.length}
                         </span>
                       ) : null}
                     </div>
                   ) : null}
                 </div>
+
+                {/* Hover action toolbar — floating above bubble */}
+                {!isRecalled ? (
+                  <div
+                    className={cn(
+                      "absolute -top-9 z-20 hidden items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 shadow-md group-hover:flex",
+                      msg.is_outgoing ? "right-0" : "left-10",
+                    )}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      title="Trả lời"
+                      onClick={() => dispatch({ type: "SET_REPLYING_TO", msg })}
+                    >
+                      <CornerUpLeft className="h-3.5 w-3.5" />
+                    </Button>
+
+                    <Popover
+                      open={reactPickerFor === msgKey}
+                      onOpenChange={(open) => setReactPickerFor(open ? msgKey : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-7 w-7"
+                          title="Thả cảm xúc"
+                        >
+                          <SmilePlus className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent side="top" className="flex items-center gap-1 p-1.5">
+                        {REACTION_LIST.map((r) => (
+                          <Button
+                            key={r.key}
+                            variant="ghost"
+                            size="icon-sm"
+                            title={r.label}
+                            onClick={() => {
+                              dispatch({
+                                type: "CORE_EVENT",
+                                event: {
+                                  type: "Reacted",
+                                  payload: {
+                                    thread_id: thread.id,
+                                    msg_id: msg.id,
+                                    ts: msg.ts,
+                                    reaction: r.emoji,
+                                  },
+                                },
+                              });
+                              void ipc.reactMessage(thread.id, thread.is_group, msg, r.emoji);
+                              setReactPickerFor(null);
+                            }}
+                          >
+                            {renderReactionBadge(r.emoji)}
+                          </Button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      title="Chuyển tiếp"
+                      onClick={() => dispatch({ type: "SET_FORWARD_MSG", msg })}
+                    >
+                      <Forward className="h-3.5 w-3.5" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      title="Gắn sao"
+                      onClick={() =>
+                        dispatch({
+                          type: "TOGGLE_LOCAL_STAR",
+                          threadId: thread.id,
+                          msgId: msg.id,
+                        })
+                      }
+                    >
+                      <Star className={cn("h-3.5 w-3.5", msg.is_starred && "text-warning")} />
+                    </Button>
+
+                    {msg.is_outgoing ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        title="Thu hồi tin nhắn"
+                        onClick={() => void ipc.recallMessage(thread.id, thread.is_group, msg)}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : null}
+
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      title="Xóa chỉ ở phía tôi"
+                      onClick={() => void ipc.deleteForMe(thread.id, thread.is_group, msg)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </div>
           );

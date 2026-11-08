@@ -8,9 +8,11 @@ import {
 } from "react";
 import {
   Clock,
+  Contact,
   CornerUpLeft,
   Crop,
   Image,
+  Info,
   MoreHorizontal,
   Paperclip,
   Send,
@@ -47,11 +49,14 @@ function StickerThumb({ item, onPick }: { item: StickerItem; onPick: () => void 
       className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border border-transparent bg-muted/40 p-1 transition hover:border-border hover:bg-accent"
     >
       <img
-        src={stickerThumbnailUrl(item)}
+        src={stickerThumbnailUrl({
+          sticker_id: item.sticker_id,
+          cate_id: item.cate_id,
+        })}
         alt={item.label}
         loading="lazy"
         decoding="async"
-        className="h-14 w-14 object-contain"
+        className="h-14 w-14 object-contain transition-transform hover:scale-110"
       />
     </button>
   );
@@ -70,6 +75,12 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
   } | null>(null);
   const lastTypingAt = useRef(0);
 
+  // Check if thread is restricted to owner/admin only
+  const isSendLocked =
+    thread.is_group &&
+    (thread.preview === "Only owner/admins can send messages" ||
+      thread.preview === "Chỉ trưởng/phó nhóm mới được gửi tin nhắn" ||
+      ("is_locked" in thread && Boolean(thread.is_locked)));
   const firstUrl = extractFirstUrl(text);
   const linkPreview =
     firstUrl && firstUrl !== dismissedLinkFor ? state.linkMetadataCache[firstUrl] : undefined;
@@ -196,12 +207,26 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
             ? (state.stickerPackItems[stickerTab] ?? [])
             : [];
 
+  // Locked-group notice bar at the bottom
+  if (isSendLocked) {
+    return (
+      <div className="flex h-14 shrink-0 items-center justify-center gap-2 border-t border-border bg-sidebar px-4 text-[13px] text-muted-foreground dark:border-[rgba(255,255,255,0.1)]">
+        <Info className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+        <span>
+          Chỉ <span className="font-semibold text-primary">trưởng/phó nhóm</span> mới được gửi tin nhắn vào nhóm này.{" "}
+          <span className="cursor-pointer text-primary hover:underline">Tìm hiểu thêm</span>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => void handleDrop(e)}
-      className="relative flex flex-col gap-1.5 border-t border-border bg-sidebar px-3.5 py-2.5"
+      className="relative flex shrink-0 flex-col border-t border-border bg-sidebar px-4 py-1.5 dark:border-[rgba(255,255,255,0.1)]"
     >
+      {/* Sticker typing suggestions */}
       {state.composerStickerSuggestions.length > 0 && text.trim().length >= 2 ? (
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {state.composerStickerSuggestions.slice(0, 8).map((item) => (
@@ -224,8 +249,9 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
         </div>
       ) : null}
 
+      {/* Link preview bar */}
       {firstUrl && firstUrl !== dismissedLinkFor ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/60 px-2.5 py-1.5 text-xs">
+        <div className="mb-1 flex items-center justify-between rounded-lg border border-border bg-muted/60 px-2.5 py-1.5 text-xs">
           <div className="min-w-0">
             <div className="truncate font-bold text-foreground">
               {linkPreview?.title ?? "Đang tải xem trước liên kết…"}
@@ -240,8 +266,9 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
         </div>
       ) : null}
 
+      {/* Replying-to bar */}
       {state.replyingTo ? (
-        <div className="flex items-center justify-between rounded-md border-l-3 border-primary bg-muted/60 px-2.5 py-1.5 text-xs">
+        <div className="mb-1 flex items-center justify-between rounded-md border-l-[3px] border-primary bg-muted/60 px-2.5 py-1.5 text-xs">
           <div className="flex min-w-0 items-center gap-2">
             <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-primary" />
             <div className="min-w-0">
@@ -259,8 +286,9 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
         </div>
       ) : null}
 
+      {/* Pending upload preview */}
       {pendingUpload ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/60 px-2.5 py-1.5">
+        <div className="mb-1 flex items-center justify-between rounded-lg border border-border bg-muted/60 px-2.5 py-1.5">
           <div className="flex items-center gap-2.5">
             {pendingUpload.previewUrl ? (
               <img
@@ -277,17 +305,20 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
         </div>
       ) : null}
 
-      <div className="flex items-center gap-0.5 border-b border-border/50 pb-1.5 text-muted-foreground">
+      {/* ── Toolbar row: 24px icons at 40px pitch ── */}
+      <div className="flex items-center text-muted-foreground">
         <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
           <PopoverTrigger asChild>
-            <Button
-              variant={stickerOpen ? "accent" : "ghost"}
-              size="icon-sm"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            <button
+              type="button"
+              className={cn(
+                "flex h-10 w-10 cursor-pointer items-center justify-center rounded-md transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5",
+                stickerOpen ? "text-primary" : "text-muted-foreground",
+              )}
               title="Gửi nhãn dán"
             >
-              <Smile className="h-4.5 w-4.5" />
-            </Button>
+              <Smile className="h-6 w-6" strokeWidth={1.65} />
+            </button>
           </PopoverTrigger>
           <PopoverContent
             side="top"
@@ -403,75 +434,77 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
           </PopoverContent>
         </Popover>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
           title="Gửi hình ảnh"
           onClick={() => void pickAndUpload(true)}
         >
-          <Image className="h-4.5 w-4.5" />
-        </Button>
+          <Image className="h-6 w-6" strokeWidth={1.65} />
+        </button>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
           title="Đính kèm tập tin"
           onClick={() => void pickAndUpload(false)}
         >
-          <Paperclip className="h-4.5 w-4.5" />
-        </Button>
+          <Paperclip className="h-6 w-6" strokeWidth={1.65} />
+        </button>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
+          title="Gửi danh thiếp"
+        >
+          <Contact className="h-6 w-6" strokeWidth={1.65} />
+        </button>
+
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
           title="Chụp ảnh màn hình"
           onClick={() => void pickAndUpload(true)}
         >
-          <Crop className="h-4 w-4" />
-        </Button>
+          <Crop className="h-6 w-6" strokeWidth={1.65} />
+        </button>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
           title="Định dạng văn bản"
         >
-          <Type className="h-4 w-4" />
-        </Button>
+          <Type className="h-6 w-6" strokeWidth={1.65} />
+        </button>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
           title="Tạo nhắc hẹn"
         >
-          <Clock className="h-4 w-4" />
-        </Button>
+          <Clock className="h-6 w-6" strokeWidth={1.65} />
+        </button>
 
         {thread.is_group ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          <button
+            type="button"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
             title="Tạo bình chọn"
           >
-            <Vote className="h-4 w-4" />
-          </Button>
+            <Vote className="h-6 w-6" strokeWidth={1.65} />
+          </button>
         ) : null}
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
           title="Tùy chọn khác"
         >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
+          <MoreHorizontal className="h-6 w-6" strokeWidth={1.65} />
+        </button>
       </div>
 
+      {/* ── Input row ── */}
       <div className="flex items-center gap-2 pt-0.5">
         <textarea
           rows={1}
@@ -480,18 +513,17 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
           onKeyDown={handleKeyDown}
           onPaste={(e) => void handlePaste(e)}
           placeholder={`@, Nhập tin nhắn tới ${thread.name || thread.id}`}
-          className="max-h-28 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-[14px] text-foreground select-text placeholder:text-muted-foreground/75 focus:outline-none"
+          className="max-h-28 min-h-[38px] flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] text-foreground select-text placeholder:text-muted-foreground/60 focus:outline-none"
         />
-        <div className="flex items-center gap-1 shrink-0 pr-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        <div className="flex shrink-0 items-center gap-1 pr-1">
+          <button
+            type="button"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
             title="Biểu tượng cảm xúc"
             onClick={() => setStickerOpen((prev) => !prev)}
           >
-            <Smile className="h-4.5 w-4.5" />
-          </Button>
+            <Smile className="h-6 w-6" strokeWidth={1.65} />
+          </button>
 
           {text.trim() || pendingUpload ? (
             <Button
@@ -499,18 +531,18 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
               size="icon"
               onClick={() => void sendNow()}
               title="Gửi tin nhắn"
-              className="h-8.5 w-8.5 rounded-full shadow-xs cursor-pointer"
+              className="h-9 w-9 cursor-pointer rounded-full shadow-xs"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4.5 w-4.5" />
             </Button>
           ) : (
             <button
               type="button"
               onClick={() => void ipc.sendMessage(thread.id, "👍", thread.is_group)}
               title="Gửi Like nhanh"
-              className="flex h-8.5 w-8.5 cursor-pointer items-center justify-center rounded-full text-yellow-500 transition hover:scale-110 active:scale-95"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-yellow-500 transition hover:scale-110 active:scale-95"
             >
-              <ThumbsUp className="h-5 w-5 fill-yellow-500" />
+              <ThumbsUp className="h-5.5 w-5.5 fill-yellow-500" />
             </button>
           )}
         </div>
