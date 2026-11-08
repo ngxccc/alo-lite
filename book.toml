@@ -1,0 +1,18 @@
+[book]
+title = "alolite"
+description = "Tài liệu người dùng alolite — Zalo desktop client viết bằng Rust"
+authors = ["ngxc"]
+language = "vi"
+src = "docs"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "dark"
+site-url = "/docs/"
+git-repository-url = "https://github.com/ngxccc/alolite"
+edit-url-template = "https://github.com/ngxccc/alolite/edit/main/docs/{path}"
+
+[output.html.search]
+enable = true

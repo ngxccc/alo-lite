@@ -1,0 +1,36 @@
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+      - duplicate
+      - invalid
+      - wontfix
+    authors:
+      - dependabot
+  categories:
+    - title: "Features"
+      labels:
+        - feat
+        - feature
+        - enhancement
+    - title: "Fixes"
+      labels:
+        - fix
+        - bug
+    - title: "Performance"
+      labels:
+        - perf
+        - performance
+    - title: "Documentation"
+      labels:
+        - docs
+        - documentation
+    - title: "CI"
+      labels:
+        - ci
+        - build
+        - release
+        - chore
+    - title: "Other Changes"
+      labels:
+        - "*"

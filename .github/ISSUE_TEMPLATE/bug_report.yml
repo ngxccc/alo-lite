@@ -1,0 +1,67 @@
+name: "Bug Report"
+description: "Report a reproducible bug, crash, or unexpected behavior"
+title: "fix(<scope>): <summary>"
+labels: ["type:fix"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide detailed steps to reproduce.
+        
+        **SECURITY WARNING: NEVER paste `session.json`, cookies, `zpw_sek`, `zpw_enk`, IMEIs, phone numbers, or unredacted packet captures.**
+  - type: textarea
+    id: summary
+    attributes:
+      label: Description
+      description: "What happened, and what did you expect to happen?"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: "Minimal steps to reproduce the issue"
+      value: |
+        1. Launch Alolite on Linux
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "protocol (auth, network, socket, encryption)"
+        - "gui (window, chat views, theme, rendering)"
+        - "storage (sqlite, database, cache)"
+        - "packaging (desktop file, .deb, installation)"
+        - "other"
+    validations:
+      required: true
+  - type: input
+    id: error-code
+    attributes:
+      label: Server error_code (if applicable)
+      description: "Numeric error_code from server response (e.g. 600, 18012, 429)"
+      placeholder: "e.g. 600"
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "Linux distribution, display server, and Alolite version"
+      value: |
+        - OS / Distro: Linux (e.g. Arch, Ubuntu 24.04, Fedora 40)
+        - Display Server: Wayland / X11
+        - Alolite Version: v0.1.0
+    validations:
+      required: true
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Compliance & Secret Redaction Check
+      options:
+        - label: "I confirm that no session tokens, cookies, passwords, IMEIs, phone numbers, or proprietary assets are included."
+          required: true
