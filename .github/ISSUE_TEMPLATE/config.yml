@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Documentation & Architecture"
+    url: "https://github.com/ngxccc/alolite/tree/main/docs"
+    about: "Read the official architecture, standards, and troubleshooting guides."
+  - name: "Legal, IP & Compliance Policy"
+    url: "https://github.com/ngxccc/alolite/blob/main/LEGAL.md"
+    about: "Review the trademark disclaimer, Clean-Room engineering rules, and AUP."

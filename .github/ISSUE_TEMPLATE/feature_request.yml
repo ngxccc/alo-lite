@@ -1,0 +1,32 @@
+name: "Feature Request"
+description: "Suggest an idea, enhancement, or architectural improvement"
+title: "feat(<scope>): <summary>"
+labels: ["type:feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest an enhancement or new capability for Alolite on Linux.
+        
+        *Note: Out-of-scope non-core features (VoIP, Video Feed, Multi-platform Windows/macOS wrappers) will be closed as wontfix.*
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: "Is your feature request related to a problem or limitation? Please describe."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: "Describe the desired behavior, API, or visual change."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: "Any alternative approaches or workarounds you've considered?"
+    validations:
+      required: false

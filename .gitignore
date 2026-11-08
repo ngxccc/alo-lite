@@ -1,0 +1,54 @@
+# Rust build artifacts
+target/
+dist/
+
+# Session credentials & user tokens
+session*.json
+session*.bak
+accounts/
+device*.json
+
+# Local databases, caches & runtime state
+*.db
+*.db-shm
+*.db-wal
+threads_cache*.json
+stickers_cache/
+dump/
+qr.png
+app_settings.json
+custom_stickers.json
+autoreply_rules.json
+theme.json
+
+# Cryptographic keys, secrets & binary dumps
+*.pem
+*.key
+*.bin
+*.crypt
+
+# Packet captures & test lab dumps
+*.flow
+test_lab/
+
+# Documentation build artifacts
+book/
+
+# Local agent, IDE & environment configs
+.claude/
+.omp/
+.agents/
+.opencode/
+.scratch/
+.env
+
+# Logs & temporary files
+*.tmp
+*.bak
+*.log*
+__pycache__/
+*.py[cod]
+
+# OS metadata
+.DS_Store
+Thumbs.db

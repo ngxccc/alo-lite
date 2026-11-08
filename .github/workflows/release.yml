@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  ci-gate:
+    name: CI Quality Gate
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build Packages
+    needs: ci-gate
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download built package artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: alolite-linux-packages
+          path: release_assets
+
+      - name: Generate SHA256SUMS.txt
+        run: ./scripts/generate-checksums.sh release_assets
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag_name }}
+          name: Alolite ${{ github.ref_name || inputs.tag_name }} (Linux)
+          files: release_assets/*
+          generate_release_notes: true
+          body: |
+            ### Alolite Linux Release (${{ github.ref_name || inputs.tag_name }})
+
+            Lightweight, native messaging desktop client for Linux written in Rust (Zero Node.js, Zero Electron).
+
+            #### Available Linux Packages:
+            - **Debian / Ubuntu / Linux Mint / Pop!_OS:** `alolite_*_amd64.deb`
+            - **Fedora / RHEL / Rocky / openSUSE:** `alolite-*-1.x86_64.rpm`
+            - **Universal Single-File Executable:** `alolite-*-x86_64.AppImage`
+            - **Portable Standalone Archive:** `alolite-*-linux-x86_64.tar.gz`
+
+            #### Checksums:
+            Verify downloaded assets with `sha256sum -c SHA256SUMS.txt`.

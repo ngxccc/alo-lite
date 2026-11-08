@@ -1,0 +1,9 @@
+[alias]
+dev = "run --bin alolite"
+dev-qr = "run --bin alolite -- --qr"
+dev-tui = "run --bin alolite -- --tui"
+build-release = "build --release --bin alolite"
+release = "build --release --bin alolite"
+lint = "clippy --all-targets"
+fmt-check = "fmt --all -- --check"
+pkg = "!./packaging/linux/package-all.sh"
