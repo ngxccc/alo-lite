@@ -129,16 +129,14 @@ async fn main() -> Result<()> {
                 }
             }
             _ = poll_interval.tick() => {
-                if let Ok(resp) = polling::get_chat_from_polling(&s, &mut poll_state).await {
-                    let data_node = resp.get("data").unwrap_or(&resp);
-                    let sync_evs = sync::extract_mobile_sync_controls(data_node);
-                    if !sync_evs.is_empty() {
+                if let Ok(batch) = polling::get_chat_from_polling(&s, &mut poll_state).await {
+                    if !batch.sync_controls.is_empty() {
                         let now = chrono::Local::now().format("%H:%M:%S%.3f");
                         println!("\n[{now}] 🎯 >>> PHÁT HIỆN SỰ KIỆN TRÊN LP_CHAT POLLING: <<<");
-                        for sev in &sync_evs {
+                        for sev in &batch.sync_controls {
                             println!("  -> {:?}", sev);
                         }
-                        println!("     Raw: {}\n", serde_json::to_string(data_node)?);
+                        println!("     Raw: {}\n", serde_json::to_string(batch.raw_value())?);
                     }
                 }
             }

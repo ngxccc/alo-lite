@@ -11,23 +11,6 @@ use crate::logger::{LogEntry, ScanFinding};
 use crate::protocol::messaging::{ChatMessage, Thread};
 
 #[derive(Debug, Clone)]
-pub(super) struct ActiveCallOverlay {
-    pub partner_id: String,
-    pub partner_name: String,
-    pub is_video: bool,
-    pub is_group: bool,
-    pub state_label: String,
-    pub started_at: std::time::Instant,
-    pub mic_muted: bool,
-    pub cam_enabled: bool,
-    pub is_incoming_ringing: bool,
-    pub error_code: Option<i64>,
-    pub error_reason: Option<String>,
-    pub speaker_view: bool,
-    pub pinned_tile_idx: usize,
-}
-
-#[derive(Debug, Clone)]
 pub(super) struct ImageViewerModal {
     pub tex_key: String,
     pub hd_tex_key: Option<String>,
@@ -37,13 +20,6 @@ pub(super) struct ImageViewerModal {
     pub time: String,
     pub zoom: f32,
     pub pan: Vec2,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum FeedModalTab {
-    Profile,
-    Avatars,
-    Packet50001,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,7 +100,6 @@ pub struct ZaloGuiApp {
     pub(super) forward_msg: Option<ChatMessage>,
     pub(super) forward_filter: String,
     pub(super) filter_starred_only: bool,
-    pub(super) active_call: Option<ActiveCallOverlay>,
     pub(super) image_viewer: Option<ImageViewerModal>,
 
     pub(super) info_drawer_open: bool,
@@ -180,7 +155,8 @@ pub struct ZaloGuiApp {
     pub(super) allow_quit: bool,
     pub(super) settings_modal_open: bool,
     pub(super) settings_tab: SettingsTab,
-    pub(super) notification_authorization: crate::native_notifications::AuthorizationState,
+    pub(super) notification_authorization:
+        crate::services::native_notifications::AuthorizationState,
     pub(super) settings: AppSettings,
     pub(super) settings_blur_tex: Option<TextureHandle>,
     pub(super) settings_blur_req_at: Option<std::time::Instant>,
@@ -197,31 +173,9 @@ pub struct ZaloGuiApp {
     pub(super) dev_tab: DevTab,
     pub(super) selected_log: Option<LogEntry>,
     pub(super) scanner_findings: Vec<ScanFinding>,
-    pub(super) feed_modal_open: bool,
-    pub(super) feed_modal_tab: FeedModalTab,
-    pub(super) feed_target_uid: String,
-    pub(super) feed_loading_profile: bool,
-    pub(super) feed_profile: Option<crate::feed::SocialUserProfile>,
-    pub(super) feed_profile_error: Option<String>,
-    pub(super) feed_loading_avatars: bool,
-    pub(super) feed_avatars: Vec<crate::feed::FeedMedia>,
-    pub(super) feed_avatars_error: Option<String>,
-    pub(super) feed_loading_timeline: bool,
-    pub(super) feed_items: Vec<crate::feed::FeedItem>,
-    pub(super) feed_friend_profiles: Vec<crate::feed::SocialUserProfile>,
-    pub(super) feed_search_query: String,
-    pub(super) feed_pkt_owner_id: String,
-    pub(super) feed_pkt_viewer_id: String,
-    pub(super) feed_pkt_tab: u32,
-    pub(super) feed_pkt_page: u32,
-    pub(super) feed_pkt_count: u32,
     pub(super) contacts_view_open: bool,
     pub(super) contacts_sub_tab: ContactsSubTab,
     pub(super) contacts_search_query: String,
-    pub(super) schedule_modal_open: bool,
-    pub(super) schedule_custom_input: String,
-    pub(super) schedule_editing_id: Option<i64>,
-    pub(super) scheduled_items: Vec<crate::scheduler::ScheduledMessage>,
     pub(super) phone_sync_progress: f32,
     pub(super) phone_sync_status: String,
     pub(super) last_typing_sent_at: Option<(String, std::time::Instant)>,

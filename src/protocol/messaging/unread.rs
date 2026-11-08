@@ -652,16 +652,16 @@ pub async fn send_seen_v2(
     thread_id: &str,
     is_group: bool,
     last_msg_id: &str,
-) -> anyhow::Result<Value> {
+) -> anyhow::Result<crate::protocol::wire::ActionAck> {
     crate::protocol::wire::require_login(s)?;
     if crate::session::privacy_blocker_state().2 {
-        return Ok(serde_json::json!({"error_code": 0, "data": {}}));
+        return Ok(crate::protocol::wire::ActionAck::ok());
     }
     let clean = crate::protocol::wire::strip_group_prefix(thread_id)
         .trim_start_matches('u')
         .trim();
     if clean.is_empty() || last_msg_id.trim().is_empty() {
-        return Ok(serde_json::json!({"error_code": 0, "data": {}}));
+        return Ok(crate::protocol::wire::ActionAck::ok());
     }
     let (endpoint, path_and_q, body) = if is_group {
         (
@@ -692,7 +692,8 @@ pub async fn send_seen_v2(
     let resp = s
         .post_endpoint_form(endpoint, &path_and_q, format!("params={params}"))
         .await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
 }
 
 /// Mark a conversation as unread or read (`addMarkAsUnread` / `removeMarkAsUnread`, cmd `12013` / `12014`).
@@ -704,7 +705,7 @@ pub async fn set_unread_mark(
     thread_id: &str,
     is_group: bool,
     unread: bool,
-) -> anyhow::Result<Value> {
+) -> anyhow::Result<crate::protocol::wire::ActionAck> {
     crate::protocol::wire::require_login(s)?;
     let clean = crate::protocol::wire::strip_group_prefix(thread_id).trim();
     let (convs_group, convs_user) = if is_group {
@@ -736,7 +737,8 @@ pub async fn set_unread_mark(
     let params = s.encoded_params(&outer)?;
     let url = format!("{}{path}?{}", s.domains.conversation, s.common_params());
     let resp = s.post_form(&url, format!("params={params}")).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
 }
 
 /// Mute or unmute notifications for a conversation (`setMuteConversation`, cmd `11288`).
@@ -749,7 +751,7 @@ pub async fn set_mute_conversation(
     is_group: bool,
     duration_sec: i64,
     mute: bool,
-) -> anyhow::Result<Value> {
+) -> anyhow::Result<crate::protocol::wire::ActionAck> {
     crate::protocol::wire::require_login(s)?;
     let clean = crate::protocol::wire::strip_group_prefix(thread_id).trim();
     let body = serde_json::json!({
@@ -765,7 +767,8 @@ pub async fn set_mute_conversation(
     let resp = s
         .post_endpoint_form("profile", &path, format!("params={params}"))
         .await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
 }
 
 /// Fetch the full mute snapshot (`chatEntries` + `groupChatEntries`, cmd `11280`).
@@ -784,6 +787,33 @@ pub async fn get_mute_conversations(
     );
     let resp = s.get_endpoint("profile", &path).await?;
     Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+}
+
+/// Decoded conversation mute snapshot returned by `get_mute_snapshot`.
+#[derive(Debug, Clone, Default)]
+pub struct MuteSnapshot {
+    pub mutes: std::collections::HashMap<String, i64>,
+    raw: Value,
+}
+
+impl MuteSnapshot {
+    /// Apply mute metadata from this snapshot onto in-memory threads.
+    pub fn merge_into(&self, threads: &mut [Thread]) {
+        merge_mute_metadata(threads, &self.raw);
+    }
+}
+
+/// Fetch and decode the full mute snapshot (`chatEntries` + `groupChatEntries`, cmd `11280`).
+///
+/// # Errors
+/// Returns an error if unauthenticated or the HTTP request fails.
+pub async fn get_mute_snapshot(
+    s: &crate::protocol::session::Session,
+    now_unix: i64,
+) -> anyhow::Result<MuteSnapshot> {
+    let raw = get_mute_conversations(s).await?;
+    let mutes = extract_mute_map(&raw, now_unix).unwrap_or_default();
+    Ok(MuteSnapshot { mutes, raw })
 }
 
 /// Real-time mute/unmute control notification (`act_type: "mute"`, `act: "set" | "unset"`, `#67`).

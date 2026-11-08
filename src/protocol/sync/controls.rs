@@ -9,13 +9,13 @@ use super::latest_mobile_temp_key;
 use super::v2_proto::{generate_sync_v2_ed25519_public_key, generate_sync_v2_keys};
 use crate::protocol::registry;
 use crate::protocol::session::Session;
-use crate::protocol::wire::{require_login, val_i64};
+use crate::protocol::wire::{require_login, val_i64, ActionAck};
 
 /// Request mobile message sync (`pullMobileMsg`, cmd `12000`, #68, #73).
 ///
 /// # Errors
 /// Returns an error if the session is unauthenticated or the outbound request fails.
-pub async fn request_phone_sync(s: &Session, public_key: &str) -> Result<Value> {
+pub async fn request_phone_sync(s: &Session, public_key: &str) -> Result<ActionAck> {
     let temp_key = latest_mobile_temp_key();
     request_phone_sync_with_temp_key(s, public_key, &temp_key).await
 }
@@ -28,7 +28,7 @@ pub async fn request_phone_sync_with_temp_key(
     s: &Session,
     public_key: &str,
     temp_key: &str,
-) -> Result<Value> {
+) -> Result<ActionAck> {
     require_login(s)?;
     let body = json!({
         "pc_name": s.computer_name,
@@ -44,18 +44,20 @@ pub async fn request_phone_sync_with_temp_key(
         .await
     {
         if dec.get("error_code").and_then(Value::as_i64) == Some(0) {
-            return Ok(dec);
+            return Ok(ActionAck::from_wire(&dec));
         }
     }
-    s.api_post(registry::sync::PULL_MOBILE_MSG, Some(&body))
-        .await
+    let resp = s
+        .api_post(registry::sync::PULL_MOBILE_MSG, Some(&body))
+        .await?;
+    Ok(ActionAck::from_wire(&resp))
 }
 
 /// Request transfer-sync v2 from phone over WebSocket (`cmd 592` wake-up + `cmd 590` `SYNC_MESSAGE.REQUEST`).
 ///
 /// # Errors
 /// Returns an error if the session is unauthenticated.
-pub async fn request_phone_sync_v2(s: &Session, _public_key: &str) -> Result<Value> {
+pub async fn request_phone_sync_v2(s: &Session, _public_key: &str) -> Result<ActionAck> {
     require_login(s)?;
     let sync_id = crate::param_cipher::random_hex(32);
     let temp_key = latest_mobile_temp_key();
@@ -69,14 +71,8 @@ pub async fn request_phone_sync_v2(s: &Session, _public_key: &str) -> Result<Val
     let _ = crate::socket::send_mobile_wakeup(&sync_id);
     let sync_data =
         build_sync_v2_request_payload(&s.computer_name, &sync_id, &ek_pub, &ik_pub, &temp_key, 0);
-    let sent_ws = crate::socket::send_sync_message_ws_request(&sync_data);
-    Ok(json!({
-        "error_code": 0,
-        "data": {
-            "syncId": sync_id,
-            "ws_sent": sent_ws,
-        }
-    }))
+    let _sent_ws = crate::socket::send_sync_message_ws_request(&sync_data);
+    Ok(ActionAck::ok())
 }
 
 /// Request Phase 2 of Sync v2: ask phone to transmit message chunks for `sync_id` at `ussidx`.
@@ -133,29 +129,33 @@ fn build_sync_v2_request_payload(
 ///
 /// # Errors
 /// Returns an error if the session is unauthenticated or the request fails.
-pub async fn cancel_phone_sync(s: &Session, public_key: &str) -> Result<Value> {
+pub async fn cancel_phone_sync(s: &Session, public_key: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = json!({
         "pc_name": s.computer_name,
         "public_key": public_key,
         "imei": s.imei
     });
-    s.api_get(registry::sync::CANCEL_PULL_MOBILE_MSG, Some(&body))
-        .await
+    let resp = s
+        .api_get(registry::sync::CANCEL_PULL_MOBILE_MSG, Some(&body))
+        .await?;
+    Ok(ActionAck::from_wire(&resp))
 }
 
 /// Notify Zalo server and mobile device that sync snapshot download completed (`cleanSync`, cmd `12003`).
 ///
 /// # Errors
 /// Returns an error if the session is unauthenticated or the request fails.
-pub async fn clean_sync(s: &Session, public_key: &str) -> Result<Value> {
+pub async fn clean_sync(s: &Session, public_key: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = json!({
         "public_key": public_key,
         "imei": s.imei
     });
-    s.api_get(registry::sync::DELETE_SNAPSHOT_MOBILE_MSG, Some(&body))
-        .await
+    let resp = s
+        .api_get(registry::sync::DELETE_SNAPSHOT_MOBILE_MSG, Some(&body))
+        .await?;
+    Ok(ActionAck::from_wire(&resp))
 }
 
 /// Translate plain numeric friend/sender IDs (`fids`) and group IDs (`gids`) from Sync V1 SQLite

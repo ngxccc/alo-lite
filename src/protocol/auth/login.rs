@@ -102,7 +102,11 @@ pub async fn get_server_info(s: &Session) -> Result<Value> {
 ///
 /// Kept as a diagnostic path — it exposes what the server objects to without the v2
 /// encryption layer in the way.
-pub async fn login_by_password_v1(s: &mut Session, phone: &str, password: &str) -> Result<Value> {
+pub async fn login_by_password_v1(
+    s: &mut Session,
+    phone: &str,
+    password: &str,
+) -> Result<crate::protocol::wire::ActionAck> {
     let mut o = serde_json::Map::new();
     o.insert("phone_num".into(), json!(phone));
     o.insert("password".into(), json!(password));
@@ -132,7 +136,7 @@ pub async fn login_by_password_v1(s: &mut Session, phone: &str, password: &str) 
     if let Some(cfg) = resp.get("data") {
         apply_login_config(s, cfg);
     }
-    Ok(resp)
+    Ok(crate::protocol::wire::ActionAck::from_wire(&resp))
 }
 
 /// `POST {auth}/api/login/loginByPasswv2` — ParamCipher v2 body.
@@ -153,7 +157,7 @@ pub async fn login_by_password(
     phone: &str,
     password: &str,
     iso: &str,
-) -> Result<Value> {
+) -> Result<crate::protocol::wire::ActionAck> {
     let salt = random_salt();
     let pwd = encrypt_password(phone, &s.imei, password, &salt)?;
     let client_time = unix_now();
@@ -211,7 +215,7 @@ pub async fn login_by_password(
     if let Some(cfg) = resp.get("data") {
         apply_login_config(s, cfg);
     }
-    Ok(resp)
+    Ok(crate::protocol::wire::ActionAck::from_wire(&resp))
 }
 
 /// `_constructUrlParams(obj)` — flatten a JSON object into `k=v&k=v`.
@@ -268,6 +272,28 @@ pub async fn get_login_info(s: &Session) -> Result<Value> {
         }
     }
     Err(last_err)
+}
+
+/// Fetch `/api/login/getServerInfo` and apply dynamic domain settings to `s`.
+pub async fn fetch_and_apply_server_info(s: &mut Session) -> Result<()> {
+    let resp = get_server_info(s).await?;
+    if let Some(d) = resp.get("data") {
+        s.apply_server_info(d);
+    }
+    Ok(())
+}
+
+/// Fetch `/api/login/getLoginInfo`, apply session keys/endpoints, and refresh `zpw_sek` if rotated.
+pub async fn fetch_and_apply_login_info(s: &mut Session) -> Result<()> {
+    let info = get_login_info(s).await?;
+    if let Some(sek) = super::qr::extract_zpw_sek(&info) {
+        s.set_zpw_sek(sek);
+    }
+    if let Some(cfg) = info.get("data") {
+        apply_login_config(s, cfg);
+        s.apply_server_info(cfg);
+    }
+    Ok(())
 }
 
 /// Pull `dkey` / `zpw_enk` / domains out of a login response payload.

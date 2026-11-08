@@ -514,7 +514,6 @@ impl ZaloGuiApp {
                     ToggleUnread(String, bool, bool),
                     SetMute(String, bool, Option<i64>, String),
                     ToggleHide(String, bool, bool),
-                    OpenSchedule(usize),
                     DeleteConv(usize, String, String, bool, String),
                     ReportConv(String),
                 }
@@ -1012,23 +1011,6 @@ impl ZaloGuiApp {
                                     ui.close_menu();
                                 }
 
-                                // 5b. Hẹn giờ gửi tin nhắn / Nhắc hẹn (#38)
-                                if ui
-                                    .add(
-                                        egui::Button::new(
-                                            RichText::new("Hẹn giờ gửi tin nhắn / Nhắc hẹn")
-                                                .size(13.5)
-                                                .color(pal.text_primary),
-                                        )
-                                        .frame(false)
-                                        .min_size(Vec2::new(195.0, 28.0)),
-                                    )
-                                    .clicked()
-                                {
-                                    pending_ctx_action = Some(ThreadCtxAction::OpenSchedule(i));
-                                    ui.close_menu();
-                                }
-
                                 ui.separator();
 
                                 // 6. Xóa hội thoại (màu đỏ)
@@ -1350,10 +1332,6 @@ impl ZaloGuiApp {
                                     hide,
                                 });
                             }
-                        }
-                        ThreadCtxAction::OpenSchedule(idx) => {
-                            self.selected_thread_index = idx;
-                            self.schedule_modal_open = true;
                         }
                         ThreadCtxAction::DeleteConv(idx, tid, tname, is_group, last_msg_id) => {
                             if let Ok(mut store) =

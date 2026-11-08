@@ -6,7 +6,7 @@ This project is a client, not a server. The "API" surface is three boundaries:
 | :--- | :--- | :--- |
 | **Zalo HTTP API** | outbound | `protocol/session/`, `protocol/registry/`, `protocol/auth/`, `protocol/social/`, `protocol/messaging/` |
 | **Zalo WebSocket** | bidirectional | `protocol/socket.rs`, `protocol/registry/ws.rs` |
-| **UI ↔ Worker IPC** | in-process | `gui/worker/` (`WorkerCmd` / `WorkerEvent`) |
+| **UI ↔ Core IPC** | in-process | `core/` (`CoreEngine` / `CoreEvent`) + `gui/worker/` (`WorkerCmd` / `GuiEvent`) |
 
 Plus local filesystem persistence (`src/storage/`, `protocol/session/persistence.rs`).
 

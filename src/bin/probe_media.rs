@@ -138,9 +138,10 @@ async fn main() -> Result<()> {
         }
     };
     let ids: Vec<String> = threads.iter().map(|t| t.id.clone()).collect();
-    if let Ok(resp) = alolite::messaging::polling::get_last_msgs(&s, &ids).await {
-        save("last-msgs", &resp);
-        let data = unwrap_data(&resp);
+    if let Ok(batch) = alolite::messaging::polling::get_last_msgs(&s, &ids).await {
+        let resp = batch.raw_value();
+        save("last-msgs", resp);
+        let data = unwrap_data(resp);
         let mut msgs = Vec::new();
         walk_msgs(&data, &mut msgs);
         println!("  tìm thấy {} message node", msgs.len());

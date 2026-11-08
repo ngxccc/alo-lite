@@ -142,18 +142,21 @@ async fn main() -> Result<()> {
                 )
                 .await
                 {
-                    Ok(resp) => {
+                    Ok(batch) => {
                         println!("✓ get_last_msgs cho Duyên THÀNH CÔNG!");
-                        println!("  Raw response: {}", serde_json::to_string_pretty(&resp)?);
+                        println!(
+                            "  Raw response: {}",
+                            serde_json::to_string_pretty(batch.raw_value())?
+                        );
                     }
                     Err(e) => println!("! get_last_msgs cho Duyên lỗi: {e}"),
                 }
                 match alolite::messaging::polling::get_last_msgs(&s, &[]).await {
-                    Ok(resp) => {
+                    Ok(batch) => {
                         println!("✓ get_last_msgs rỗng THÀNH CÔNG!");
                         println!(
                             "  Keys trong data: {:?}",
-                            resp.get("data").map(|d| d
+                            batch.raw_value().get("data").map(|d| d
                                 .as_object()
                                 .map(|o| o.keys().cloned().collect::<Vec<_>>()))
                         );

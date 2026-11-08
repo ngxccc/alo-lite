@@ -16,13 +16,14 @@ use tokio::sync::Mutex;
 use anyhow::Result;
 use serde_json::Value;
 
-use crate::protocol::auth::QrLogin;
+use crate::protocol::auth::{QrConfirmResult, QrLogin, QrScannedProfile};
 use crate::protocol::messaging::{
-    ChatMessage, LinkMetadata, PollState, StickerItem, StickerPackInfo, Thread,
+    ChatMessage, CloudMessagesPage, LastMsgsBatch, LinkMetadata, PollState, StickerItem,
+    StickerPackInfo, Thread,
 };
 use crate::protocol::session::Session;
 use crate::protocol::social::{FriendshipStatus, PhoneLookupResult};
-
+use crate::protocol::wire::{ActionAck, SendMessageReceipt};
 /// High-level client for the Zalo desktop protocol.
 ///
 /// Encapsulates authentication session state in an [`Arc<Mutex<Session>>`]
@@ -66,13 +67,13 @@ impl ZaloClient {
     }
 
     /// Long-poll waiting for the user to scan the QR code.
-    pub async fn wait_for_qr_scan(&self, q: &mut QrLogin) -> Result<Value> {
+    pub async fn wait_for_qr_scan(&self, q: &mut QrLogin) -> Result<QrScannedProfile> {
         let s = self.session.lock().await.clone();
         crate::protocol::auth::qr::wait_for_scan(&s, q).await
     }
 
     /// Poll until the user confirms the QR login on mobile.
-    pub async fn confirm_qr(&self, q: &QrLogin) -> Result<Value> {
+    pub async fn confirm_qr(&self, q: &QrLogin) -> Result<QrConfirmResult> {
         let s = self.session.lock().await.clone();
         crate::protocol::auth::qr::confirm(&s, q).await
     }
@@ -121,19 +122,19 @@ impl ZaloClient {
     }
 
     /// Send a friend request.
-    pub async fn send_friend_request(&self, to_id: &str, msg: &str) -> Result<Value> {
+    pub async fn send_friend_request(&self, to_id: &str, msg: &str) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::social::friends::send_friend_request(&s, to_id, msg).await
     }
 
     /// Accept an incoming friend request.
-    pub async fn accept_friend_request(&self, fid: &str) -> Result<Value> {
+    pub async fn accept_friend_request(&self, fid: &str) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::social::friends::accept_friend_request(&s, fid).await
     }
 
     /// Reject an incoming friend request.
-    pub async fn reject_friend_request(&self, fid: &str) -> Result<Value> {
+    pub async fn reject_friend_request(&self, fid: &str) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::social::friends::reject_friend_request(&s, fid).await
     }
@@ -165,7 +166,7 @@ impl ZaloClient {
     // ------------------------------------------------------------------------
 
     /// Get preview / last messages for given thread IDs.
-    pub async fn get_last_messages(&self, thread_ids: &[String]) -> Result<Value> {
+    pub async fn get_last_messages(&self, thread_ids: &[String]) -> Result<LastMsgsBatch> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::polling::get_last_msgs(&s, thread_ids).await
     }
@@ -178,7 +179,7 @@ impl ZaloClient {
         global_msg_id: &str,
         is_old: bool,
         count: u32,
-    ) -> Result<Value> {
+    ) -> Result<CloudMessagesPage> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::polling::get_cloud_messages(
             &s,
@@ -191,7 +192,7 @@ impl ZaloClient {
     }
 
     /// Fetch pinned conversations list.
-    pub async fn get_pinned_conversations(&self) -> Result<Value> {
+    pub async fn get_pinned_conversations(&self) -> Result<Vec<String>> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::threads::get_pinned(&s).await
     }
@@ -202,7 +203,7 @@ impl ZaloClient {
         thread_id: &str,
         is_group: bool,
         pin: bool,
-    ) -> Result<Value> {
+    ) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::threads::update_pinned_conversation(
             &s, thread_id, is_group, pin,
@@ -215,13 +216,13 @@ impl ZaloClient {
     // ------------------------------------------------------------------------
 
     /// Send a 1-1 text message.
-    pub async fn send_direct_message(&self, to_id: &str, text: &str) -> Result<Value> {
+    pub async fn send_direct_message(&self, to_id: &str, text: &str) -> Result<SendMessageReceipt> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::send::send_message(&s, to_id, text).await
     }
 
     /// Send a group text message.
-    pub async fn send_group_message(&self, grid: &str, text: &str) -> Result<Value> {
+    pub async fn send_group_message(&self, grid: &str, text: &str) -> Result<SendMessageReceipt> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::send::send_group_message(&s, grid, text).await
     }
@@ -233,7 +234,7 @@ impl ZaloClient {
         text: &str,
         quoted: &ChatMessage,
         is_group: bool,
-    ) -> Result<Value> {
+    ) -> Result<SendMessageReceipt> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::send::send_quote_message(&s, to_id, text, quoted, is_group)
             .await
@@ -246,7 +247,7 @@ impl ZaloClient {
         text: &str,
         meta: &LinkMetadata,
         is_group: bool,
-    ) -> Result<Value> {
+    ) -> Result<SendMessageReceipt> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::links::send_link_message(&s, to_id, text, meta, is_group).await
     }
@@ -259,7 +260,7 @@ impl ZaloClient {
         cate_id: u64,
         sticker_type: u32,
         is_group: bool,
-    ) -> Result<Value> {
+    ) -> Result<SendMessageReceipt> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::stickers::send_sticker(
             &s,
@@ -279,7 +280,7 @@ impl ZaloClient {
         is_group: bool,
         file_path: &Path,
         file_name: &str,
-    ) -> Result<(Value, ChatMessage)> {
+    ) -> Result<ChatMessage> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::attachments::send_attachment(
             &s, to_id, is_group, file_path, file_name,
@@ -298,7 +299,7 @@ impl ZaloClient {
         is_group: bool,
         msg: &ChatMessage,
         reaction_icon: &str,
-    ) -> Result<Value> {
+    ) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::reactions::send_reaction(
             &s,
@@ -316,7 +317,7 @@ impl ZaloClient {
         to_id: &str,
         is_group: bool,
         msg: &ChatMessage,
-    ) -> Result<Value> {
+    ) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::send::delete_message_for_me(&s, to_id, is_group, msg).await
     }
@@ -327,7 +328,7 @@ impl ZaloClient {
         to_id: &str,
         is_group: bool,
         msg: &ChatMessage,
-    ) -> Result<Value> {
+    ) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::send::recall_message(&s, to_id, is_group, msg).await
     }
@@ -347,13 +348,13 @@ impl ZaloClient {
     }
 
     /// Request mobile message history sync via wake-up protocol.
-    pub async fn request_phone_sync(&self, public_key: &str) -> Result<Value> {
+    pub async fn request_phone_sync(&self, public_key: &str) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::sync::request_phone_sync(&s, public_key).await
     }
 
     /// Clear pending sync state on mobile device.
-    pub async fn clean_sync(&self, public_key: &str) -> Result<Value> {
+    pub async fn clean_sync(&self, public_key: &str) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::sync::clean_sync(&s, public_key).await
     }
@@ -364,7 +365,7 @@ impl ZaloClient {
         thread_id: &str,
         is_group: bool,
         mark_unread: bool,
-    ) -> Result<Value> {
+    ) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::unread::set_unread_mark(&s, thread_id, is_group, mark_unread)
             .await
@@ -377,7 +378,7 @@ impl ZaloClient {
         is_group: bool,
         duration_sec: i64,
         mute: bool,
-    ) -> Result<Value> {
+    ) -> Result<ActionAck> {
         let s = self.session.lock().await.clone();
         crate::protocol::messaging::unread::set_mute_conversation(
             &s,

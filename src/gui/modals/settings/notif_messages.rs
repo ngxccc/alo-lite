@@ -44,7 +44,7 @@ impl ZaloGuiApp {
                         {
                             self.notification_authorization.finish(
                                 request_id,
-                                Err(crate::native_notifications::NotificationError::Io),
+                                Err(crate::services::native_notifications::NotificationError::Io),
                             );
                         }
                     }

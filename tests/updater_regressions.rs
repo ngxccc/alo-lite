@@ -1,4 +1,4 @@
-use alolite::updater::{
+use alolite::services::updater::{
     download_release, install_release, stage_portable_release, validate_asset_name, DownloadLimits,
     DownloadRequest, InstallTarget,
 };

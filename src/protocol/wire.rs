@@ -6,6 +6,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{bail, Result};
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::clock::now_ms;
@@ -226,6 +227,84 @@ pub fn next_client_message_id() -> u64 {
     }
 }
 
+/// Typed outcome for outbound message sends (`send_message`, `send_quote`, `send_link`, `send_sticker`, `forward`).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SendMessageReceipt {
+    pub msg_id: String,
+    pub error_code: Option<i64>,
+    pub error_message: Option<String>,
+}
+
+impl SendMessageReceipt {
+    pub fn from_wire(resp: &Value) -> Self {
+        let msg_id = resp
+            .get("data")
+            .and_then(|d| pick_str(d, &["msgId", "msg_id"]))
+            .unwrap_or_default();
+        let error_code = resp
+            .get("error_code")
+            .and_then(Value::as_i64)
+            .filter(|c| *c != 0);
+        let error_message = resp
+            .get("error_message")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+        Self {
+            msg_id,
+            error_code,
+            error_message,
+        }
+    }
+
+    pub fn is_ok(&self) -> bool {
+        self.error_code.is_none()
+    }
+
+    pub fn err_code(&self) -> Option<i64> {
+        self.error_code
+    }
+}
+
+/// Typed outcome for mutation/control endpoints without a message-ID payload.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ActionAck {
+    pub error_code: Option<i64>,
+    pub error_message: Option<String>,
+}
+
+impl ActionAck {
+    pub fn ok() -> Self {
+        Self::default()
+    }
+
+    pub fn from_wire(resp: &Value) -> Self {
+        let error_code = resp
+            .get("error_code")
+            .and_then(Value::as_i64)
+            .filter(|c| *c != 0);
+        let error_message = resp
+            .get("error_message")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+        Self {
+            error_code,
+            error_message,
+        }
+    }
+
+    pub fn is_ok(&self) -> bool {
+        self.error_code.is_none()
+    }
+
+    pub fn err_code(&self) -> Option<i64> {
+        self.error_code
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,5 +330,20 @@ mod tests {
         let b = next_client_message_id();
         let c = next_client_message_id();
         assert!(a < b && b < c);
+    }
+
+    #[test]
+    fn typed_receipts_normalize_nonzero_error_codes_and_numeric_msg_ids() {
+        let ok_num = json!({"error_code": 0, "data": {"msgId": 987654321_u64}});
+        let r = SendMessageReceipt::from_wire(&ok_num);
+        assert!(r.is_ok());
+        assert_eq!(r.msg_id, "987654321");
+        assert_eq!(r.err_code(), None);
+
+        let err_ack = json!({"error_code": 18022, "error_message": "Invalid Signature"});
+        let ack = ActionAck::from_wire(&err_ack);
+        assert!(!ack.is_ok());
+        assert_eq!(ack.err_code(), Some(18022));
+        assert_eq!(ack.error_message.as_deref(), Some("Invalid Signature"));
     }
 }

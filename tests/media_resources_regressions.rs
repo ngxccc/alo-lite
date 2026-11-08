@@ -1,4 +1,4 @@
-use alolite::media_resources::*;
+use alolite::services::media_resources::*;
 use std::{
     io::{Read, Write},
     net::TcpListener,

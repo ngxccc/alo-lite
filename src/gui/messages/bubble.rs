@@ -939,9 +939,6 @@ pub enum BubbleAction {
     ToggleStar,
     DeleteForMe,
     RecallForEveryone,
-    CallAgain {
-        is_video: bool,
-    },
     OpenImagePopup {
         tex_key: String,
         full_url: String,

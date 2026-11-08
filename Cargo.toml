@@ -52,10 +52,6 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 # Local SQLite Storage
 rusqlite = { version = "0.32", features = ["bundled"] }
 
-# Audio (Legacy dependencies, retained for media compatibility)
-cpal = "0.15"
-opus = "0.3"
-
 [lib]
 name = "alolite"
 path = "src/lib.rs"

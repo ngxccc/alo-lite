@@ -691,7 +691,7 @@ pub async fn send_reaction(
     is_group: bool,
     msg: &super::threads::ChatMessage,
     reaction: &str,
-) -> anyhow::Result<Value> {
+) -> anyhow::Result<crate::protocol::wire::ActionAck> {
     crate::protocol::wire::require_login(s)?;
     let now = crate::clock::now_ms();
     let (r_icon, r_type) = reaction_code_and_type(reaction);
@@ -755,5 +755,6 @@ pub async fn send_reaction(
 
     let params = s.encoded_params(&body)?;
     let resp = s.post_form(&url, format!("params={params}")).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
 }

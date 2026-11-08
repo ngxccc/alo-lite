@@ -70,7 +70,7 @@ impl ZaloGuiApp {
         }
         if add_new_account {
             self.settings_modal_open = false;
-            let _ = crate::account_manager::save_current_account_snapshot(&self.user_uin);
+            let _ = crate::services::account_manager::save_current_account_snapshot(&self.user_uin);
             self.is_logged_in = false;
             self.user_name.clear();
             self.user_uin.clear();
@@ -225,9 +225,9 @@ impl ZaloGuiApp {
             ));
         }
         if export_autoreply_tpl {
-            let mut rules = crate::api_mcp::load_autoreply_rules();
+            let mut rules = crate::mcp::load_autoreply_rules();
             if rules.is_empty() {
-                rules.push(crate::api_mcp::AutoReplyRule {
+                rules.push(crate::mcp::AutoReplyRule {
                     id: "default_busy".into(),
                     keyword: "/busy".into(),
                     match_mode: "contains".into(),
@@ -236,7 +236,7 @@ impl ZaloGuiApp {
                     scope: "direct".into(),
                 });
             }
-            let _ = crate::api_mcp::save_autoreply_rules(&rules);
+            let _ = crate::mcp::save_autoreply_rules(&rules);
             self.show_toast("Đã lưu cấu hình mẫu autoreply_rules.json");
         }
     }

@@ -29,12 +29,6 @@ pub struct PresetSticker {
 /// Built-in featured Zalo sticker packs (`(cate_id, title)`).
 pub const AMI_FAT_CAT_CATE_ID: u64 = 99901;
 
-pub fn get_ami_fat_cat_gif(
-    _sticker_id: u64,
-) -> Option<(&'static str, &'static [u8], &'static [u8])> {
-    None
-}
-
 pub const FEATURED_PACK_TABS: &[(u64, &str)] = &[
     (61900, "Zapy Dô Tri"),
     (12815, "Bé Hai"),

@@ -190,7 +190,7 @@ pub fn render_call_card_widget(
     pal: &ThemePalette,
     card_width: f32,
 ) -> Option<BubbleAction> {
-    let mut action = None;
+    let action = None;
     let accent = if card.is_missed_or_failed {
         Color32::from_rgb(239, 68, 68)
     } else {
@@ -252,39 +252,6 @@ pub fn render_call_card_widget(
                 }
             });
         });
-        ui.add_space(8.0);
-        let (sep_rect, _) = ui.allocate_exact_size(Vec2::new(card_width, 1.0), Sense::hover());
-        ui.painter().line_segment(
-            [sep_rect.left_center(), sep_rect.right_center()],
-            Stroke::new(1.0_f32, pal.border),
-        );
-        ui.add_space(6.0);
-
-        let btn_label = if card.is_video {
-            format!("{}  Gọi video lại", lucide::VIDEO)
-        } else {
-            format!("{}  Gọi lại", lucide::PHONE)
-        };
-        let call_btn = egui::Button::new(
-            RichText::new(btn_label)
-                .size(12.5)
-                .color(Color32::WHITE)
-                .strong(),
-        )
-        .fill(pal.primary)
-        .stroke(Stroke::new(1.0_f32, pal.primary_hover))
-        .rounding(Rounding::same(7.0))
-        .min_size(Vec2::new(card_width, 30.0));
-
-        if ui
-            .add(call_btn)
-            .on_hover_cursor(CursorIcon::PointingHand)
-            .clicked()
-        {
-            action = Some(BubbleAction::CallAgain {
-                is_video: card.is_video,
-            });
-        }
     });
     action
 }

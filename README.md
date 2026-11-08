@@ -2,7 +2,7 @@
 
 > **A fast, lightweight, and hardened native desktop messaging client written in Rust (zero Node.js, zero Electron).**
 
-Client desktop viết bằng Rust (`eframe`/`egui` + `ratatui`), giao tiếp trực tiếp với hệ thống API và WebSocket mà không qua Electron hay Chromium.
+Client desktop viết bằng Rust (`CoreEngine` + `eframe`/`egui` + MCP JSON-RPC), giao tiếp trực tiếp với hệ thống API và WebSocket mà không qua Electron hay Chromium.
 
 ---
 

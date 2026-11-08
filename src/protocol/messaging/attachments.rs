@@ -374,7 +374,7 @@ pub async fn send_attachment(
     is_group: bool,
     file_path: &Path,
     caption: &str,
-) -> Result<(Value, ChatMessage)> {
+) -> Result<ChatMessage> {
     require_login(s)?;
     let file_bytes = std::fs::read(file_path)?;
     if file_bytes.is_empty() {
@@ -582,7 +582,7 @@ pub async fn send_attachment(
             link_src: Some("Hình ảnh Zalo".into()),
             ..Default::default()
         };
-        return Ok((send_resp, cm));
+        return Ok(cm);
     }
 
     let mime = match ext.as_str() {
@@ -777,7 +777,7 @@ pub async fn send_attachment(
         link_src: Some(format!("{kind_label} Zalo")),
         ..Default::default()
     };
-    Ok((send_resp, cm))
+    Ok(cm)
 }
 
 #[cfg(test)]

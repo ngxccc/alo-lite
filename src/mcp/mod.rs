@@ -1,8 +1,8 @@
-//! Local HTTP REST API, Model Context Protocol (MCP) JSON-RPC 2.0 server, and Auto-Reply rules (#35).
+//! Local HTTP REST API, Model Context Protocol (MCP) JSON-RPC 2.0 server, and Auto-Reply rules.
 //!
 //! Enables third-party tools, automation scripts, and AI agents (Claude Desktop, Cursor, MCP clients)
-//! to query threads/messages, search local history, send or schedule messages, configure auto-reply
-//! rules, and export/sync conversation data over `127.0.0.1` or `stdio`.
+//! to query threads/messages, search local history, send messages, and configure auto-reply
+//! rules over `127.0.0.1` or `stdio`, sharing a single [`CoreEngine`].
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,12 +12,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
 
-use crate::messaging::send as chat;
-use crate::scheduler;
-use crate::session::Session;
-use crate::store::{self, MessageStore};
+use crate::core::CoreEngine;
 
 pub const AUTOREPLY_FILE: &str = "autoreply_rules.json";
 pub const DEFAULT_API_PORT: u16 = 17890;
@@ -98,16 +94,11 @@ pub fn match_autoreply_rule(
 }
 
 /// Handle a single MCP JSON-RPC 2.0 request object and return the JSON-RPC response (`None` for notifications).
-pub async fn handle_mcp_request(
-    session: &Arc<Mutex<Session>>,
-    req: &Value,
-    db_path: &str,
-) -> Option<Value> {
+pub async fn handle_mcp_request(engine: &CoreEngine, req: &Value) -> Option<Value> {
     let id = req.get("id").cloned();
     let method = req.get("method").and_then(Value::as_str).unwrap_or("");
     let params = req.get("params").cloned().unwrap_or_else(|| json!({}));
 
-    // JSON-RPC notifications have no `id`
     if id.is_none() || method.starts_with("notifications/") {
         return None;
     }
@@ -146,12 +137,6 @@ pub async fn handle_mcp_request(
                         "description": "Danh sách tất cả cuộc trò chuyện cá nhân, nhóm và Cloud của tôi"
                     },
                     {
-                        "uri": "zalo://scheduled",
-                        "name": "Danh sách tin nhắn hẹn giờ",
-                        "mimeType": "application/json",
-                        "description": "Các tin nhắn đang chờ phát theo lịch hẹn"
-                    },
-                    {
                         "uri": "zalo://autoreply",
                         "name": "Quy tắc trả lời tự động",
                         "mimeType": "application/json",
@@ -164,13 +149,8 @@ pub async fn handle_mcp_request(
             let uri = params.get("uri").and_then(Value::as_str).unwrap_or("");
             let content = match uri {
                 "zalo://threads" => {
-                    let mut threads = store::load_threads_cache();
-                    store::load_history_into_threads(db_path, &mut threads, 20);
+                    let threads = engine.list_threads(20).await;
                     serde_json::to_string_pretty(&threads).unwrap_or_else(|_| "[]".into())
-                }
-                "zalo://scheduled" => {
-                    let list = scheduler::list_pending_scheduled(db_path, None).unwrap_or_default();
-                    serde_json::to_string_pretty(&list).unwrap_or_else(|_| "[]".into())
                 }
                 "zalo://autoreply" => {
                     let rules = load_autoreply_rules();
@@ -251,21 +231,6 @@ pub async fn handle_mcp_request(
                         }
                     },
                     {
-                        "name": "zalo_schedule_message",
-                        "description": "Hẹn giờ gửi tin nhắn vào một thời điểm trong tương lai",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "to_id": { "type": "string", "description": "ID người nhận hoặc nhóm" },
-                                "thread_name": { "type": "string", "description": "Tên hiển thị của hội thoại" },
-                                "text": { "type": "string", "description": "Nội dung tin nhắn" },
-                                "when": { "type": "string", "description": "Thời점 phát tin: +15m, +2h, HH:MM, hoặc YYYY-MM-DD HH:MM" },
-                                "is_group": { "type": "boolean", "description": "true nếu gửi vào nhóm" }
-                            },
-                            "required": ["to_id", "text", "when"]
-                        }
-                    },
-                    {
                         "name": "zalo_configure_autoreply",
                         "description": "Xem hoặc thêm quy tắc tự động trả lời tin nhắn theo từ khóa",
                         "inputSchema": {
@@ -288,7 +253,7 @@ pub async fn handle_mcp_request(
                 .get("arguments")
                 .cloned()
                 .unwrap_or_else(|| json!({}));
-            let (is_err, payload) = execute_tool_call(session, name, &args, db_path).await;
+            let (is_err, payload) = execute_tool_call(engine, name, &args).await;
             Some(json!({
                 "jsonrpc": "2.0",
                 "id": req_id,
@@ -312,40 +277,20 @@ pub async fn handle_mcp_request(
     }
 }
 
-async fn execute_tool_call(
-    session: &Arc<Mutex<Session>>,
-    name: &str,
-    args: &Value,
-    db_path: &str,
-) -> (bool, Value) {
+async fn execute_tool_call(engine: &CoreEngine, name: &str, args: &Value) -> (bool, Value) {
     match name {
         "zalo_status" => {
-            let s = session.lock().await;
-            let logged_in = s.login.is_some() && s.zpw_sek.is_some();
-            let uin = s.login.as_ref().map(|l| l.uin.as_str()).unwrap_or("");
-            let display_name = s
-                .login
-                .as_ref()
-                .map(|l| l.display_name.as_str())
-                .unwrap_or("");
-            let thread_count = MessageStore::open(db_path)
-                .and_then(|st| st.all_threads())
-                .map(|v| v.len())
-                .unwrap_or(0);
-            let scheduled_count = scheduler::list_pending_scheduled(db_path, None)
-                .map(|v| v.len())
-                .unwrap_or(0);
+            let st = engine.status().await;
             (
                 false,
                 json!({
                     "ok": true,
-                    "app": "alolite",
-                    "version": env!("CARGO_PKG_VERSION"),
-                    "logged_in": logged_in,
-                    "uin": uin,
-                    "display_name": display_name,
-                    "threads_in_db": thread_count,
-                    "pending_scheduled": scheduled_count,
+                    "app": st.app,
+                    "version": st.version,
+                    "logged_in": st.logged_in,
+                    "uin": st.uin,
+                    "display_name": st.display_name,
+                    "threads_in_db": st.threads_in_db,
                 }),
             )
         }
@@ -355,8 +300,7 @@ async fn execute_tool_call(
                 .and_then(Value::as_u64)
                 .unwrap_or(50)
                 .min(500) as usize;
-            let mut threads = store::load_threads_cache();
-            store::load_history_into_threads(db_path, &mut threads, 5);
+            let threads = engine.list_threads(5).await;
             let items: Vec<Value> = threads
                 .into_iter()
                 .take(limit)
@@ -385,7 +329,7 @@ async fn execute_tool_call(
                 .and_then(Value::as_u64)
                 .unwrap_or(50)
                 .min(500) as usize;
-            match MessageStore::open(db_path).and_then(|st| st.messages_for(tid, limit)) {
+            match engine.get_messages(tid, limit).await {
                 Ok(msgs) => (false, json!({ "thread_id": tid, "messages": msgs })),
                 Err(e) => (true, json!({ "error": e.to_string() })),
             }
@@ -399,7 +343,7 @@ async fn execute_tool_call(
                 .and_then(Value::as_u64)
                 .unwrap_or(50)
                 .min(200) as usize;
-            match MessageStore::open(db_path).and_then(|st| st.search_messages(q, limit)) {
+            match engine.search_messages(q, limit).await {
                 Ok(hits) => (false, json!({ "query": q, "results": hits })),
                 Err(e) => (true, json!({ "error": e.to_string() })),
             }
@@ -415,56 +359,11 @@ async fn execute_tool_call(
                 .get("is_group")
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            let s = session.lock().await.clone();
-            let res = if is_group {
-                chat::send_group_message(&s, to_id, text).await
-            } else {
-                chat::send_message(&s, to_id, text).await
-            };
-            match res {
-                Ok(resp) => (
-                    false,
-                    json!({ "ok": true, "to_id": to_id, "response": resp }),
+            match engine.send_text(to_id, text, is_group).await {
+                Ok(receipt) => (
+                    !receipt.is_ok(),
+                    json!({ "ok": receipt.is_ok(), "to_id": to_id, "receipt": receipt }),
                 ),
-                Err(e) => (true, json!({ "error": e.to_string() })),
-            }
-        }
-        "zalo_schedule_message" => {
-            let Some(to_id) = args.get("to_id").and_then(Value::as_str) else {
-                return (true, json!({ "error": "Missing required argument: to_id" }));
-            };
-            let Some(text) = args.get("text").and_then(Value::as_str) else {
-                return (true, json!({ "error": "Missing required argument: text" }));
-            };
-            let Some(when) = args.get("when").and_then(Value::as_str) else {
-                return (true, json!({ "error": "Missing required argument: when" }));
-            };
-            let thread_name = args
-                .get("thread_name")
-                .and_then(Value::as_str)
-                .unwrap_or(to_id);
-            let is_group = args
-                .get("is_group")
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            let now_ts = crate::clock::unix_now();
-            let deliver_at = match when.parse::<i64>() {
-                Ok(ts) if ts > now_ts => ts,
-                _ => match scheduler::parse_custom_schedule_input(when, now_ts) {
-                    Ok(ts) => ts,
-                    Err(e) => return (true, json!({ "error": e })),
-                },
-            };
-            match scheduler::schedule_message(
-                db_path,
-                to_id,
-                thread_name,
-                is_group,
-                text,
-                deliver_at,
-                now_ts,
-            ) {
-                Ok(item) => (false, json!({ "ok": true, "scheduled": item })),
                 Err(e) => (true, json!({ "error": e.to_string() })),
             }
         }
@@ -525,7 +424,7 @@ async fn execute_tool_call(
 }
 
 /// Run the MCP JSON-RPC 2.0 server over `stdin`/`stdout` (`alolite --mcp`).
-pub async fn run_mcp_stdio_server(session: Arc<Mutex<Session>>, db_path: &str) -> Result<()> {
+pub async fn run_mcp_stdio_server(engine: Arc<CoreEngine>) -> Result<()> {
     use std::io::{BufRead, Write};
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
@@ -537,7 +436,7 @@ pub async fn run_mcp_stdio_server(session: Arc<Mutex<Session>>, db_path: &str) -
             continue;
         }
         let resp = match serde_json::from_str::<Value>(trimmed) {
-            Ok(req) => handle_mcp_request(&session, &req, db_path).await,
+            Ok(req) => handle_mcp_request(&engine, &req).await,
             Err(e) => Some(json!({
                 "jsonrpc": "2.0",
                 "id": null,
@@ -559,11 +458,10 @@ pub async fn run_mcp_stdio_server(session: Arc<Mutex<Session>>, db_path: &str) -
 
 /// Handle a REST API request and return `(status_code, json_body)`.
 pub async fn handle_rest_request(
-    session: &Arc<Mutex<Session>>,
+    engine: &CoreEngine,
     method: &str,
     path_and_query: &str,
     body: &str,
-    db_path: &str,
 ) -> (u16, Value) {
     let (path, query_str) = path_and_query
         .split_once('?')
@@ -579,7 +477,7 @@ pub async fn handle_rest_request(
 
     match (method, path) {
         ("GET", "/api/v1/status") | ("GET", "/health") => {
-            let (_, val) = execute_tool_call(session, "zalo_status", &json!({}), db_path).await;
+            let (_, val) = execute_tool_call(engine, "zalo_status", &json!({})).await;
             (200, val)
         }
         ("GET", "/api/v1/threads") => {
@@ -587,13 +485,8 @@ pub async fn handle_rest_request(
                 .get("limit")
                 .and_then(|s| s.parse::<u64>().ok())
                 .unwrap_or(100);
-            let (_, val) = execute_tool_call(
-                session,
-                "zalo_list_threads",
-                &json!({ "limit": limit }),
-                db_path,
-            )
-            .await;
+            let (_, val) =
+                execute_tool_call(engine, "zalo_list_threads", &json!({ "limit": limit })).await;
             (200, val)
         }
         ("GET", p) if p.starts_with("/api/v1/threads/") && p.ends_with("/messages") => {
@@ -606,10 +499,9 @@ pub async fn handle_rest_request(
                 .and_then(|s| s.parse::<u64>().ok())
                 .unwrap_or(100);
             let (err, val) = execute_tool_call(
-                session,
+                engine,
                 "zalo_get_messages",
                 &json!({ "thread_id": tid, "limit": limit }),
-                db_path,
             )
             .await;
             (if err { 400 } else { 200 }, val)
@@ -621,48 +513,17 @@ pub async fn handle_rest_request(
                 .and_then(|s| s.parse::<u64>().ok())
                 .unwrap_or(50);
             let (err, val) = execute_tool_call(
-                session,
+                engine,
                 "zalo_search_messages",
                 &json!({ "query": q, "limit": limit }),
-                db_path,
             )
             .await;
             (if err { 400 } else { 200 }, val)
         }
         ("POST", "/api/v1/messages/send") => {
             let payload: Value = serde_json::from_str(body).unwrap_or_else(|_| json!({}));
-            let (err, val) =
-                execute_tool_call(session, "zalo_send_message", &payload, db_path).await;
+            let (err, val) = execute_tool_call(engine, "zalo_send_message", &payload).await;
             (if err { 400 } else { 200 }, val)
-        }
-        ("POST", "/api/v1/messages/schedule") => {
-            let payload: Value = serde_json::from_str(body).unwrap_or_else(|_| json!({}));
-            let mut normalized = payload.clone();
-            if normalized.get("when").is_none() {
-                if let Some(ts) = normalized.get("deliver_at") {
-                    normalized["when"] = json!(ts.to_string());
-                }
-            }
-            let (err, val) =
-                execute_tool_call(session, "zalo_schedule_message", &normalized, db_path).await;
-            (if err { 400 } else { 200 }, val)
-        }
-        ("GET", "/api/v1/scheduled") => {
-            let tid = query_params.get("thread_id").map(String::as_str);
-            match scheduler::list_pending_scheduled(db_path, tid) {
-                Ok(list) => (200, json!({ "ok": true, "scheduled": list })),
-                Err(e) => (500, json!({ "ok": false, "error": e.to_string() })),
-            }
-        }
-        ("DELETE", p) if p.starts_with("/api/v1/scheduled/") => {
-            let id_str = p.trim_start_matches("/api/v1/scheduled/").trim();
-            let Ok(id) = id_str.parse::<i64>() else {
-                return (400, json!({ "ok": false, "error": "Invalid scheduled id" }));
-            };
-            match scheduler::cancel_scheduled_message(db_path, id) {
-                Ok(cancelled) => (200, json!({ "ok": true, "cancelled": cancelled })),
-                Err(e) => (500, json!({ "ok": false, "error": e.to_string() })),
-            }
         }
         ("GET", "/api/v1/autoreply") => {
             (200, json!({ "ok": true, "rules": load_autoreply_rules() }))
@@ -680,14 +541,12 @@ pub async fn handle_rest_request(
                 }
             } else {
                 let (err, val) =
-                    execute_tool_call(session, "zalo_configure_autoreply", &payload, db_path).await;
+                    execute_tool_call(engine, "zalo_configure_autoreply", &payload).await;
                 (if err { 400 } else { 200 }, val)
             }
         }
         ("GET", "/api/v1/export") => {
-            let mut threads = store::load_threads_cache();
-            store::load_history_into_threads(db_path, &mut threads, 1000);
-            let scheduled = scheduler::list_pending_scheduled(db_path, None).unwrap_or_default();
+            let threads = engine.list_threads(1000).await;
             let autoreply = load_autoreply_rules();
             (
                 200,
@@ -696,13 +555,12 @@ pub async fn handle_rest_request(
                     "exported_at": crate::clock::unix_now(),
                     "version": env!("CARGO_PKG_VERSION"),
                     "threads": threads,
-                    "scheduled_messages": scheduled,
                     "autoreply_rules": autoreply,
                 }),
             )
         }
         ("POST", "/api/v1/mcp") => match serde_json::from_str::<Value>(body) {
-            Ok(req) => match handle_mcp_request(session, &req, db_path).await {
+            Ok(req) => match handle_mcp_request(engine, &req).await {
                 Some(resp) => (200, resp),
                 None => (202, json!({ "ok": true })),
             },
@@ -726,9 +584,6 @@ pub async fn handle_rest_request(
                     "GET /api/v1/threads/{id}/messages",
                     "GET /api/v1/search?q=<keyword>",
                     "POST /api/v1/messages/send",
-                    "POST /api/v1/messages/schedule",
-                    "GET /api/v1/scheduled",
-                    "DELETE /api/v1/scheduled/{id}",
                     "GET /api/v1/autoreply",
                     "POST /api/v1/autoreply",
                     "GET /api/v1/export",
@@ -740,11 +595,7 @@ pub async fn handle_rest_request(
 }
 
 /// Spawn the local HTTP REST & MCP server on `127.0.0.1:<port>`.
-pub async fn run_local_http_server(
-    session: Arc<Mutex<Session>>,
-    port: u16,
-    db_path: String,
-) -> Result<()> {
+pub async fn run_local_http_server(engine: Arc<CoreEngine>, port: u16) -> Result<()> {
     let bind_addr = format!("127.0.0.1:{port}");
     let listener = TcpListener::bind(&bind_addr).await?;
     let expected_token = std::env::var("ALOLITE_API_TOKEN")
@@ -753,8 +604,7 @@ pub async fn run_local_http_server(
 
     loop {
         let (mut stream, _) = listener.accept().await?;
-        let sess = session.clone();
-        let db = db_path.clone();
+        let eng = Arc::clone(&engine);
         let tok = expected_token.clone();
         tokio::spawn(async move {
             let mut buf = vec![0u8; 65536];
@@ -800,7 +650,7 @@ pub async fn run_local_http_server(
                 }
             }
 
-            let (status, json_val) = handle_rest_request(&sess, method, path, body_part, &db).await;
+            let (status, json_val) = handle_rest_request(&eng, method, path, body_part).await;
             let status_text = match status {
                 200 => "200 OK",
                 202 => "202 Accepted",
@@ -848,6 +698,8 @@ fn url_decode(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::Session;
+    use crate::storage::{self, MessageStore};
 
     #[test]
     fn autoreply_rules_match_contains_exact_prefix_and_scope() {
@@ -871,15 +723,13 @@ mod tests {
         ];
 
         assert!(match_autoreply_rule(&rules, "Cho mình xin BÁO GIÁ nhé", false).is_some());
-        // Scope is `direct`, so group messages do not trigger r1
         assert!(match_autoreply_rule(&rules, "Cho mình xin báo giá nhé", true).is_none());
-        // r2 has scope `all` and prefix `/ping`
         let hit = match_autoreply_rule(&rules, "/ping server", true).unwrap();
         assert_eq!(hit.id, "r2");
     }
 
     #[tokio::test]
-    async fn mcp_and_rest_handlers_expose_tools_search_and_schedule() {
+    async fn mcp_and_rest_handlers_expose_tools_and_search() {
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -890,7 +740,7 @@ mod tests {
         {
             let mut store = MessageStore::open(db_path).unwrap();
             store
-                .upsert_message(&store::StoredMessage {
+                .upsert_message(&storage::StoredMessage {
                     msg_id: "m_mcp_1".into(),
                     thread_id: "t_mcp".into(),
                     sender_id: "u1".into(),
@@ -904,53 +754,31 @@ mod tests {
                 .unwrap();
         }
 
-        let session = Arc::new(Mutex::new(Session::new(false, false, false).unwrap()));
+        let session = Session::new(false, false, false).unwrap();
+        let engine = CoreEngine::headless(session, db_path);
 
-        // 1. MCP initialize
         let init_resp = handle_mcp_request(
-            &session,
+            &engine,
             &json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }),
-            db_path,
         )
         .await
         .unwrap();
         assert_eq!(init_resp["result"]["serverInfo"]["name"], "alolite-mcp");
 
-        // 2. MCP tools/list
         let tools_resp = handle_mcp_request(
-            &session,
+            &engine,
             &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }),
-            db_path,
         )
         .await
         .unwrap();
         let tools = tools_resp["result"]["tools"].as_array().unwrap();
         assert!(tools.iter().any(|t| t["name"] == "zalo_search_messages"));
-        assert!(tools.iter().any(|t| t["name"] == "zalo_schedule_message"));
+        assert!(!tools.iter().any(|t| t["name"] == "zalo_schedule_message"));
 
-        // 3. REST search
         let (status, search_val) =
-            handle_rest_request(&session, "GET", "/api/v1/search?q=MCP", "", db_path).await;
+            handle_rest_request(&engine, "GET", "/api/v1/search?q=MCP", "").await;
         assert_eq!(status, 200);
         assert_eq!(search_val["results"].as_array().unwrap().len(), 1);
-
-        // 4. REST schedule message
-        let (sched_status, sched_val) = handle_rest_request(
-            &session,
-            "POST",
-            "/api/v1/messages/schedule",
-            &json!({
-                "to_id": "t_mcp",
-                "thread_name": "Alice",
-                "text": "Tin nhắn hẹn giờ qua REST API",
-                "when": "+30m"
-            })
-            .to_string(),
-            db_path,
-        )
-        .await;
-        assert_eq!(sched_status, 200);
-        assert_eq!(sched_val["ok"], true);
 
         let _ = std::fs::remove_file(&db_file);
     }

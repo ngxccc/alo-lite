@@ -59,11 +59,6 @@ impl ZaloGuiApp {
             self.render_all_modals(ctx, pal);
             return;
         }
-        if self.feed_modal_open {
-            self.render_feed_page(ctx, pal);
-            self.render_all_modals(ctx, pal);
-            return;
-        }
 
         // 2. Conversation List Sidebar
         let sidebar_exact_w = 300.0_f32;
@@ -99,10 +94,8 @@ impl ZaloGuiApp {
         self.render_wipe_confirm(ctx, pal);
         self.render_toast_overlay(ctx, pal);
         self.render_forward_dialog(ctx, pal);
-        self.render_call_overlay(ctx, pal);
         self.render_image_viewer_modal(ctx, pal);
         self.render_phone_lookup_modal(ctx, pal);
-        self.render_schedule_modal(ctx, pal);
         self.render_phone_sync_modal(ctx, pal);
         self.render_settings_modal(ctx, pal);
     }

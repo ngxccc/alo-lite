@@ -669,6 +669,255 @@ pub fn notify_os_new_update(latest_version: &str, current_version: &str, release
     }
 }
 
+/// UI-agnostic update metadata returned by [`fetch_github_latest_release`].
+#[derive(Debug, Clone)]
+pub struct UpdateCheckResult {
+    pub current_version: String,
+    pub latest_version: String,
+    pub has_update: bool,
+    pub release_title: String,
+    pub release_notes: String,
+    pub html_url: String,
+    pub download_url: Option<String>,
+    pub asset_name: Option<String>,
+    pub asset_size: u64,
+    pub expected_sha256: Option<String>,
+    pub published_at: String,
+}
+
+const GITHUB_REPO: &str = "ngxccc/alolite";
+
+/// Query GitHub Releases (falling back to `latest.json`) for the newest release matching this platform.
+pub async fn fetch_github_latest_release() -> Result<UpdateCheckResult, String> {
+    let current_ver = env!("CARGO_PKG_VERSION").to_string();
+    let client = reqwest::Client::builder()
+        .user_agent(format!("alolite/{current_ver}"))
+        .timeout(Duration::from_secs(12))
+        .build()
+        .map_err(|e| format!("Khởi tạo HTTP client thất bại: {e}"))?;
+
+    let latest_url = format!("https://api.github.com/repos/{GITHUB_REPO}/releases/latest");
+    let mut rel_json: Option<serde_json::Value> = None;
+
+    if let Ok(resp) = client
+        .get(&latest_url)
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+    {
+        if resp.status().is_success() {
+            if let Ok(v) = resp.json::<serde_json::Value>().await {
+                rel_json = Some(v);
+            }
+        }
+    }
+
+    if rel_json.is_none() {
+        let list_url = format!("https://api.github.com/repos/{GITHUB_REPO}/releases?per_page=5");
+        if let Ok(resp) = client
+            .get(&list_url)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send()
+            .await
+        {
+            if resp.status().is_success() {
+                if let Ok(arr) = resp.json::<serde_json::Value>().await {
+                    if let Some(first) = arr
+                        .as_array()
+                        .and_then(|a| {
+                            a.iter()
+                                .find(|r| {
+                                    !r.get("draft").and_then(|v| v.as_bool()).unwrap_or(false)
+                                })
+                                .or_else(|| a.first())
+                        })
+                        .cloned()
+                    {
+                        rel_json = Some(first);
+                    }
+                }
+            }
+        }
+    }
+
+    if rel_json.is_none() {
+        let cdn_manifest_url =
+            format!("https://github.com/{GITHUB_REPO}/releases/latest/download/latest.json");
+        if let Ok(resp) = client.get(&cdn_manifest_url).send().await {
+            if resp.status().is_success() {
+                if let Ok(manifest) = resp.json::<serde_json::Value>().await {
+                    rel_json = Some(manifest);
+                }
+            }
+        }
+    }
+
+    let Some(rel) = rel_json else {
+        return Err("Không truy cập được máy chủ GitHub Releases API".into());
+    };
+
+    let mut meta = parse_github_release_value(
+        &rel,
+        &current_ver,
+        GITHUB_REPO,
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    );
+
+    if meta.expected_sha256.is_none() {
+        if let (Some(ref s_url), Some(ref b_name)) = (&meta.sha256sums_url, &meta.asset_name) {
+            if let Ok(resp) = client.get(s_url).send().await {
+                if let Ok(txt) = resp.text().await {
+                    meta.expected_sha256 = parse_sha256sums_for_asset(&txt, b_name);
+                }
+            }
+        }
+    }
+
+    Ok(UpdateCheckResult {
+        current_version: meta.current_version,
+        latest_version: meta.latest_version,
+        has_update: meta.has_update,
+        release_title: meta.release_title,
+        release_notes: meta.release_notes,
+        html_url: meta.html_url,
+        download_url: meta.download_url,
+        asset_name: meta.asset_name,
+        asset_size: meta.asset_size,
+        expected_sha256: meta.expected_sha256,
+        published_at: meta.published_at,
+    })
+}
+
+/// Download, verify, and atomically install/launch a release asset while reporting byte progress.
+pub async fn apply_github_release_update<F>(
+    download_url: &str,
+    asset_name: &str,
+    target_version: &str,
+    expected_sha256: Option<&str>,
+    mut on_progress: F,
+) -> Result<bool, String>
+where
+    F: FnMut(u64, u64),
+{
+    let client = reqwest::Client::builder()
+        .user_agent(format!("alolite/{target_version}"))
+        .timeout(Duration::from_secs(240))
+        .build()
+        .map_err(|e| format!("Khởi tạo HTTP client thất bại: {e}"))?;
+
+    let req = DownloadRequest {
+        url: download_url,
+        asset_name,
+        expected_sha256,
+        expected_size: None,
+        limits: DownloadLimits::default(),
+    };
+
+    let bytes = download_release(&client, &req, |downloaded, total| {
+        on_progress(downloaded, total);
+    })
+    .await?;
+
+    let name_low = asset_name.to_lowercase();
+    let is_portable_bin =
+        (cfg!(target_os = "windows") && name_low.ends_with(".exe") && !name_low.contains("setup"))
+            || (cfg!(target_os = "linux") && name_low.ends_with(".appimage"));
+
+    if is_portable_bin {
+        if let Ok(exe_path) = std::env::current_exe() {
+            #[cfg(target_os = "windows")]
+            {
+                let new_path = exe_path.with_extension("exe.new");
+                let old_path = exe_path.with_extension("exe.old");
+                if std::fs::write(&new_path, &bytes).is_ok() {
+                    let _ = std::fs::remove_file(&old_path);
+                    if std::fs::rename(&exe_path, &old_path).is_ok() {
+                        if std::fs::rename(&new_path, &exe_path).is_ok() {
+                            let args: Vec<String> = std::env::args().skip(1).collect();
+                            if std::process::Command::new(&exe_path)
+                                .args(&args)
+                                .spawn()
+                                .is_ok()
+                            {
+                                return Ok(true);
+                            }
+                            let _ = std::fs::rename(&old_path, &exe_path);
+                        } else {
+                            let _ = std::fs::rename(&old_path, &exe_path);
+                        }
+                    }
+                    let _ = std::fs::remove_file(&new_path);
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let args: Vec<String> = std::env::args().skip(1).collect();
+                if install_release(
+                    &bytes,
+                    &InstallTarget::Portable(exe_path),
+                    |installed_path| {
+                        std::process::Command::new(installed_path)
+                            .args(&args)
+                            .spawn()
+                            .map(|_| ())
+                            .map_err(|e| e.to_string())
+                    },
+                )
+                .is_ok()
+                {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    let dl_dir = std::env::var("USERPROFILE")
+        .ok()
+        .map(|p| PathBuf::from(p).join("Downloads"))
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|h| PathBuf::from(h).join("Downloads"))
+        })
+        .unwrap_or_else(|| PathBuf::from("."));
+    let _ = fs::create_dir_all(&dl_dir);
+    let dest_path = dl_dir.join(asset_name);
+
+    install_release(
+        &bytes,
+        &InstallTarget::Installer(dest_path),
+        |installer_path| {
+            #[cfg(target_os = "windows")]
+            {
+                std::process::Command::new(installer_path)
+                    .spawn()
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            }
+            #[cfg(target_os = "macos")]
+            {
+                std::process::Command::new("open")
+                    .arg(installer_path)
+                    .spawn()
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            }
+            #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+            {
+                std::process::Command::new("xdg-open")
+                    .arg(installer_path)
+                    .spawn()
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            }
+        },
+    )?;
+    Ok(false)
+}
+
 #[cfg(test)]
 mod github_api_tests {
     use super::*;

@@ -37,9 +37,9 @@ State lives in the issue itself (`open`/`closed`), PR links (`Fixes #<id>`) and 
 | `area:auth` | QR/password login, `session.json`, `zpw_sek` / `zpw_enk`. |
 | `area:net` | HTTP endpoints, WebSocket transport, `ParamCipher v2`, `signkey`. |
 | `area:chat` | Threads, messages, reactions, recall, forwarding. |
-| `area:media` | Attachments, images, stickers, voice payloads. |
-| `area:call` | VoIP signalling, audio/video capture. |
-| `area:ui` | egui GUI, ratatui TUI, theme, fonts. |
+| `area:media` | Attachments, images, stickers. |
+| `area:mcp` | MCP JSON-RPC, local HTTP REST API, auto-reply. |
+| `area:ui` | egui GUI, Tauri UI bridge, theme, fonts. |
 | `area:store` | SQLite schema, queries, local history. |
 | `area:ci` | GitHub Actions, packaging, release artifacts. |
 | `area:harness` | `AGENTS.md`, `docs/standards/`, skills, agent tooling. |

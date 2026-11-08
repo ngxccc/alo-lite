@@ -38,10 +38,9 @@ Ubiquitous language for `alolite`. Use these terms verbatim in issues, ADRs, tes
 
 | Term | Definition | Avoid |
 | :--- | :--- | :--- |
-| **Worker** | Tokio task (`src/gui/worker/`) owning all network, disk and crypto work; communicates with the UI via `WorkerCmd` / `WorkerEvent`. | "backend", "service" |
-| **UI thread** | The egui/ratatui event loop; must never block on I/O. | "frontend" |
+| **CoreEngine** | UI-independent Tokio runtime (`src/core/`) owning `Session`, WebSocket/polling, SQLite, and MCP/REST; GUI (`src/gui/worker/`) acts as a thin event/command adapter. | "backend", "service" |
+| **UI thread** | The GUI event loop (`egui` today, Tauri WebView in `ui/tauri`); must never block on I/O. | "frontend" |
 | **Store** | Local SQLite database managed by `MessageStore` (`src/storage/`), plus fast-startup JSON snapshot in `storage::thread_cache`. | "cache" (cache is non-authoritative) |
-| **Call** | VoIP session (audio/video) handled by `src/legacy/call.rs` and `src/legacy/audio.rs`. | "phone" |
 
 ## Invariants
 

@@ -84,24 +84,6 @@ impl ZaloGuiApp {
                             .add_sized(
                                 [200.0, 28.0],
                                 egui::Button::new(
-                                    RichText::new(format!("{}  Nhật ký & Hồ sơ Social", lucide::NEWSPAPER))
-                                        .size(12.2)
-                                        .color(pal.text_primary),
-                                )
-                                .fill(Color32::TRANSPARENT),
-                            )
-                            .on_hover_cursor(CursorIcon::PointingHand)
-                            .clicked()
-                        {
-                            self.feed_modal_open = true;
-                            self.trigger_feed_timeline_load();
-                            close_menu = true;
-                        }
-
-                        if ui
-                            .add_sized(
-                                [200.0, 28.0],
-                                egui::Button::new(
                                     RichText::new(format!("{}  Làm mới hội thoại", lucide::REFRESH))
                                         .size(12.2)
                                         .color(pal.text_primary),

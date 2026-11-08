@@ -190,38 +190,6 @@ impl ZaloGuiApp {
                                         self.filter_starred_only = !self.filter_starred_only;
                                     }
                                 });
-                                if !d_is_group && !d_is_cloud {
-                                    ui.add_space(6.0);
-                                    let prof_btn = egui::Button::new(
-                                        RichText::new(format!(
-                                            "{} Xem Hồ sơ & Nhật ký",
-                                            lucide::NEWSPAPER
-                                        ))
-                                        .size(11.5)
-                                        .color(pal.primary_hover),
-                                    )
-                                    .fill(pal.primary.linear_multiply(0.12))
-                                    .stroke(Stroke::new(1.0_f32, pal.primary))
-                                    .rounding(Rounding::same(8.0))
-                                    .min_size(Vec2::new(192.0, 28.0));
-                                    if ui
-                                        .add(prof_btn)
-                                        .on_hover_cursor(CursorIcon::PointingHand)
-                                        .clicked()
-                                    {
-                                        self.feed_modal_open = true;
-                                        self.feed_modal_tab = FeedModalTab::Profile;
-                                        self.feed_target_uid = d_id.clone();
-                                        self.feed_loading_profile = true;
-                                        self.feed_profile_error = None;
-                                        self.trigger_feed_timeline_load();
-                                        if let Some(tx) = WORKER_TX.get() {
-                                            let _ = tx.send(WorkerCmd::FetchSocialProfile {
-                                                target_uid: d_id.clone(),
-                                            });
-                                        }
-                                    }
-                                }
                             });
                         });
 

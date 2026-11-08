@@ -8,7 +8,8 @@ use super::threads::ChatMessage;
 use crate::clock::now_ms;
 use crate::protocol::session::{Session, SessionError};
 use crate::protocol::wire::{
-    chat_send_host, next_client_message_id, obj, require_login, strip_group_prefix,
+    chat_send_host, next_client_message_id, obj, require_login, strip_group_prefix, ActionAck,
+    SendMessageReceipt,
 };
 
 /// Convert inline Markdown (`**bold**`, `__underline__`, `~~strikethrough~~`, `*italic*`) and
@@ -186,7 +187,7 @@ fn check_session_error(resp: &Value) -> Result<()> {
 ///
 /// # Errors
 /// Returns an error if unauthenticated, encryption fails, or the server rejects the message.
-pub async fn send_message(s: &Session, to_id: &str, text: &str) -> Result<Value> {
+pub async fn send_message(s: &Session, to_id: &str, text: &str) -> Result<SendMessageReceipt> {
     send_message_with_client_id(s, to_id, text, next_client_message_id()).await
 }
 
@@ -199,7 +200,7 @@ pub async fn send_message_with_client_id(
     to_id: &str,
     text: &str,
     now: u64,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     require_login(s)?;
     let (clean_text, text_props_opt) = extract_zalo_rtf_text_properties(text);
     let mut body = obj(&[
@@ -220,14 +221,14 @@ pub async fn send_message_with_client_id(
     let resp = s.post_form(&url, format!("params={params}")).await?;
     let resp = s.maybe_decrypt(resp, s.session_key_bytes()).await;
     check_session_error(&resp)?;
-    Ok(resp)
+    Ok(SendMessageReceipt::from_wire(&resp))
 }
 
 /// Send a group text message (`POST {domains.group}/api/group/sendmsg`).
 ///
 /// # Errors
 /// Returns an error if unauthenticated, encryption fails, or the server rejects the message.
-pub async fn send_group_message(s: &Session, grid: &str, text: &str) -> Result<Value> {
+pub async fn send_group_message(s: &Session, grid: &str, text: &str) -> Result<SendMessageReceipt> {
     send_group_message_with_client_id(s, grid, text, next_client_message_id()).await
 }
 
@@ -240,7 +241,7 @@ pub async fn send_group_message_with_client_id(
     grid: &str,
     text: &str,
     now: u64,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     require_login(s)?;
     let clean_grid = strip_group_prefix(grid);
     let (clean_text, text_props_opt) = extract_zalo_rtf_text_properties(text);
@@ -263,7 +264,7 @@ pub async fn send_group_message_with_client_id(
     let resp = s.post_form(&url, format!("params={params}")).await?;
     let resp = s.maybe_decrypt(resp, s.session_key_bytes()).await;
     check_session_error(&resp)?;
-    Ok(resp)
+    Ok(SendMessageReceipt::from_wire(&resp))
 }
 
 /// Send a quote/reply message (`cmd 11771` 1-1 / `cmd 11197` Group), falling back to plain text.
@@ -276,7 +277,7 @@ pub async fn send_quote_message(
     text: &str,
     quoted: &ChatMessage,
     is_group: bool,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     send_quote_message_with_client_id(s, to_id, text, quoted, is_group, next_client_message_id())
         .await
 }
@@ -292,7 +293,7 @@ pub async fn send_quote_message_with_client_id(
     quoted: &ChatMessage,
     is_group: bool,
     now: u64,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     let login = require_login(s)?;
     let my_uid = login.uin.as_str();
     let qmsg_owner = if quoted.is_outgoing {
@@ -383,7 +384,7 @@ pub async fn send_quote_message_with_client_id(
     .await;
 
     match quote_res {
-        Ok(r) => Ok(r),
+        Ok(r) => Ok(SendMessageReceipt::from_wire(&r)),
         Err(_) => {
             if is_group {
                 send_group_message_with_client_id(s, to_id, text, now).await
@@ -403,7 +404,7 @@ pub async fn forward_message(
     target_id: &str,
     target_is_group: bool,
     msg: &ChatMessage,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     forward_message_with_client_id(s, target_id, target_is_group, msg, next_client_message_id())
         .await
 }
@@ -418,7 +419,7 @@ pub async fn forward_message_with_client_id(
     target_is_group: bool,
     msg: &ChatMessage,
     now: u64,
-) -> Result<Value> {
+) -> Result<SendMessageReceipt> {
     if let Some(sid) = msg.sticker_id.filter(|&id| id > 0) {
         let cid = msg.sticker_cate_id.unwrap_or(0);
         let stype = msg.sticker_type.unwrap_or(7);
@@ -441,7 +442,7 @@ pub async fn delete_message_for_me(
     to_id: &str,
     is_group: bool,
     msg: &ChatMessage,
-) -> Result<Value> {
+) -> Result<ActionAck> {
     let login = require_login(s)?;
     let now = now_ms();
     let owner_id = if msg.is_outgoing {
@@ -479,7 +480,8 @@ pub async fn delete_message_for_me(
             s.common_params()
         );
         let resp = s.post_form(&url, format!("params={params}")).await?;
-        Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+        let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+        Ok(ActionAck::from_wire(&dec))
     } else {
         let body = obj(&[
             ("toid", json!(to_id)),
@@ -495,7 +497,8 @@ pub async fn delete_message_for_me(
             s.common_params()
         );
         let resp = s.post_form(&url, format!("params={params}")).await?;
-        Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+        let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+        Ok(ActionAck::from_wire(&dec))
     }
 }
 
@@ -508,7 +511,7 @@ pub async fn recall_message(
     to_id: &str,
     is_group: bool,
     msg: &ChatMessage,
-) -> Result<Value> {
+) -> Result<ActionAck> {
     require_login(s)?;
     let now = now_ms();
     let cli_id = if msg.ts > 0 {
@@ -534,7 +537,8 @@ pub async fn recall_message(
             s.common_params()
         );
         let resp = s.post_form(&url, format!("params={params}")).await?;
-        Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+        let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+        Ok(ActionAck::from_wire(&dec))
     } else {
         let body = obj(&[
             ("msgId", json!(msg.id)),
@@ -549,7 +553,8 @@ pub async fn recall_message(
             s.common_params()
         );
         let resp = s.post_form(&url, format!("params={params}")).await?;
-        Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+        let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+        Ok(ActionAck::from_wire(&dec))
     }
 }
 
@@ -557,14 +562,18 @@ pub async fn recall_message(
 ///
 /// # Errors
 /// Returns an error if unauthenticated or encryption fails.
-pub async fn send_typing_indicator(s: &Session, thread_id: &str, is_group: bool) -> Result<Value> {
+pub async fn send_typing_indicator(
+    s: &Session,
+    thread_id: &str,
+    is_group: bool,
+) -> Result<ActionAck> {
     require_login(s)?;
     if crate::session::privacy_blocker_state().0 {
-        return Ok(json!({"error_code": 0, "data": {}}));
+        return Ok(ActionAck::ok());
     }
     let clean = strip_group_prefix(thread_id).trim_start_matches('u').trim();
     if clean.is_empty() {
-        return Ok(json!({"error_code": 0, "data": {}}));
+        return Ok(ActionAck::ok());
     }
     let (endpoint, path_and_q, body) = if is_group {
         (
@@ -590,7 +599,8 @@ pub async fn send_typing_indicator(s: &Session, thread_id: &str, is_group: bool)
     let resp = s
         .post_endpoint_form(endpoint, &path_and_q, format!("params={params}"))
         .await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(ActionAck::from_wire(&dec))
 }
 
 #[cfg(test)]

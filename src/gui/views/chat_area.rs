@@ -67,9 +67,8 @@ impl ZaloGuiApp {
                                     ui.painter().circle_filled(dot_pos, 4.2, pal.accent_online);
                                 }
                                 ui.add_space(6.0);
-                                // Reserve room for the right-hand action cluster so the name/tag
-                                // block can never be overlapped by the call buttons.
-                                let actions_w = if is_compact_w { 126.0 } else { 182.0 };
+                                // Reserve room for the right-hand action cluster.
+                                let actions_w = if is_compact_w { 80.0 } else { 100.0 };
                                 let left_info_w =
                                     (ui.available_width() - actions_w).max(60.0);
                                 ui.allocate_ui_with_layout(
@@ -247,133 +246,6 @@ impl ZaloGuiApp {
                                         }
                                     }
 
-                                    // Subtle vertical divider
-                                    let (div_r, _) = ui.allocate_exact_size(
-                                        Vec2::new(8.0, 20.0),
-                                        Sense::hover(),
-                                    );
-                                    ui.painter().line_segment(
-                                        [div_r.center_top(), div_r.center_bottom()],
-                                        Stroke::new(1.0_f32, pal.border),
-                                    );
-
-                                    // Video Call Button
-                                    let (vid_rect, vid_resp) = ui.allocate_exact_size(
-                                        Vec2::new(34.0, 34.0),
-                                        Sense::click(),
-                                    );
-                                    if vid_resp.hovered() {
-                                        ui.painter().rect_filled(
-                                            vid_rect,
-                                            Rounding::same(8.0),
-                                            pal.bg_hover,
-                                        );
-                                    }
-                                    draw_icon_video(
-                                        ui.painter(),
-                                        vid_rect.center(),
-                                        17.5,
-                                        if vid_resp.hovered() {
-                                            pal.text_primary
-                                        } else {
-                                            pal.text_secondary
-                                        },
-                                    );
-                                    if vid_resp
-                                        .on_hover_cursor(CursorIcon::PointingHand)
-                                        .on_hover_text("Gọi Video")
-                                        .clicked()
-                                    {
-                                        let ff_ok = crate::media::is_ffmpeg_available();
-                                        let (_, cams) = crate::media::list_media_devices(false);
-                                        let can_cam = ff_ok && !cams.is_empty();
-                                        if !ff_ok {
-                                            self.show_toast(
-                                                "Không tìm thấy ffmpeg trong PATH để bật Camera",
-                                            );
-                                        } else if cams.is_empty() {
-                                            self.show_toast(
-                                                "Không phát hiện thiết bị Camera trên máy — đang gọi không hình",
-                                            );
-                                        }
-                                        self.active_call = Some(ActiveCallOverlay {
-                                            partner_id: thread_id.clone(),
-                                            partner_name: thread_name.clone(),
-                                            is_video: true,
-                                            is_group,
-                                            state_label: "Đang kết nối cuộc gọi video…".into(),
-                                            started_at: std::time::Instant::now(),
-                                            mic_muted: false,
-                                            cam_enabled: can_cam,
-                                            is_incoming_ringing: false,
-                                            error_code: None,
-                                            error_reason: None,
-                                            speaker_view: false,
-                                            pinned_tile_idx: 0,
-                                        });
-                                        if let Some(tx) = WORKER_TX.get() {
-                                            let _ = tx.send(WorkerCmd::StartCall {
-                                                partner_id: thread_id.clone(),
-                                                partner_name: thread_name.clone(),
-                                                partner_avatar: None,
-                                                is_video: true,
-                                                is_group,
-                                            });
-                                        }
-                                    }
-
-                                    // Voice Call Button
-                                    let (aud_rect, aud_resp) = ui.allocate_exact_size(
-                                        Vec2::new(34.0, 34.0),
-                                        Sense::click(),
-                                    );
-                                    if aud_resp.hovered() {
-                                        ui.painter().rect_filled(
-                                            aud_rect,
-                                            Rounding::same(8.0),
-                                            pal.bg_hover,
-                                        );
-                                    }
-                                    draw_icon_phone(
-                                        ui.painter(),
-                                        aud_rect.center(),
-                                        17.5,
-                                        if aud_resp.hovered() {
-                                            pal.text_primary
-                                        } else {
-                                            pal.text_secondary
-                                        },
-                                    );
-                                    if aud_resp
-                                        .on_hover_cursor(CursorIcon::PointingHand)
-                                        .on_hover_text("Gọi thoại")
-                                        .clicked()
-                                    {
-                                        self.active_call = Some(ActiveCallOverlay {
-                                            partner_id: thread_id.clone(),
-                                            partner_name: thread_name.clone(),
-                                            is_video: false,
-                                            is_group,
-                                            state_label: "Đang kết nối cuộc gọi thoại…".into(),
-                                            started_at: std::time::Instant::now(),
-                                            mic_muted: false,
-                                            cam_enabled: false,
-                                            is_incoming_ringing: false,
-                                            error_code: None,
-                                            error_reason: None,
-                                            speaker_view: false,
-                                            pinned_tile_idx: 0,
-                                        });
-                                        if let Some(tx) = WORKER_TX.get() {
-                                            let _ = tx.send(WorkerCmd::StartCall {
-                                                partner_id: thread_id.clone(),
-                                                partner_name: thread_name.clone(),
-                                                partner_avatar: None,
-                                                is_video: false,
-                                                is_group,
-                                            });
-                                        }
-                                    }
                                     // Search Messages in Conversation Button (`Ctrl+F`)
                                     let (srch_rect, srch_resp) = ui.allocate_exact_size(
                                         Vec2::new(34.0, 34.0),
@@ -1399,36 +1271,6 @@ impl ZaloGuiApp {
                                     }
                                     self.persist_threads_async();
                                 }
-                                BubbleAction::CallAgain { is_video } => {
-                                    self.active_call = Some(ActiveCallOverlay {
-                                        partner_id: thread_id.clone(),
-                                        partner_name: thread_name.clone(),
-                                        is_video,
-                                        is_group,
-                                        state_label: if is_video {
-                                            "Đang kết nối cuộc gọi video…".into()
-                                        } else {
-                                            "Đang kết nối cuộc gọi thoại…".into()
-                                        },
-                                        started_at: std::time::Instant::now(),
-                                        mic_muted: false,
-                                        cam_enabled: is_video,
-                                        is_incoming_ringing: false,
-                                        error_code: None,
-                                        error_reason: None,
-                                        speaker_view: false,
-                                        pinned_tile_idx: 0,
-                                    });
-                                    if let Some(tx) = WORKER_TX.get() {
-                                        let _ = tx.send(WorkerCmd::StartCall {
-                                            partner_id: thread_id.clone(),
-                                            partner_name: thread_name.clone(),
-                                            partner_avatar: None,
-                                            is_video,
-                                            is_group,
-                                        });
-                                    }
-                                }
                                 BubbleAction::DeleteForMe => {
                                     if let Some(tx) = WORKER_TX.get() {
                                         let _ = tx.send(WorkerCmd::DeleteForMe {
@@ -1636,55 +1478,6 @@ impl ZaloGuiApp {
                         }
                     }
 
-                    // 3d. Pending Scheduled Messages Banner (#38)
-                    let thread_sched: Vec<crate::scheduler::ScheduledMessage> = self
-                        .scheduled_items
-                        .iter()
-                        .filter(|s| s.thread_id == thread_id)
-                        .cloned()
-                        .collect();
-                    if let Some(next_sched) = thread_sched.first() {
-                        let mut open_sched_mgr = false;
-                        let mut cancel_sched_id: Option<i64> = None;
-                        egui::Frame::none()
-                            .fill(pal.bg_elevated)
-                            .inner_margin(Margin::symmetric(14.0, 5.0))
-                            .stroke(Stroke::new(1.0_f32, pal.border))
-                            .show(ui, |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label(
-                                        RichText::new(format!(
-                                            "🕒 Hẹn giờ gửi ({}) · Tiếp theo lúc {}: \"{}\"",
-                                            thread_sched.len(),
-                                            crate::scheduler::format_schedule_time(
-                                                next_sched.deliver_at
-                                            ),
-                                            truncate_chars(&next_sched.text, 36)
-                                        ))
-                                        .size(11.6)
-                                        .color(pal.primary_hover)
-                                        .strong(),
-                                    );
-                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.small_button("Hủy").clicked() {
-                                            cancel_sched_id = Some(next_sched.id);
-                                        }
-                                        if ui.small_button("Quản lý").clicked() {
-                                            open_sched_mgr = true;
-                                        }
-                                    });
-                                });
-                            });
-                        if let Some(cid) = cancel_sched_id {
-                            let _ =
-                                crate::scheduler::cancel_scheduled_message("zalo_history.db", cid);
-                            self.refresh_scheduled_items();
-                            self.show_toast("Đã hủy tin nhắn hẹn giờ");
-                        }
-                        if open_sched_mgr {
-                            self.schedule_modal_open = true;
-                        }
-                    }
 
                     // 4. Bottom Message Composer Bar (extracted to composer.rs)
                     self.render_composer_bar(ui, ctx, pal, &thread_id, &thread_name, is_group);

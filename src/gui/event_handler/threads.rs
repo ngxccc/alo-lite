@@ -147,9 +147,6 @@ impl ZaloGuiApp {
                     self.show_toast(msg);
                 }
             }
-            GuiEvent::ScheduledListUpdated => {
-                self.refresh_scheduled_items();
-            }
             GuiEvent::SyncFinished {
                 added,
                 errors,

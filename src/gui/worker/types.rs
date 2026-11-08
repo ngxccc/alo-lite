@@ -16,14 +16,9 @@ pub enum WorkerCmd {
     },
     RefreshThreads,
     RefreshThreadsManual,
-    PollMessages {
-        known_threads: Vec<(String, String, bool)>,
-    },
     LoadGroupHistory {
         group_id: String,
         is_group: bool,
-        /// Messages the GUI already holds. SQLite is read `have + 300` deep, so each
-        /// "Tải thêm" reaches further back instead of re-reading the same newest 500.
         have: usize,
     },
     /// Page group / Cloud history back from the server into SQLite: (id, name, is_group).
@@ -97,22 +92,6 @@ pub enum WorkerCmd {
     LookupPhone {
         phone: String,
     },
-    StartCall {
-        partner_id: String,
-        partner_name: String,
-        partner_avatar: Option<String>,
-        is_video: bool,
-        is_group: bool,
-    },
-    AnswerCall {
-        accept: bool,
-        cam_start_off: bool,
-    },
-    SetCallMediaState {
-        is_on_mic: bool,
-        is_on_cam: bool,
-    },
-    EndCall,
     AddFriend {
         user_id: String,
         user_name: String,
@@ -143,8 +122,6 @@ pub enum WorkerCmd {
         expected_sha256: Option<String>,
     },
     Logout,
-    /// Delete local message data (`zalo_history.db` + `threads_cache.json`) without
-    /// touching credentials. Separate from [`WorkerCmd::Logout`] by design (#21).
     WipeLocalData,
     PinThread {
         thread_id: String,
@@ -172,17 +149,6 @@ pub enum WorkerCmd {
         is_group: bool,
         last_cli_msg_id: String,
     },
-    FetchSocialProfile {
-        target_uid: String,
-    },
-    FetchMySocialAvatars {
-        page: u32,
-        count: u32,
-    },
-    FetchTimelineFeed {
-        friend_uids: Vec<String>,
-        shared_media_by_uid: std::collections::HashMap<String, Vec<crate::feed::FeedMedia>>,
-    },
     SyncPhoneMessages {
         threads: Vec<Thread>,
         send_phone_prompt: bool,
@@ -207,21 +173,4 @@ pub enum WorkerCmd {
     SwitchAccount {
         target_uin: String,
     },
-}
-
-pub(super) fn extract_msg_id(resp: &serde_json::Value) -> String {
-    resp.get("data")
-        .and_then(|d| d.get("msgId"))
-        .and_then(|v| match v {
-            serde_json::Value::String(s) => Some(s.clone()),
-            serde_json::Value::Number(n) => Some(n.to_string()),
-            _ => None,
-        })
-        .unwrap_or_default()
-}
-
-pub(super) fn resp_error_code(resp: &serde_json::Value) -> Option<i64> {
-    resp.get("error_code")
-        .and_then(serde_json::Value::as_i64)
-        .filter(|c| *c != 0)
 }

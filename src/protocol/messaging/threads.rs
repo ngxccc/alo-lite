@@ -16,7 +16,7 @@ use super::reactions::{
 use super::unread::UnreadState;
 use crate::protocol::session::Session;
 use crate::protocol::wire::{
-    pick_str, require_login, strip_group_prefix, val_i64, val_u64, wire_identity,
+    pick_str, require_login, strip_group_prefix, unwrap_data, val_i64, val_u64, wire_identity,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -1074,14 +1074,29 @@ pub fn deduplicate_threads(threads: &mut Vec<Thread>, authoritative_ids: Option<
 ///
 /// # Errors
 /// Returns an error if unauthenticated or the HTTP call fails.
-pub async fn get_pinned(s: &Session) -> Result<Value> {
+pub async fn get_pinned(s: &Session) -> Result<Vec<String>> {
     require_login(s)?;
     let url = format!(
         "{}/api/pinconvers/list?{}",
         s.domains.conversation,
         s.common_params()
     );
-    s.get(&url).await
+    let resp = s.get(&url).await?;
+    let data = unwrap_data(&resp);
+    let arr = data
+        .get("conversations")
+        .and_then(Value::as_array)
+        .or_else(|| data.as_array())
+        .cloned()
+        .unwrap_or_default();
+    Ok(arr
+        .into_iter()
+        .filter_map(|item| {
+            item.as_str()
+                .map(str::to_string)
+                .or_else(|| pick_str(&item, &["id", "threadId", "thread_id"]))
+        })
+        .collect())
 }
 
 /// Pin or unpin a conversation (`updatePinnedConversationsV2`, cmd `12122`).
@@ -1093,7 +1108,7 @@ pub async fn update_pinned_conversation(
     thread_id: &str,
     is_group: bool,
     pin: bool,
-) -> Result<Value> {
+) -> Result<crate::protocol::wire::ActionAck> {
     require_login(s)?;
     let clean = strip_group_prefix(thread_id).trim_start_matches('u').trim();
     let prefixed = if is_group {
@@ -1113,7 +1128,8 @@ pub async fn update_pinned_conversation(
         s.common_params()
     );
     let resp = s.post_form(&url, format!("params={params}")).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
 }
 
 /// Hide or unhide a conversation (`updateItemHiddenChat`, cmd `10049`).
@@ -1125,7 +1141,7 @@ pub async fn set_hidden_conversation(
     thread_id: &str,
     is_group: bool,
     hide: bool,
-) -> Result<Value> {
+) -> Result<crate::protocol::wire::ActionAck> {
     require_login(s)?;
     let clean = strip_group_prefix(thread_id).trim();
     let entry = json!([{
@@ -1149,7 +1165,8 @@ pub async fn set_hidden_conversation(
         s.common_params()
     );
     let resp = s.post_form(&url, format!("params={params}")).await?;
-    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
 }
 
 /// Delete conversation history for me (`deleteOneOneConversationV2` / `deleteGroupConversationV2`, cmd `11778` / `11835`).
@@ -1161,7 +1178,7 @@ pub async fn delete_conversation(
     thread_id: &str,
     is_group: bool,
     last_cli_msg_id: &str,
-) -> Result<Value> {
+) -> Result<crate::protocol::wire::ActionAck> {
     require_login(s)?;
     let clean = strip_group_prefix(thread_id).trim();
     let cli_id = if last_cli_msg_id.is_empty() {
@@ -1184,7 +1201,8 @@ pub async fn delete_conversation(
             s.common_params()
         );
         let resp = s.post_form(&url, format!("params={params}")).await?;
-        Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+        let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+        Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
     } else {
         let body = json!({
             "toid": clean,
@@ -1200,7 +1218,8 @@ pub async fn delete_conversation(
             s.common_params()
         );
         let resp = s.post_form(&url, format!("params={params}")).await?;
-        Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+        let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+        Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
     }
 }
 
