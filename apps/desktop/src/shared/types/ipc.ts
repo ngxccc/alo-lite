@@ -35,6 +35,7 @@ export interface ChatMessage {
   delivery?: DeliveryState;
   id: string;
   sender: string;
+  sender_id?: string;
   text: string;
   time: string;
   is_outgoing: boolean;

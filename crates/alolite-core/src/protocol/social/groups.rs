@@ -6,7 +6,7 @@ use anyhow::Result;
 use serde_json::{json, Map, Value};
 
 use crate::protocol::messaging::threads::{
-    avatar_http_url_count, is_generic_thread_name, should_replace_avatar, Thread,
+    avatar_http_url_count, is_generic_thread_name, should_replace_avatar, SidebarMember, Thread,
 };
 use crate::protocol::session::Session;
 use crate::protocol::wire::{
@@ -122,7 +122,7 @@ pub async fn fetch_group_profiles(
     Ok((info_map, removed))
 }
 
-fn extract_group_member_ids(info: &Value) -> (Vec<String>, usize) {
+fn extract_all_group_member_ids(info: &Value) -> (Vec<String>, usize) {
     let mut raw_ids: Vec<String> = Vec::new();
     if let Some(arr) = info.get("memVerList").and_then(Value::as_array) {
         for item in arr {
@@ -166,6 +166,12 @@ fn extract_group_member_ids(info: &Value) -> (Vec<String>, usize) {
         .map(|n| n as usize)
         .unwrap_or_else(|| sorted.len())
         .max(sorted.len());
+    sorted.truncate(100);
+    (sorted, total)
+}
+
+fn extract_group_member_ids(info: &Value) -> (Vec<String>, usize) {
+    let (mut sorted, total) = extract_all_group_member_ids(info);
     sorted.truncate(4);
     (sorted, total)
 }
@@ -401,75 +407,192 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
         }
     }
 
+    let is_numeric_uid = |val: &str| -> bool {
+        let trimmed = val.trim();
+        trimmed.len() >= 6 && trimmed.chars().all(|c| c.is_ascii_digit())
+    };
+
     let unknown_group_ids: Vec<String> = threads
         .iter()
         .filter(|t| {
             t.is_group
                 && (is_generic_thread_name(&t.name)
                     || t.preview.is_empty()
-                    || t.avatar.as_deref().unwrap_or("").is_empty())
+                    || t.avatar.as_deref().unwrap_or("").is_empty()
+                    || t.presentation.members.is_empty())
         })
         .map(|t| t.id.clone())
         .collect();
 
+    let mut all_profiles = Map::new();
+    if let Some(login) = s.login.as_ref() {
+        if !login.uin.is_empty() && !login.display_name.is_empty() {
+            all_profiles.insert(
+                login.uin.clone(),
+                json!({
+                    "displayName": login.display_name,
+                    "avatar": login.avatar,
+                }),
+            );
+        }
+    }
+
+    let mut need_mem_uids: Vec<String> = Vec::new();
+    for t in threads.iter_mut() {
+        for m in &mut t.messages {
+            if is_numeric_uid(&m.sender) {
+                if m.sender_id.is_none() {
+                    m.sender_id = Some(m.sender.trim().to_string());
+                }
+                let uid = m.sender.trim().to_string();
+                if !need_mem_uids.iter().any(|x| x == &uid) {
+                    need_mem_uids.push(uid);
+                }
+            } else if let Some(sid) = m.sender_id.as_ref() {
+                if is_numeric_uid(sid) && !need_mem_uids.iter().any(|x| x == sid) {
+                    need_mem_uids.push(sid.clone());
+                }
+            }
+            if let Some(rs) = m.reply_to_sender.as_ref() {
+                if is_numeric_uid(rs) && !need_mem_uids.iter().any(|x| x == rs) {
+                    need_mem_uids.push(rs.clone());
+                }
+            }
+        }
+    }
+
+    let mut group_info_map = Map::new();
     if !unknown_group_ids.is_empty() {
         for chunk in unknown_group_ids.chunks(50) {
             if let Ok((info_map, _)) = fetch_group_profiles(s, chunk).await {
-                let mut need_mem_uids: Vec<String> = Vec::new();
-                for t in threads.iter_mut() {
-                    let clean_id = strip_group_prefix(&t.id);
-                    if let Some(info) = info_map.get(&t.id).or_else(|| info_map.get(clean_id)) {
-                        if let Some(name) = pick_str(info, &["name", "groupName", "displayName"]) {
-                            if !name.is_empty() {
-                                t.name = name;
-                            }
+                for (k, v) in info_map {
+                    let (all_mids, _) = extract_all_group_member_ids(&v);
+                    for uid in all_mids {
+                        if !need_mem_uids.iter().any(|x| x == &uid) {
+                            need_mem_uids.push(uid);
                         }
-                        if let Some(avt) = pick_str(info, &["fullAvt", "avt", "avatar"])
-                            .filter(|u| !u.is_empty() && !u.ends_with("/default"))
+                    }
+                    group_info_map.insert(k, v);
+                }
+            }
+        }
+    }
+
+    if !need_mem_uids.is_empty() {
+        for mchunk in need_mem_uids.chunks(50) {
+            if let Ok(mp) = get_mini_profiles(s, mchunk).await {
+                for (k, v) in mp {
+                    all_profiles.insert(k, v);
+                }
+            }
+        }
+    }
+
+    for t in threads.iter_mut() {
+        if t.is_group {
+            let clean_id = strip_group_prefix(&t.id).to_string();
+            if let Some(info) = group_info_map
+                .get(&t.id)
+                .or_else(|| group_info_map.get(&clean_id))
+            {
+                if let Some(name) = pick_str(info, &["name", "groupName", "displayName"]) {
+                    if !name.is_empty() {
+                        t.name = name;
+                    }
+                }
+                if let Some(avt) = pick_str(info, &["fullAvt", "avt", "avatar"])
+                    .filter(|u| !u.is_empty() && !u.ends_with("/default"))
+                {
+                    t.avatar = Some(avt);
+                } else {
+                    let cur = t.avatar.as_deref().unwrap_or("");
+                    if cur.is_empty() || cur.starts_with("multi:") {
+                        let (mids, tot) = extract_group_member_ids(info);
+                        if let Some(multi_s) =
+                            format_multi_group_avatar(&t.name, &mids, tot, &all_profiles)
                         {
-                            t.avatar = Some(avt);
-                        } else {
-                            let (mids, _) = extract_group_member_ids(info);
-                            for uid in mids {
-                                if !need_mem_uids.iter().any(|x| x == &uid) {
-                                    need_mem_uids.push(uid);
-                                }
-                            }
-                        }
-                        if t.preview.is_empty() {
-                            if let Some(n_mem) = info.get("totalMember").and_then(Value::as_u64) {
-                                if n_mem > 0 {
-                                    t.preview = format!("Nhóm · {n_mem} thành viên");
-                                }
+                            if should_replace_avatar(t.avatar.as_deref(), Some(&multi_s)) {
+                                t.avatar = Some(multi_s);
                             }
                         }
                     }
                 }
-                if !need_mem_uids.is_empty() {
-                    let mut all_profiles = Map::new();
-                    for mchunk in need_mem_uids.chunks(50) {
-                        if let Ok(mp) = get_mini_profiles(s, mchunk).await {
-                            for (k, v) in mp {
-                                all_profiles.insert(k, v);
+                let (all_mids, tot) = extract_all_group_member_ids(info);
+                if tot > 0 {
+                    t.presentation.member_count = Some(tot as u64);
+                    if t.preview.is_empty() {
+                        t.preview = format!("Nhóm · {tot} thành viên");
+                    }
+                }
+                for uid in all_mids {
+                    if let Some(p) = all_profiles.get(&uid) {
+                        let name =
+                            pick_str(p, &["zaloName", "displayName", "name", "display_name"])
+                                .unwrap_or_else(|| uid.clone());
+                        let avatar = pick_str(p, &["avatar", "avt", "profile_avatar"])
+                            .filter(|u| !u.is_empty() && !u.ends_with("/default"));
+                        if let Some(existing_mem) =
+                            t.presentation.members.iter_mut().find(|m| m.id == uid)
+                        {
+                            if !name.is_empty() {
+                                existing_mem.name = name;
                             }
+                            if avatar.is_some() {
+                                existing_mem.avatar = avatar;
+                            }
+                        } else {
+                            t.presentation.members.push(SidebarMember {
+                                id: uid,
+                                name,
+                                avatar,
+                            });
                         }
                     }
-                    for t in threads.iter_mut() {
-                        if !t.is_group {
-                            continue;
+                }
+            }
+        }
+
+        for m in &mut t.messages {
+            let lookup_uid = if is_numeric_uid(&m.sender) {
+                Some(m.sender.trim().to_string())
+            } else {
+                m.sender_id.clone().filter(|sid| is_numeric_uid(sid))
+            };
+            if let Some(uid) = lookup_uid {
+                if m.sender_id.is_none() {
+                    m.sender_id = Some(uid.clone());
+                }
+                if let Some(p) = all_profiles.get(&uid) {
+                    if let Some(name) =
+                        pick_str(p, &["zaloName", "displayName", "name", "display_name"])
+                    {
+                        if !name.is_empty() {
+                            m.sender = name.clone();
                         }
-                        let clean_id = strip_group_prefix(&t.id);
-                        if let Some(info) = info_map.get(&t.id).or_else(|| info_map.get(clean_id)) {
-                            let cur = t.avatar.as_deref().unwrap_or("");
-                            if cur.is_empty() || cur.starts_with("multi:") {
-                                let (mids, tot) = extract_group_member_ids(info);
-                                if let Some(multi_s) =
-                                    format_multi_group_avatar(&t.name, &mids, tot, &all_profiles)
-                                {
-                                    if should_replace_avatar(t.avatar.as_deref(), Some(&multi_s)) {
-                                        t.avatar = Some(multi_s);
-                                    }
-                                }
+                        let avatar = pick_str(p, &["avatar", "avt", "profile_avatar"])
+                            .filter(|u| !u.is_empty() && !u.ends_with("/default"));
+                        if t.is_group && !t.presentation.members.iter().any(|mem| mem.id == uid) {
+                            t.presentation.members.push(SidebarMember {
+                                id: uid,
+                                name,
+                                avatar,
+                            });
+                        }
+                    }
+                } else if let Some(mem) = t.presentation.members.iter().find(|mem| mem.id == uid) {
+                    if !mem.name.is_empty() && !is_numeric_uid(&mem.name) {
+                        m.sender = mem.name.clone();
+                    }
+                }
+            }
+            if let Some(rs) = m.reply_to_sender.clone() {
+                if is_numeric_uid(&rs) {
+                    if let Some(p) = all_profiles.get(rs.trim()) {
+                        if let Some(name) =
+                            pick_str(p, &["zaloName", "displayName", "name", "display_name"])
+                        {
+                            if !name.is_empty() {
+                                m.reply_to_sender = Some(name);
                             }
                         }
                     }
@@ -477,7 +600,6 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
             }
         }
     }
-
     let known_contacts: Vec<(String, String)> = threads
         .iter()
         .filter(|t| {

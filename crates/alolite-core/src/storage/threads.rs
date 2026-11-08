@@ -231,6 +231,15 @@ impl MessageStore {
                             .map(str::to_string);
                     }
                 }
+                let sender_id_opt = if !sm.sender_id.is_empty() {
+                    Some(sm.sender_id.clone())
+                } else if sm.sender_name.chars().all(|c| c.is_ascii_digit())
+                    && !sm.sender_name.is_empty()
+                {
+                    Some(sm.sender_name.clone())
+                } else {
+                    None
+                };
                 let cm = ChatMessage {
                     id: sm.msg_id,
                     sender: if !sm.sender_name.is_empty() {
@@ -238,6 +247,7 @@ impl MessageStore {
                     } else {
                         sm.sender_id
                     },
+                    sender_id: sender_id_opt,
                     text: sm.text,
                     time,
                     is_outgoing: sm.is_outgoing,
@@ -268,6 +278,15 @@ impl MessageStore {
                                     && cm.ts != 0
                                     && (existing.ts - cm.ts).abs() < 5000)))
                 }) {
+                    if existing.sender_id.is_none() && cm.sender_id.is_some() {
+                        existing.sender_id = cm.sender_id;
+                    }
+                    if existing.sender.chars().all(|c| c.is_ascii_digit())
+                        && !cm.sender.is_empty()
+                        && !cm.sender.chars().all(|c| c.is_ascii_digit())
+                    {
+                        existing.sender = cm.sender;
+                    }
                     if existing.sticker_id.is_none() && cm.sticker_id.is_some() {
                         existing.sticker_id = cm.sticker_id;
                         existing.sticker_cate_id = cm.sticker_cate_id;

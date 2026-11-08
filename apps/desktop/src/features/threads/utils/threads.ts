@@ -89,7 +89,25 @@ export function mergeThreadInto(existing: Thread, incoming: Thread): Thread {
   for (const m of incoming.messages) {
     const key = m.id || m.client_message_id || `${m.ts}:${m.sender}:${m.text}`;
     const prev = seen.get(key);
-    seen.set(key, prev ? { ...prev, ...m } : m);
+    if (prev) {
+      const prevNumeric = /^\d{6,}$/.test(prev.sender.trim());
+      const incNonNumeric =
+        Boolean(m.sender) && !/^\d{6,}$/.test(m.sender.trim());
+      seen.set(key, {
+        ...prev,
+        ...m,
+        sender:
+          prevNumeric && incNonNumeric
+            ? m.sender
+            : prev.sender && !prevNumeric
+              ? prev.sender
+              : m.sender,
+        sender_id: m.sender_id ?? prev.sender_id,
+        reply_to_sender: m.reply_to_sender ?? prev.reply_to_sender,
+      });
+    } else {
+      seen.set(key, m);
+    }
   }
   const merged = Array.from(seen.values()).sort(
     (a, b) => normalizeTsMs(a.ts) - normalizeTsMs(b.ts),
@@ -106,6 +124,13 @@ export function mergeThreadInto(existing: Thread, incoming: Thread): Thread {
     presentation: {
       ...existing.presentation,
       ...incoming.presentation,
+      members:
+        incoming.presentation.members.length > 0
+          ? incoming.presentation.members
+          : existing.presentation.members,
+      member_count:
+        incoming.presentation.member_count ??
+        existing.presentation.member_count,
       pinned: existing.presentation.pinned || incoming.presentation.pinned,
       muted: existing.presentation.muted || incoming.presentation.muted,
       hidden: existing.presentation.hidden || incoming.presentation.hidden,

@@ -59,20 +59,91 @@ export function parseCallCard(msg: ChatMessage): CallCardMeta | null {
   };
 }
 
-export function isPhotoMessage(msg: ChatMessage): boolean {
+export function isGifUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return /\.gif(\?|$)/i.test(lower) || lower.includes("zgif");
+}
+
+export function isImageUrl(url?: string | null): boolean {
+  if (!url) return false;
+  if (isGifUrl(url)) return true;
+  const lower = url.toLowerCase();
+  return (
+    /\.(jpe?g|png|webp|jxl|bmp|avif)(\?|$)/i.test(lower) ||
+    lower.includes("photo-stal") ||
+    lower.includes("zdn.vn/gr/jpg") ||
+    lower.includes("zdn.vn/gr/jxl")
+  );
+}
+
+export function isVideoUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    /\.(mp4|webm|mov|m4v)(\?|$)/i.test(lower) ||
+    lower.includes("video-stal") ||
+    lower.includes(".dlmd.me/")
+  );
+}
+
+export function isVideoMessage(msg: ChatMessage): boolean {
   if (msg.sticker_id) return false;
+  if (msg.kind === "video") return true;
+  if (msg.link_src === "Video Zalo" || msg.text.trim() === "[Video]")
+    return true;
+  return isVideoUrl(msg.link_url);
+}
+
+export function isPhotoMessage(msg: ChatMessage): boolean {
+  if (msg.sticker_id || isVideoMessage(msg)) return false;
   if (msg.kind === "photo" || msg.kind === "gif") return true;
-  if (msg.link_src === "Hình ảnh Zalo") return true;
+  if (
+    msg.link_src === "Hình ảnh Zalo" ||
+    msg.link_title === "[Hình ảnh]" ||
+    msg.link_title === "[Photo]"
+  ) {
+    return true;
+  }
+  if (isImageUrl(msg.link_url) || isImageUrl(msg.link_title)) {
+    return true;
+  }
   const t = msg.text.trim();
-  return t === "[Hình ảnh]" || t.startsWith("[Hình ảnh] ");
+  return (
+    t === "[Hình ảnh]" ||
+    t.startsWith("[Hình ảnh] ") ||
+    t === "[Photo]" ||
+    t.startsWith("[Photo] ") ||
+    t === "[GIF]" ||
+    isImageUrl(t)
+  );
 }
 
 export function isFileMessage(msg: ChatMessage): boolean {
+  if (isVideoMessage(msg) || isPhotoMessage(msg)) return false;
   if (msg.kind === "file") return true;
   return Boolean(msg.link_url && msg.link_src?.includes("Tập tin"));
 }
 
-export function isVideoMessage(msg: ChatMessage): boolean {
-  if (msg.kind === "video") return true;
-  return msg.link_src === "Video Zalo" || msg.text.trim() === "[Video]";
+export function shouldHideMediaCaption(msg: ChatMessage): boolean {
+  const t = msg.text.trim();
+  if (!t) return true;
+  if (
+    t === "[Hình ảnh]" ||
+    t === "[Photo]" ||
+    t === "[Video]" ||
+    t === "[GIF]" ||
+    t === msg.link_url?.trim() ||
+    isImageUrl(t) ||
+    isVideoUrl(t)
+  ) {
+    return true;
+  }
+  if (
+    t.startsWith("[Tập tin]") &&
+    (isPhotoMessage(msg) || isVideoMessage(msg))
+  ) {
+    return true;
+  }
+  return false;
 }
