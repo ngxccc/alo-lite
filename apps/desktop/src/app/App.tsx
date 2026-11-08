@@ -28,7 +28,8 @@ export function App() {
 
   useEffect(() => {
     const resolved =
-      themeMode === "system" && window.matchMedia("(prefers-color-scheme: light)").matches
+      themeMode === "system" &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
         ? "light"
         : themeMode === "light"
           ? "light"
@@ -38,7 +39,9 @@ export function App() {
 
   useEffect(() => {
     if (!isTauriRuntime()) {
-      setBootError("Giao diện cần chạy bên trong cửa sổ ứng dụng Tauri AloLite.");
+      setBootError(
+        "Giao diện cần chạy bên trong cửa sổ ứng dụng Tauri AloLite.",
+      );
       return;
     }
 
@@ -80,7 +83,11 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "p"
+      ) {
         e.preventDefault();
         dispatch({ type: "OPEN_SETTINGS", open: true, tab: "privacy" });
       }
@@ -103,7 +110,9 @@ export function App() {
   if (!bootstrapped) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-canvas">
-        <div className="text-sm text-muted-foreground">Đang khởi tạo CoreEngine…</div>
+        <div className="text-sm text-muted-foreground">
+          Đang khởi tạo CoreEngine…
+        </div>
       </div>
     );
   }
@@ -141,8 +150,8 @@ export function App() {
       />
 
       {toast ? (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-border bg-popover px-3.5 py-2 text-xs font-medium text-popover-foreground shadow-xl">
-          <span className="h-2 w-2 rounded-full bg-online shrink-0" />
+        <div className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-lg border border-border bg-popover px-3.5 py-2 text-xs font-medium text-popover-foreground shadow-xl">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-online" />
           <span>{toast.message}</span>
         </div>
       ) : null}

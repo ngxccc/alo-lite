@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import type { AppSettings, ChatMessage, CoreBootstrapSnapshot, Thread } from "../../shared/types/ipc";
+import type {
+  AppSettings,
+  ChatMessage,
+  CoreBootstrapSnapshot,
+  Thread,
+} from "../../shared/types/ipc";
 import { matchesVnQuery } from "../../shared/utils/text";
 import { uniqueReferenceIndex } from "../../features/chat/utils/messages";
 import { appReducer, initialAppState } from "./appReducer";
@@ -53,7 +58,12 @@ function makeSettings(): AppSettings {
   };
 }
 
-function makeThread(id: string, name: string, ts: number, msgs: ChatMessage[] = []): Thread {
+function makeThread(
+  id: string,
+  name: string,
+  ts: number,
+  msgs: ChatMessage[] = [],
+): Thread {
   return {
     id,
     name,
@@ -62,7 +72,12 @@ function makeThread(id: string, name: string, ts: number, msgs: ChatMessage[] = 
     avatar: null,
     is_group: false,
     messages: msgs,
-    unread: { last_seen_id: null, unread_ids: [], muted: false, marked_unread: false },
+    unread: {
+      last_seen_id: null,
+      unread_ids: [],
+      muted: false,
+      marked_unread: false,
+    },
     presentation: {
       members: [],
       member_count: null,
@@ -88,10 +103,24 @@ describe("appReducer + feature domain invariants", () => {
   it("preserves exact selectedThreadId across ThreadsUpdated refreshes even with duplicate names (#63)", () => {
     const settings = makeSettings();
     const t1 = makeThread("u_100", "Minh Anh", 1000, [
-      { id: "m1", sender: "Minh Anh", text: "Hi", time: "10:00", is_outgoing: false, ts: 1000 },
+      {
+        id: "m1",
+        sender: "Minh Anh",
+        text: "Hi",
+        time: "10:00",
+        is_outgoing: false,
+        ts: 1000,
+      },
     ]);
     const t2 = makeThread("u_200", "Minh Anh", 900, [
-      { id: "m2", sender: "Minh Anh", text: "Hello", time: "09:00", is_outgoing: false, ts: 900 },
+      {
+        id: "m2",
+        sender: "Minh Anh",
+        text: "Hello",
+        time: "09:00",
+        is_outgoing: false,
+        ts: 900,
+      },
     ]);
 
     const snapshot: CoreBootstrapSnapshot = {
@@ -107,7 +136,14 @@ describe("appReducer + feature domain invariants", () => {
       popular_stickers: [],
       onion_stickers: [],
       pinned_packs: [],
-      reaction_assets: { like: "", heart: "", smile: "", surprised: "", cry: "", rage: "" },
+      reaction_assets: {
+        like: "",
+        heart: "",
+        smile: "",
+        surprised: "",
+        cry: "",
+        rage: "",
+      },
       app_logo_data_url: "",
       active_db_path: "test.db",
       sync_running: false,
@@ -125,7 +161,14 @@ describe("appReducer + feature domain invariants", () => {
         payload: {
           threads: [
             makeThread("u_100", "Minh Anh", 2000, [
-              { id: "m3", sender: "Minh Anh", text: "Ping", time: "10:05", is_outgoing: false, ts: 2000 },
+              {
+                id: "m3",
+                sender: "Minh Anh",
+                text: "Ping",
+                time: "10:05",
+                is_outgoing: false,
+                ts: 2000,
+              },
             ]),
           ],
         },
@@ -133,7 +176,7 @@ describe("appReducer + feature domain invariants", () => {
     });
 
     expect(state.selectedThreadId).toBe("u_200");
-    expect(state.unreadCounts["u_100"]).toBe(1);
+    expect(state.unreadCounts.u_100).toBe(1);
     expect(state.threads[0].id).toBe("u_100");
   });
 
@@ -155,7 +198,14 @@ describe("appReducer + feature domain invariants", () => {
         popular_stickers: [],
         onion_stickers: [],
         pinned_packs: [],
-        reaction_assets: { like: "", heart: "", smile: "", surprised: "", cry: "", rage: "" },
+        reaction_assets: {
+          like: "",
+          heart: "",
+          smile: "",
+          surprised: "",
+          cry: "",
+          rage: "",
+        },
         app_logo_data_url: "",
         active_db_path: "test.db",
         sync_running: false,
@@ -167,7 +217,12 @@ describe("appReducer + feature domain invariants", () => {
       type: "CORE_EVENT",
       event: {
         type: "MessageSent",
-        payload: { client_message_id: "c1", thread_id: "u_1", text: "Xin chào", msg_id: "srv_1" },
+        payload: {
+          client_message_id: "c1",
+          thread_id: "u_1",
+          text: "Xin chào",
+          msg_id: "srv_1",
+        },
       },
     });
     expect(state.threads[0].messages).toHaveLength(1);
@@ -203,8 +258,22 @@ describe("appReducer + feature domain invariants", () => {
 
   it("refuses ambiguous quote-jump text references just like Rust unique_reference_index", () => {
     const dupMessages: ChatMessage[] = [
-      { id: "1", sender: "A", text: "ok", time: "10:00", is_outgoing: false, ts: 1 },
-      { id: "2", sender: "B", text: "ok", time: "10:01", is_outgoing: true, ts: 2 },
+      {
+        id: "1",
+        sender: "A",
+        text: "ok",
+        time: "10:00",
+        is_outgoing: false,
+        ts: 1,
+      },
+      {
+        id: "2",
+        sender: "B",
+        text: "ok",
+        time: "10:01",
+        is_outgoing: true,
+        ts: 2,
+      },
     ];
     expect(uniqueReferenceIndex(dupMessages, "ok")).toBeNull();
     expect(uniqueReferenceIndex(dupMessages, "2")).toBe(1);

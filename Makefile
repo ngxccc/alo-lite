@@ -39,11 +39,11 @@ test:
 
 lint:
 	cargo clippy --workspace --all-targets -- -D warnings
-	cd apps/desktop && bun run typecheck
+	cd apps/desktop && bun run check
 
 fmt:
 	cargo fmt --all
-
+	cd apps/desktop && bun run format
 package:
 	./packaging/linux/package-all.sh
 

@@ -16,7 +16,13 @@ export type MessageKind =
   | "delete"
   | "unknown";
 
-export type DeliveryState = "sending" | "sent" | "delivered" | "seen" | "failed" | "unknown";
+export type DeliveryState =
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "seen"
+  | "failed"
+  | "unknown";
 
 export interface ReactionSummary {
   emoji: string;
@@ -296,7 +302,12 @@ export interface CoreBootstrapSnapshot {
 export type CoreEventDto =
   | {
       type: "NotificationAuthorization";
-      payload: { request_id: number; ok: boolean; status_label: string | null; error: string | null };
+      payload: {
+        request_id: number;
+        ok: boolean;
+        status_label: string | null;
+        error: string | null;
+      };
     }
   | {
       type: "QrReady";
@@ -304,12 +315,20 @@ export type CoreEventDto =
     }
   | { type: "QrScanned"; payload: { name: string; avatar: string | null } }
   | { type: "QrExpired"; payload: { message: string } }
-  | { type: "LoginSuccess"; payload: { name: string; uin: string; avatar: string | null } }
+  | {
+      type: "LoginSuccess";
+      payload: { name: string; uin: string; avatar: string | null };
+    }
   | { type: "LoginFailed"; payload: { message: string } }
   | { type: "ThreadsUpdated"; payload: { threads: Thread[] } }
   | {
       type: "MessageSent";
-      payload: { client_message_id: string; thread_id: string; text: string; msg_id: string };
+      payload: {
+        client_message_id: string;
+        thread_id: string;
+        text: string;
+        msg_id: string;
+      };
     }
   | {
       type: "StickerSent";
@@ -329,15 +348,25 @@ export type CoreEventDto =
       type: "StickerPackItemsLoaded";
       payload: { cate_id: number; name: string; items: StickerItem[] };
     }
-  | { type: "StickerSearchResults"; payload: { keyword: string; items: StickerItem[] } }
+  | {
+      type: "StickerSearchResults";
+      payload: { keyword: string; items: StickerItem[] };
+    }
   | { type: "StickerSuggestKeywordsLoaded"; payload: { keywords: string[] } }
-  | { type: "ComposerStickerSuggestions"; payload: { keyword: string; items: StickerItem[] } }
+  | {
+      type: "ComposerStickerSuggestions";
+      payload: { keyword: string; items: StickerItem[] };
+    }
   | { type: "LinkPreviewReady"; payload: { meta: LinkMetadata } }
   | { type: "PhoneLookupSuccess"; payload: { profile: PhoneLookupResult } }
   | { type: "PhoneLookupFailed"; payload: { error: string } }
   | {
       type: "FriendStatusChecked";
-      payload: { user_id: string; status: FriendshipStatus; online: [boolean, string] | null };
+      payload: {
+        user_id: string;
+        status: FriendshipStatus;
+        online: [boolean, string] | null;
+      };
     }
   | {
       type: "QuoteSent";
@@ -349,17 +378,39 @@ export type CoreEventDto =
         quoted: ChatMessage;
       };
     }
-  | { type: "Reacted"; payload: { thread_id: string; msg_id: string; ts: number; reaction: string } }
-  | { type: "MessageDeleted"; payload: { thread_id: string; msg_id: string; ts: number } }
-  | { type: "MessageRecalled"; payload: { thread_id: string; msg_id: string; ts: number } }
-  | { type: "SendFailed"; payload: { thread_id: string; text: string; error: string } }
+  | {
+      type: "Reacted";
+      payload: {
+        thread_id: string;
+        msg_id: string;
+        ts: number;
+        reaction: string;
+      };
+    }
+  | {
+      type: "MessageDeleted";
+      payload: { thread_id: string; msg_id: string; ts: number };
+    }
+  | {
+      type: "MessageRecalled";
+      payload: { thread_id: string; msg_id: string; ts: number };
+    }
+  | {
+      type: "SendFailed";
+      payload: { thread_id: string; text: string; error: string };
+    }
   | { type: "SessionExpired"; payload: { message: string } }
   | { type: "SessionUnreachable"; payload: { message: string } }
   | { type: "LocalDataWiped" }
   | { type: "StatusUpdate"; payload: { message: string } }
   | {
       type: "RefreshFinished";
-      payload: { threads: number; messages: number; errors: string[]; manual: boolean };
+      payload: {
+        threads: number;
+        messages: number;
+        errors: string[];
+        manual: boolean;
+      };
     }
   | {
       type: "SyncFinished";
@@ -367,12 +418,26 @@ export type CoreEventDto =
     }
   | {
       type: "UpdateCheckFinished";
-      payload: { silent: boolean; ok: boolean; info: UpdateCheckResult | null; error: string | null };
+      payload: {
+        silent: boolean;
+        ok: boolean;
+        info: UpdateCheckResult | null;
+        error: string | null;
+      };
     }
-  | { type: "UpdateDownloadStatus"; payload: { downloading: boolean; message: string } }
-  | { type: "UpdateDownloadProgress"; payload: { downloaded: number; total: number } }
+  | {
+      type: "UpdateDownloadStatus";
+      payload: { downloading: boolean; message: string };
+    }
+  | {
+      type: "UpdateDownloadProgress";
+      payload: { downloaded: number; total: number };
+    }
   | { type: "UpdateAppliedAndRestarting"; payload: { version: string } }
-  | { type: "MuteSnapshotSynced"; payload: { muted_threads: Record<string, number> } }
+  | {
+      type: "MuteSnapshotSynced";
+      payload: { muted_threads: Record<string, number> };
+    }
   | { type: "MuteEventsReceived"; payload: { events: MuteControlEvent[] } }
   | { type: "PhoneSyncProgress"; payload: { progress: number; status: string } }
   | {
@@ -391,13 +456,23 @@ export type CoreEventDto =
     }
   | {
       type: "FileDownloaded";
-      payload: { ok: boolean; file_name: string | null; path: string | null; error: string | null };
+      payload: {
+        ok: boolean;
+        file_name: string | null;
+        path: string | null;
+        error: string | null;
+      };
     }
   | { type: "LoggedOut" }
   | { type: "HistoryReachedStart"; payload: { thread_id: string } }
   | {
       type: "AccountSwitched";
-      payload: { uin: string; name: string; avatar: string | null; threads: Thread[] };
+      payload: {
+        uin: string;
+        name: string;
+        avatar: string | null;
+        threads: Thread[];
+      };
     };
 
 export const REACTION_LIST = [

@@ -21,18 +21,23 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
   return (
     <Dialog
       open={state.phoneSyncModalOpen}
-      onOpenChange={(open) => !open && dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false })}
+      onOpenChange={(open) =>
+        !open && dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false })
+      }
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            <Smartphone className="h-4 w-4 text-primary" /> Đồng bộ tin nhắn từ điện thoại
+            <Smartphone className="h-4 w-4 text-primary" /> Đồng bộ tin nhắn từ
+            điện thoại
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-3 p-4">
           <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/50 p-3 text-xs">
-            <div className="font-bold text-foreground">Các bước cần thực hiện trên điện thoại:</div>
+            <div className="font-bold text-foreground">
+              Các bước cần thực hiện trên điện thoại:
+            </div>
             <div>1. Mở ứng dụng Zalo trên điện thoại.</div>
             <div className="font-semibold text-primary">
               2. Khi màn hình hiện “Đồng bộ tin nhắn?”, bấm “Đồng bộ ngay”.
@@ -52,10 +57,14 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
                   className="h-full bg-primary transition-all duration-200"
                 />
               </div>
-              <div className="text-xs text-muted-foreground">{state.phoneSyncStatus}</div>
+              <div className="text-xs text-muted-foreground">
+                {state.phoneSyncStatus}
+              </div>
             </div>
           ) : state.phoneSyncStatus ? (
-            <div className="text-xs text-muted-foreground">{state.phoneSyncStatus}</div>
+            <div className="text-xs text-muted-foreground">
+              {state.phoneSyncStatus}
+            </div>
           ) : null}
         </div>
 
@@ -71,7 +80,10 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
           </Button>
 
           {state.phoneSyncRunning ? (
-            <Button variant="destructive" onClick={() => void ipc.cancelPhoneSync()}>
+            <Button
+              variant="destructive"
+              onClick={() => void ipc.cancelPhoneSync()}
+            >
               <Square className="h-3.5 w-3.5" /> Dừng đồng bộ
             </Button>
           ) : (

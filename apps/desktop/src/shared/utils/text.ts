@@ -1,16 +1,70 @@
 const DIACRITIC_MAP: Record<string, string> = {
-  à: "a", á: "a", ạ: "a", ả: "a", ã: "a",
-  â: "a", ầ: "a", ấ: "a", ậ: "a", ẩ: "a", ẫ: "a",
-  ă: "a", ằ: "a", ắ: "a", ặ: "a", ẳ: "a", ẵ: "a",
-  è: "e", é: "e", ẹ: "e", ẻ: "e", ẽ: "e",
-  ê: "e", ề: "e", ế: "e", ệ: "e", ể: "e", ễ: "e",
-  ì: "i", í: "i", ị: "i", ỉ: "i", ĩ: "i",
-  ò: "o", ó: "o", ọ: "o", ỏ: "o", õ: "o",
-  ô: "o", ồ: "o", ố: "o", ộ: "o", ổ: "o", ỗ: "o",
-  ơ: "o", ờ: "o", ớ: "o", ợ: "o", ở: "o", ỡ: "o",
-  ù: "u", ú: "u", ụ: "u", ủ: "u", ũ: "u",
-  ư: "u", ừ: "u", ứ: "u", ự: "u", ử: "u", ữ: "u",
-  ỳ: "y", ý: "y", ỵ: "y", ỷ: "y", ỹ: "y",
+  à: "a",
+  á: "a",
+  ạ: "a",
+  ả: "a",
+  ã: "a",
+  â: "a",
+  ầ: "a",
+  ấ: "a",
+  ậ: "a",
+  ẩ: "a",
+  ẫ: "a",
+  ă: "a",
+  ằ: "a",
+  ắ: "a",
+  ặ: "a",
+  ẳ: "a",
+  ẵ: "a",
+  è: "e",
+  é: "e",
+  ẹ: "e",
+  ẻ: "e",
+  ẽ: "e",
+  ê: "e",
+  ề: "e",
+  ế: "e",
+  ệ: "e",
+  ể: "e",
+  ễ: "e",
+  ì: "i",
+  í: "i",
+  ị: "i",
+  ỉ: "i",
+  ĩ: "i",
+  ò: "o",
+  ó: "o",
+  ọ: "o",
+  ỏ: "o",
+  õ: "o",
+  ô: "o",
+  ồ: "o",
+  ố: "o",
+  ộ: "o",
+  ổ: "o",
+  ỗ: "o",
+  ơ: "o",
+  ờ: "o",
+  ớ: "o",
+  ợ: "o",
+  ở: "o",
+  ỡ: "o",
+  ù: "u",
+  ú: "u",
+  ụ: "u",
+  ủ: "u",
+  ũ: "u",
+  ư: "u",
+  ừ: "u",
+  ứ: "u",
+  ự: "u",
+  ử: "u",
+  ữ: "u",
+  ỳ: "y",
+  ý: "y",
+  ỵ: "y",
+  ỷ: "y",
+  ỹ: "y",
   đ: "d",
 };
 
@@ -55,7 +109,11 @@ export function formatDayDivider(ts: number): string {
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   if (isSameDay(d, yesterday)) return "Hôm qua";
-  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 export function dayKey(ts: number): string {
@@ -75,7 +133,15 @@ export function jxlToJpgUrl(url: string): string {
   return url.replace("/jxl/", "/jpg/").replace(/\.jxl(\?|$)/i, ".jpg$1");
 }
 export function avatarColor(name: string): string {
-  const palette = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#DB2777", "#0891B2", "#DC2626"];
+  const palette = [
+    "#2563EB",
+    "#059669",
+    "#D97706",
+    "#7C3AED",
+    "#DB2777",
+    "#0891B2",
+    "#DC2626",
+  ];
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0;

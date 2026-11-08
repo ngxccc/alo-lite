@@ -8,7 +8,7 @@ import type { ImageViewerState } from "../../app/store/appReducer";
 
 interface ImageViewerModalProps {
   viewer: ImageViewerState | null;
-  mediaCache: Record<string, string>;
+  mediaCache: Record<string, string | undefined>;
   downloadDir: string;
   onClose: () => void;
 }
@@ -28,15 +28,23 @@ export function ImageViewerModal({
   if (!viewer) return null;
 
   const hdKey = `hd_${viewer.texKey}`;
-  const src = mediaCache[hdKey] ?? mediaCache[viewer.texKey] ?? jxlToJpgUrl(viewer.fullUrl);
+  const src =
+    mediaCache[hdKey] ??
+    mediaCache[viewer.texKey] ??
+    jxlToJpgUrl(viewer.fullUrl);
 
   return (
     <Dialog open={Boolean(viewer)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent hideClose className="max-w-[88vw] w-[88vw] h-[86vh] max-h-[86vh] bg-background">
-        <div className="flex items-center justify-between h-14 px-4 border-b border-border bg-sidebar shrink-0">
+      <DialogContent
+        hideClose
+        className="h-[86vh] max-h-[86vh] w-[88vw] max-w-[88vw] bg-background"
+      >
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-sidebar px-4">
           <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">{viewer.title || "Hình ảnh"}</div>
-            <div className="text-xs text-muted-foreground truncate">
+            <div className="truncate text-sm font-semibold">
+              {viewer.title || "Hình ảnh"}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
               {viewer.sender} · {viewer.time}
             </div>
           </div>
@@ -46,22 +54,31 @@ export function ImageViewerModal({
               variant="outline"
               size="icon-sm"
               title="Thu nhỏ"
-              onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))))}
+              onClick={() =>
+                setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))))
+              }
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
-            <span className="min-w-12 text-center text-xs text-muted-foreground font-mono">
+            <span className="min-w-12 text-center font-mono text-xs text-muted-foreground">
               {Math.round(zoom * 100)}%
             </span>
             <Button
               variant="outline"
               size="icon-sm"
               title="Phóng to"
-              onClick={() => setZoom((z) => Math.min(4, Number((z + 0.25).toFixed(2))))}
+              onClick={() =>
+                setZoom((z) => Math.min(4, Number((z + 0.25).toFixed(2))))
+              }
             >
               <ZoomIn className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="outline" size="icon-sm" title="Đặt lại" onClick={() => setZoom(1)}>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              title="Đặt lại"
+              onClick={() => setZoom(1)}
+            >
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
             {viewer.fullUrl ? (
@@ -69,28 +86,39 @@ export function ImageViewerModal({
                 variant="default"
                 size="sm"
                 onClick={() =>
-                  void ipc.downloadFile(viewer.fullUrl, viewer.title || "zalo_image.jpg", downloadDir)
+                  void ipc.downloadFile(
+                    viewer.fullUrl,
+                    viewer.title || "zalo_image.jpg",
+                    downloadDir,
+                  )
                 }
               >
                 <Download className="h-3.5 w-3.5" /> Tải xuống
               </Button>
             ) : null}
-            <Button variant="ghost" size="icon-sm" onClick={onClose} title="Đóng (Esc)">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              title="Đóng (Esc)"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto flex items-center justify-center p-6 bg-black/80">
+        <div className="flex flex-1 items-center justify-center overflow-auto bg-black/80 p-6">
           {src ? (
             <img
               src={src}
               alt={viewer.title}
               style={{ transform: `scale(${zoom})` }}
-              className="max-w-full max-h-full object-contain rounded-md transition-transform duration-150 origin-center"
+              className="max-h-full max-w-full origin-center rounded-md object-contain transition-transform duration-150"
             />
           ) : (
-            <span className="text-muted-foreground text-xs">Đang tải ảnh độ phân giải cao…</span>
+            <span className="text-xs text-muted-foreground">
+              Đang tải ảnh độ phân giải cao…
+            </span>
           )}
         </div>
       </DialogContent>

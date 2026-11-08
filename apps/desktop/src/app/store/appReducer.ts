@@ -15,10 +15,18 @@ import type {
   UpdateCheckResult,
 } from "../../shared/types/ipc";
 import { formatClockNow } from "../../shared/utils/text";
-import { mergeThreadInto, reconcileSentMessage, sortThreads } from "../../features/threads/utils/threads";
+import {
+  mergeThreadInto,
+  reconcileSentMessage,
+  sortThreads,
+} from "../../features/threads/utils/threads";
 
 export type NavSection = "chat" | "contacts";
-export type ContactsSubTab = "friends" | "groups" | "friend_requests" | "group_invites";
+export type ContactsSubTab =
+  | "friends"
+  | "groups"
+  | "friend_requests"
+  | "group_invites";
 export type SettingsTab =
   | "general"
   | "account"
@@ -67,9 +75,9 @@ export interface AppState {
   selectedThreadId: string | null;
   threadFilter: "all" | "direct" | "groups";
   searchQuery: string;
-  unreadCounts: Record<string, number>;
-  historyReachedStart: Record<string, boolean>;
-  renderLimitByThread: Record<string, number>;
+  unreadCounts: Record<string, number | undefined>;
+  historyReachedStart: Record<string, boolean | undefined>;
+  renderLimitByThread: Record<string, number | undefined>;
 
   replyingTo: ChatMessage | null;
   forwardMsg: ChatMessage | null;
@@ -99,22 +107,21 @@ export interface AppState {
   devModalOpen: boolean;
   imageViewer: ImageViewerState | null;
 
-  mediaCache: Record<string, string>;
+  mediaCache: Record<string, string | undefined>;
   popularStickers: StickerItem[];
   onionStickers: StickerItem[];
   pinnedPacks: PinnedPackMeta[];
   stickerStorePacks: StickerPackInfo[];
   stickerStoreLoading: boolean;
-  stickerPackItems: Record<number, StickerItem[]>;
+  stickerPackItems: Record<number, StickerItem[] | undefined>;
   stickerSearchResults: StickerItem[];
   stickerSearchLoading: boolean;
   stickerSuggestKeywords: string[];
   composerStickerSuggestions: StickerItem[];
-  linkMetadataCache: Record<string, LinkMetadata>;
+  linkMetadataCache: Record<string, LinkMetadata | undefined>;
 
-  friendStatusMap: Record<string, FriendshipStatus>;
-  userOnlineMap: Record<string, [boolean, string]>;
-
+  friendStatusMap: Record<string, FriendshipStatus | undefined>;
+  userOnlineMap: Record<string, [boolean, string] | undefined>;
   updateChecking: boolean;
   updateInfo: UpdateCheckResult | null;
   updateError: string | null;
@@ -167,7 +174,14 @@ export const initialAppState: AppState = {
   appVersion: "0.0.1",
   devMode: false,
   appLogoDataUrl: "",
-  reactionAssets: { like: "", heart: "", smile: "", surprised: "", cry: "", rage: "" },
+  reactionAssets: {
+    like: "",
+    heart: "",
+    smile: "",
+    surprised: "",
+    cry: "",
+    rage: "",
+  },
   activeDbPath: "zalo_history.db",
   loggedIn: false,
   uin: "",
@@ -319,7 +333,9 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
         qrScannedName: null,
         qrStatus: "Đang xin mã QR mới…",
         statusMessage:
-          event.type === "SessionExpired" ? event.payload.message : "Đã đăng xuất",
+          event.type === "SessionExpired"
+            ? event.payload.message
+            : "Đã đăng xuất",
       };
 
     case "AccountSwitched": {
@@ -361,7 +377,8 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
               .slice(-added)
               .filter((m) => !m.is_outgoing).length;
             if (newIncoming > 0 && incoming.id !== state.selectedThreadId) {
-              unreadCounts[incoming.id] = (unreadCounts[incoming.id] ?? 0) + newIncoming;
+              unreadCounts[incoming.id] =
+                (unreadCounts[incoming.id] ?? 0) + newIncoming;
             }
           }
         } else {
@@ -370,9 +387,12 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
       }
 
       const rawList = Array.from(byId.values());
-      const threads = state.settings ? sortThreads(rawList, state.settings) : rawList;
+      const threads = state.settings
+        ? sortThreads(rawList, state.settings)
+        : rawList;
       const selectedThreadId =
-        state.selectedThreadId && threads.some((t) => t.id === state.selectedThreadId)
+        state.selectedThreadId &&
+        threads.some((t) => t.id === state.selectedThreadId)
           ? state.selectedThreadId
           : (threads[0]?.id ?? null);
 
@@ -387,7 +407,8 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
 
     case "MessageSent": {
       const now = formatClockNow();
-      const finalId = event.payload.msg_id || `out_${event.payload.client_message_id}`;
+      const finalId =
+        event.payload.msg_id || `out_${event.payload.client_message_id}`;
       const msg: ChatMessage = {
         id: finalId,
         client_message_id: event.payload.client_message_id,
@@ -399,8 +420,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
       };
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) =>
-          reconcileSentMessage(t, msg),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => reconcileSentMessage(t, msg),
         ),
         statusMessage: `Đã gửi tin nhắn lúc ${now}`,
       };
@@ -408,7 +431,8 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
 
     case "StickerSent": {
       const now = formatClockNow();
-      const finalId = event.payload.msg_id || `out_${event.payload.client_message_id}`;
+      const finalId =
+        event.payload.msg_id || `out_${event.payload.client_message_id}`;
       const msg: ChatMessage = {
         id: finalId,
         client_message_id: event.payload.client_message_id,
@@ -423,8 +447,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
       };
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) =>
-          reconcileSentMessage(t, msg),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => reconcileSentMessage(t, msg),
         ),
         statusMessage: `Đã gửi nhãn dán lúc ${now}`,
       };
@@ -433,15 +459,18 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
     case "AttachmentSent":
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) =>
-          reconcileSentMessage(t, event.payload.msg),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => reconcileSentMessage(t, event.payload.msg),
         ),
         statusMessage: `Đã gửi đính kèm lúc ${formatClockNow()}`,
       };
 
     case "QuoteSent": {
       const now = formatClockNow();
-      const finalId = event.payload.msg_id || `out_${event.payload.client_message_id}`;
+      const finalId =
+        event.payload.msg_id || `out_${event.payload.client_message_id}`;
       const msg: ChatMessage = {
         id: finalId,
         client_message_id: event.payload.client_message_id,
@@ -456,8 +485,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
       };
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) =>
-          reconcileSentMessage(t, msg),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => reconcileSentMessage(t, msg),
         ),
         statusMessage: `Đã gửi trả lời lúc ${now}`,
       };
@@ -466,49 +497,64 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
     case "Reacted":
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) => ({
-          ...t,
-          messages: t.messages.map((m) =>
-            (m.id && m.id === event.payload.msg_id) || (!m.id && m.ts === event.payload.ts)
-              ? { ...m, reactions: [event.payload.reaction] }
-              : m,
-          ),
-        })),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => ({
+            ...t,
+            messages: t.messages.map((m) =>
+              (m.id && m.id === event.payload.msg_id) ||
+              (!m.id && m.ts === event.payload.ts)
+                ? { ...m, reactions: [event.payload.reaction] }
+                : m,
+            ),
+          }),
+        ),
         statusMessage: "Đã thả cảm xúc",
       };
 
     case "MessageDeleted":
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) => ({
-          ...t,
-          messages: t.messages.filter(
-            (m) =>
-              !((event.payload.msg_id && m.id === event.payload.msg_id) ||
-                (!event.payload.msg_id && m.ts === event.payload.ts)),
-          ),
-        })),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => ({
+            ...t,
+            messages: t.messages.filter(
+              (m) =>
+                !(
+                  (event.payload.msg_id && m.id === event.payload.msg_id) ||
+                  (!event.payload.msg_id && m.ts === event.payload.ts)
+                ),
+            ),
+          }),
+        ),
         statusMessage: "Đã xóa tin nhắn khỏi lịch sử máy này",
       };
 
     case "MessageRecalled":
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) => ({
-          ...t,
-          messages: t.messages.map((m) =>
-            (event.payload.msg_id && m.id === event.payload.msg_id) ||
-            (!event.payload.msg_id && m.ts === event.payload.ts)
-              ? {
-                  ...m,
-                  text: "[Tin nhắn đã thu hồi]",
-                  sticker_id: undefined,
-                  link_url: undefined,
-                  link_thumb: undefined,
-                }
-              : m,
-          ),
-        })),
+        threads: updateThreadMessage(
+          state.threads,
+          event.payload.thread_id,
+          (t) => ({
+            ...t,
+            messages: t.messages.map((m) =>
+              (event.payload.msg_id && m.id === event.payload.msg_id) ||
+              (!event.payload.msg_id && m.ts === event.payload.ts)
+                ? {
+                    ...m,
+                    text: "[Tin nhắn đã thu hồi]",
+                    sticker_id: undefined,
+                    link_url: undefined,
+                    link_thumb: undefined,
+                  }
+                : m,
+            ),
+          }),
+        ),
         statusMessage: "Đã thu hồi tin nhắn",
       };
 
@@ -522,7 +568,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
     case "StickerImageReady":
       return {
         ...state,
-        mediaCache: { ...state.mediaCache, [event.payload.key]: event.payload.data_url },
+        mediaCache: {
+          ...state.mediaCache,
+          [event.payload.key]: event.payload.data_url,
+        },
       };
 
     case "StickerStoreLoaded":
@@ -597,7 +646,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
           [event.payload.user_id]: event.payload.status,
         },
         userOnlineMap: event.payload.online
-          ? { ...state.userOnlineMap, [event.payload.user_id]: event.payload.online }
+          ? {
+              ...state.userOnlineMap,
+              [event.payload.user_id]: event.payload.online,
+            }
           : state.userOnlineMap,
       };
 
@@ -669,13 +721,19 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
     case "HistoryReachedStart":
       return {
         ...state,
-        historyReachedStart: { ...state.historyReachedStart, [event.payload.thread_id]: true },
+        historyReachedStart: {
+          ...state.historyReachedStart,
+          [event.payload.thread_id]: true,
+        },
         toast: nextToast("Đã hiển thị toàn bộ lịch sử hội thoại này"),
       };
 
     case "MuteSnapshotSynced": {
       if (!state.settings) return state;
-      const muted_threads = { ...state.settings.muted_threads, ...event.payload.muted_threads };
+      const muted_threads = {
+        ...state.settings.muted_threads,
+        ...event.payload.muted_threads,
+      };
       return {
         ...state,
         settings: { ...state.settings, muted_threads },
@@ -688,7 +746,8 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
       let threads = state.threads;
       for (const ev of event.payload.events) {
         if (ev.muted) {
-          if (ev.settings_until != null) muted_threads[ev.thread_id] = ev.settings_until;
+          if (ev.settings_until != null)
+            muted_threads[ev.thread_id] = ev.settings_until;
         } else {
           delete muted_threads[ev.thread_id];
         }
@@ -732,9 +791,14 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
         ...state,
         updateChecking: false,
         updateInfo: event.payload.ok ? event.payload.info : state.updateInfo,
-        updateError: event.payload.ok ? null : (event.payload.error ?? "Không kiểm tra được cập nhật"),
+        updateError: event.payload.ok
+          ? null
+          : (event.payload.error ?? "Không kiểm tra được cập nhật"),
         toast:
-          !event.payload.silent && event.payload.ok && event.payload.info && !event.payload.info.has_update
+          !event.payload.silent &&
+          event.payload.ok &&
+          event.payload.info &&
+          !event.payload.info.has_update
             ? nextToast("Bạn đang dùng phiên bản mới nhất")
             : state.toast,
       };
@@ -749,7 +813,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
     case "UpdateDownloadProgress":
       return {
         ...state,
-        updateProgress: { downloaded: event.payload.downloaded, total: event.payload.total },
+        updateProgress: {
+          downloaded: event.payload.downloaded,
+          total: event.payload.total,
+        },
       };
 
     case "UpdateAppliedAndRestarting":
@@ -769,7 +836,10 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
     case "NotificationAuthorization":
       return {
         ...state,
-        statusMessage: event.payload.status_label ?? event.payload.error ?? state.statusMessage,
+        statusMessage:
+          event.payload.status_label ??
+          event.payload.error ??
+          state.statusMessage,
       };
   }
 }
@@ -863,7 +933,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         infoDrawerOpen: open,
-        settings: state.settings ? { ...state.settings, info_drawer_open: open } : null,
+        settings: state.settings
+          ? { ...state.settings, info_drawer_open: open }
+          : null,
       };
     }
     case "UPDATE_SETTINGS_LOCAL":

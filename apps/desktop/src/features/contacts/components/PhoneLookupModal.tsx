@@ -1,9 +1,14 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { MessageSquare, Search, UserPlus } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
 import { Button } from "../../../shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../../shared/ui/dialog";
 import { Input } from "../../../shared/ui/input";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 
@@ -16,7 +21,7 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
   const [phone, setPhone] = useState("");
   if (!state.phoneModalOpen) return null;
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!phone.trim()) return;
     dispatch({ type: "START_PHONE_LOOKUP" });
@@ -28,7 +33,9 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
   return (
     <Dialog
       open={state.phoneModalOpen}
-      onOpenChange={(open) => !open && dispatch({ type: "SET_PHONE_MODAL", open: false })}
+      onOpenChange={(open) =>
+        !open && dispatch({ type: "SET_PHONE_MODAL", open: false })
+      }
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -45,8 +52,13 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
               placeholder="Nhập số điện thoại (ví dụ 0912345678)…"
               autoFocus
             />
-            <Button type="submit" variant="default" disabled={state.phoneLookupLoading}>
-              <Search className="h-3.5 w-3.5" /> {state.phoneLookupLoading ? "Đang tìm…" : "Tìm"}
+            <Button
+              type="submit"
+              variant="default"
+              disabled={state.phoneLookupLoading}
+            >
+              <Search className="h-3.5 w-3.5" />{" "}
+              {state.phoneLookupLoading ? "Đang tìm…" : "Tìm"}
             </Button>
           </form>
 
@@ -74,7 +86,9 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
                     {p.phone} · UID: {p.user_id}
                   </div>
                   {p.status ? (
-                    <div className="truncate text-[11px] text-muted-foreground">{p.status}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {p.status}
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -92,7 +106,9 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => void ipc.addFriend(p.user_id, p.display_name || p.zalo_name)}
+                  onClick={() =>
+                    void ipc.addFriend(p.user_id, p.display_name || p.zalo_name)
+                  }
                 >
                   <UserPlus className="h-3.5 w-3.5" /> Kết bạn
                 </Button>

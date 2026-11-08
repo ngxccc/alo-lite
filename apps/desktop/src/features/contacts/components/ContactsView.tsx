@@ -4,18 +4,30 @@ import { Avatar } from "../../../shared/ui/Avatar";
 import { Button } from "../../../shared/ui/button";
 import { cn } from "../../../shared/utils/cn";
 import { foldVnSearch, matchesVnQuery } from "../../../shared/utils/text";
-import type { AppAction, AppState, ContactsSubTab } from "../../../app/store/appReducer";
+import type {
+  AppAction,
+  AppState,
+  ContactsSubTab,
+} from "../../../app/store/appReducer";
 
 interface ContactsViewProps {
   state: AppState;
   dispatch: (action: AppAction) => void;
 }
 
-const CONTACT_TABS: Array<{ id: ContactsSubTab; label: string; kind: "user" | "group" }> = [
+const CONTACT_TABS: {
+  id: ContactsSubTab;
+  label: string;
+  kind: "user" | "group";
+}[] = [
   { id: "friends", label: "Danh sách bạn bè", kind: "user" },
   { id: "groups", label: "Danh sách nhóm và cộng đồng", kind: "group" },
   { id: "friend_requests", label: "Lời mời kết bạn", kind: "user" },
-  { id: "group_invites", label: "Lời mời vào nhóm và cộng đồng", kind: "group" },
+  {
+    id: "group_invites",
+    label: "Lời mời vào nhóm và cộng đồng",
+    kind: "group",
+  },
 ];
 
 export function ContactsView({ state, dispatch }: ContactsViewProps) {
@@ -44,7 +56,9 @@ export function ContactsView({ state, dispatch }: ContactsViewProps) {
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               value={state.contactsSearchQuery}
-              onChange={(e) => dispatch({ type: "SET_CONTACTS_SEARCH", query: e.target.value })}
+              onChange={(e) =>
+                dispatch({ type: "SET_CONTACTS_SEARCH", query: e.target.value })
+              }
               placeholder="Tìm kiếm danh bạ…"
               className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
@@ -64,11 +78,13 @@ export function ContactsView({ state, dispatch }: ContactsViewProps) {
             <button
               key={tab.id}
               type="button"
-              onClick={() => dispatch({ type: "SET_CONTACTS_SUBTAB", tab: tab.id })}
+              onClick={() =>
+                dispatch({ type: "SET_CONTACTS_SUBTAB", tab: tab.id })
+              }
               className={cn(
-                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer",
+                "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
                 sub === tab.id
-                  ? "bg-accent text-accent-foreground font-semibold"
+                  ? "bg-accent font-semibold text-accent-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
@@ -107,8 +123,10 @@ export function ContactsView({ state, dispatch }: ContactsViewProps) {
               items.map((t) => (
                 <div
                   key={t.id}
-                  onClick={() => dispatch({ type: "SELECT_THREAD", threadId: t.id })}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60 cursor-pointer"
+                  onClick={() =>
+                    dispatch({ type: "SELECT_THREAD", threadId: t.id })
+                  }
+                  className="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-muted/60"
                 >
                   <Avatar
                     id={t.id}
@@ -127,7 +145,10 @@ export function ContactsView({ state, dispatch }: ContactsViewProps) {
                     </div>
                   </div>
                   {sub === "friend_requests" ? (
-                    <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         variant="default"
                         size="sm"

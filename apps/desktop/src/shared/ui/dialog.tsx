@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/55 backdrop-blur-[1.5px] flex items-center justify-center p-4",
+      "fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[1.5px]",
       className,
     )}
     {...props}
@@ -34,14 +34,14 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "relative z-50 flex flex-col w-full max-w-lg max-h-[86vh] rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl overflow-hidden focus:outline-none",
+          "relative z-50 flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl focus:outline-none",
           className,
         )}
         {...props}
       >
         {children}
         {!hideClose ? (
-          <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none cursor-pointer">
+          <DialogPrimitive.Close className="absolute top-3 right-3 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none">
             <X className="h-4 w-4" />
             <span className="sr-only">Đóng</span>
           </DialogPrimitive.Close>
@@ -52,11 +52,14 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function DialogHeader({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between border-b border-border px-4 py-3 shrink-0",
+        "flex shrink-0 items-center justify-between border-b border-border px-4 py-3",
         className,
       )}
       {...props}
@@ -64,11 +67,14 @@ function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   );
 }
 
-function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function DialogFooter({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "flex items-center justify-end gap-2 border-t border-border px-4 py-2.5 shrink-0 bg-muted/30",
+        "flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-2.5",
         className,
       )}
       {...props}
@@ -82,7 +88,10 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-sm font-semibold leading-none tracking-tight flex items-center gap-2", className)}
+    className={cn(
+      "flex items-center gap-2 text-sm leading-none font-semibold tracking-tight",
+      className,
+    )}
     {...props}
   />
 ));

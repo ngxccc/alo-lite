@@ -11,7 +11,11 @@ import {
 } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../../shared/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../../../shared/ui/tooltip";
 import { cn } from "../../../shared/utils/cn";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { threadUnreadCount } from "../../threads/utils/threads";
@@ -40,7 +44,7 @@ function RailButton({
           onClick={onClick}
           aria-label={label}
           className={cn(
-            "relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors cursor-pointer select-none",
+            "relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl transition-colors select-none",
             active
               ? "bg-rail-muted text-white shadow-xs"
               : "text-rail-foreground/80 hover:bg-rail-muted hover:text-white",
@@ -63,17 +67,25 @@ export function NavRail({ state, dispatch }: NavRailProps) {
 
   const toggleTheme = () => {
     if (!state.settings) return;
-    const next = { ...state.settings, theme_mode: isDark ? ("light" as const) : ("dark" as const) };
+    const next = {
+      ...state.settings,
+      theme_mode: isDark ? ("light" as const) : ("dark" as const),
+    };
     dispatch({ type: "UPDATE_SETTINGS_LOCAL", settings: next });
     void ipc.saveSettings(next);
   };
 
   const openCloudThread = () => {
-    const cloud = state.threads.find((t) => !t.is_group && t.name.includes("Cloud của tôi"));
+    const cloud = state.threads.find(
+      (t) => !t.is_group && t.name.includes("Cloud của tôi"),
+    );
     if (cloud) {
       dispatch({ type: "SELECT_THREAD", threadId: cloud.id });
     } else {
-      dispatch({ type: "SHOW_TOAST", message: "Chưa tìm thấy hội thoại Cloud của tôi" });
+      dispatch({
+        type: "SHOW_TOAST",
+        message: "Chưa tìm thấy hội thoại Cloud của tôi",
+      });
     }
   };
 
@@ -87,8 +99,10 @@ export function NavRail({ state, dispatch }: NavRailProps) {
           <TooltipTrigger asChild>
             <button
               type="button"
-              onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })}
-              className="relative mb-1 rounded-full ring-2 ring-white/25 transition hover:ring-white/60 cursor-pointer"
+              onClick={() =>
+                dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })
+              }
+              className="relative mb-1 cursor-pointer rounded-full ring-2 ring-white/25 transition hover:ring-white/60"
             >
               <Avatar
                 id={state.uin || "self"}
@@ -121,7 +135,9 @@ export function NavRail({ state, dispatch }: NavRailProps) {
         <RailButton
           active={state.activeSection === "contacts"}
           label="Danh bạ"
-          onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "contacts" })}
+          onClick={() =>
+            dispatch({ type: "SET_NAV_SECTION", section: "contacts" })
+          }
         >
           <Users className="h-5 w-5" />
         </RailButton>
@@ -147,10 +163,16 @@ export function NavRail({ state, dispatch }: NavRailProps) {
         </RailButton>
 
         <RailButton
-          label={isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"}
+          label={
+            isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"
+          }
           onClick={toggleTheme}
         >
-          {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+          {isDark ? (
+            <Sun className="h-[18px] w-[18px]" />
+          ) : (
+            <Moon className="h-[18px] w-[18px]" />
+          )}
         </RailButton>
 
         <RailButton
@@ -162,7 +184,9 @@ export function NavRail({ state, dispatch }: NavRailProps) {
 
         <RailButton
           label="Cài đặt (Ctrl+Shift+P mở Quyền riêng tư)"
-          onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })}
+          onClick={() =>
+            dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })
+          }
         >
           <Settings className="h-[19px] w-[19px]" />
         </RailButton>

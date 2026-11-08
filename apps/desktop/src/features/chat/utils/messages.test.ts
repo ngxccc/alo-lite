@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import type { ChatMessage } from "../../../shared/types/ipc";
-import { isFileMessage, isPhotoMessage, parseCallCard, stickerThumbnailUrl } from "./messages";
+import {
+  isFileMessage,
+  isPhotoMessage,
+  parseCallCard,
+  stickerThumbnailUrl,
+} from "./messages";
 
 function msg(patch: Partial<ChatMessage>): ChatMessage {
   return {
@@ -26,15 +31,26 @@ describe("chat message utils", () => {
   });
 
   it("classifies photo vs sticker vs file attachments cleanly", () => {
-    expect(isPhotoMessage(msg({ text: "[Hình ảnh]", sticker_id: 123 }))).toBe(false);
+    expect(isPhotoMessage(msg({ text: "[Hình ảnh]", sticker_id: 123 }))).toBe(
+      false,
+    );
     expect(isPhotoMessage(msg({ text: "[Hình ảnh]" }))).toBe(true);
     expect(
-      isFileMessage(msg({ link_url: "https://cdn.example/a.pdf", link_src: "Tập tin Zalo" })),
+      isFileMessage(
+        msg({
+          link_url: "https://cdn.example/a.pdf",
+          link_src: "Tập tin Zalo",
+        }),
+      ),
     ).toBe(true);
   });
 
   it("builds Onion and standard sticker CDN URLs", () => {
-    expect(stickerThumbnailUrl({ sticker_id: 5, cate_id: 0 })).toContain("/default/thumb/5.png");
-    expect(stickerThumbnailUrl({ sticker_id: 98930, cate_id: 61900 })).toContain("eid=98930");
+    expect(stickerThumbnailUrl({ sticker_id: 5, cate_id: 0 })).toContain(
+      "/default/thumb/5.png",
+    );
+    expect(
+      stickerThumbnailUrl({ sticker_id: 98930, cate_id: 61900 }),
+    ).toContain("eid=98930");
   });
 });
