@@ -670,7 +670,7 @@ pub fn notify_os_new_update(latest_version: &str, current_version: &str, release
 }
 
 /// UI-agnostic update metadata returned by [`fetch_github_latest_release`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct UpdateCheckResult {
     pub current_version: String,
     pub latest_version: String,

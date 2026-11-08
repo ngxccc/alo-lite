@@ -17,6 +17,29 @@ pub struct CoreImageData {
     pub rgba: Vec<u8>,
 }
 
+impl CoreImageData {
+    /// Encode RGBA8 pixels into a compact `data:image/png;base64,...` URI for WebView consumers.
+    pub fn to_png_data_url(&self) -> Option<String> {
+        use base64::Engine as _;
+        use image::ImageEncoder as _;
+
+        if self.width == 0 || self.height == 0 || self.rgba.is_empty() {
+            return None;
+        }
+        let mut png_bytes = Vec::with_capacity((self.width * self.height) as usize);
+        let encoder = image::codecs::png::PngEncoder::new(&mut png_bytes);
+        encoder
+            .write_image(
+                &self.rgba,
+                self.width,
+                self.height,
+                image::ExtendedColorType::Rgba8,
+            )
+            .ok()?;
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&png_bytes);
+        Some(format!("data:image/png;base64,{b64}"))
+    }
+}
 /// Sink notified whenever [`super::CoreEngine`] produces a domain event for an active UI frontend.
 pub trait CoreEventSink: Send + Sync + 'static {
     fn emit(&self, event: CoreEvent);

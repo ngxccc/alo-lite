@@ -42,13 +42,15 @@ book/
 .scratch/
 .env
 
+# Node / Vite frontend & Tauri generated schemas
+node_modules/
+ui/tauri/src-tauri/gen/
 # Logs & temporary files
 *.tmp
 *.bak
 *.log*
 __pycache__/
 *.py[cod]
-
 # OS metadata
 .DS_Store
 Thumbs.db

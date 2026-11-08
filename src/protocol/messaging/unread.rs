@@ -817,7 +817,7 @@ pub async fn get_mute_snapshot(
 }
 
 /// Real-time mute/unmute control notification (`act_type: "mute"`, `act: "set" | "unset"`, `#67`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct MuteControlEvent {
     pub thread_id: String,
     pub is_group: bool,
