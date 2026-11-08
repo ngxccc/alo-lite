@@ -10,7 +10,7 @@ description = "UI-independent Zalo protocol, CoreEngine, SQLite store, and MCP r
 
 [dependencies]
 # Cryptography & Network Encoding
-aes = "0.8"
+aes = "0.9"
 cbc = "0.1"
 cipher = "0.4"
 md-5 = "0.10"
