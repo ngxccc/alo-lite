@@ -168,15 +168,6 @@ export interface PinnedPackMeta {
   items: StickerItem[];
 }
 
-export interface ReactionAssetMap {
-  like: string;
-  heart: string;
-  smile: string;
-  surprised: string;
-  cry: string;
-  rage: string;
-}
-
 export interface LinkMetadata {
   url: string;
   title: string;
@@ -287,7 +278,6 @@ export interface CoreBootstrapSnapshot {
   popular_stickers: StickerItem[];
   onion_stickers: StickerItem[];
   pinned_packs: PinnedPackMeta[];
-  reaction_assets: ReactionAssetMap;
   app_logo_data_url: string;
   active_db_path: string;
   sync_running: boolean;
@@ -471,10 +461,10 @@ export type CoreEventDto =
     };
 
 export const REACTION_LIST = [
-  { emoji: "👍", key: "like" as const, label: "Thích" },
-  { emoji: "❤️", key: "heart" as const, label: "Yêu thích" },
-  { emoji: "😆", key: "smile" as const, label: "Haha" },
-  { emoji: "😮", key: "surprised" as const, label: "Wow" },
-  { emoji: "😢", key: "cry" as const, label: "Buồn" },
-  { emoji: "😠", key: "rage" as const, label: "Phẫn nộ" },
+  { emoji: "\u{1F44D}", key: "like" as const, label: "Thích" },
+  { emoji: "\u{2764}\u{FE0F}", key: "heart" as const, label: "Yêu thích" },
+  { emoji: "\u{1F606}", key: "smile" as const, label: "Haha" },
+  { emoji: "\u{1F62E}", key: "surprised" as const, label: "Wow" },
+  { emoji: "\u{1F622}", key: "cry" as const, label: "Buồn" },
+  { emoji: "\u{1F620}", key: "rage" as const, label: "Phẫn nộ" },
 ] as const;

@@ -26,16 +26,6 @@ pub struct PinnedPackMeta {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ReactionAssetMap {
-    pub like: String,
-    pub heart: String,
-    pub smile: String,
-    pub surprised: String,
-    pub cry: String,
-    pub rage: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub struct ImportSummaryDto {
     pub threads_imported: usize,
     pub messages_imported: usize,
@@ -74,7 +64,6 @@ pub struct CoreBootstrapSnapshot {
     pub popular_stickers: Vec<StickerItem>,
     pub onion_stickers: Vec<StickerItem>,
     pub pinned_packs: Vec<PinnedPackMeta>,
-    pub reaction_assets: ReactionAssetMap,
     pub app_logo_data_url: String,
     pub active_db_path: String,
     pub sync_running: bool,
@@ -88,17 +77,6 @@ fn encode_png_asset(bytes: &[u8]) -> String {
 
 pub fn embedded_app_logo_data_url() -> String {
     encode_png_asset(include_bytes!("../../assets/app_icon.png"))
-}
-
-pub fn embedded_reaction_assets() -> ReactionAssetMap {
-    ReactionAssetMap {
-        like: encode_png_asset(include_bytes!("../../assets/emojis/like.png")),
-        heart: encode_png_asset(include_bytes!("../../assets/emojis/heart.png")),
-        smile: encode_png_asset(include_bytes!("../../assets/emojis/smile.png")),
-        surprised: encode_png_asset(include_bytes!("../../assets/emojis/surprised.png")),
-        cry: encode_png_asset(include_bytes!("../../assets/emojis/cry.png")),
-        rage: encode_png_asset(include_bytes!("../../assets/emojis/rage.png")),
-    }
 }
 
 /// JSON-serializable projection of [`CoreEvent`] for Tauri WebView IPC.
@@ -603,10 +581,6 @@ mod tests {
         assert!(!snap.onion_stickers.is_empty());
         assert!(!snap.pinned_packs.is_empty());
         assert!(snap.app_logo_data_url.starts_with("data:image/png;base64,"));
-        assert!(snap
-            .reaction_assets
-            .like
-            .starts_with("data:image/png;base64,"));
 
         let diag = engine.dev_diagnostics();
         assert_eq!(diag.crypto.zpw_ver, crate::session::ZPW_VER);

@@ -8,7 +8,6 @@ import type {
   LinkMetadata,
   PhoneLookupResult,
   PinnedPackMeta,
-  ReactionAssetMap,
   StickerItem,
   StickerPackInfo,
   Thread,
@@ -48,7 +47,6 @@ export interface AppState {
   appVersion: string;
   devMode: boolean;
   appLogoDataUrl: string;
-  reactionAssets: ReactionAssetMap;
   activeDbPath: string;
 
   loggedIn: boolean;
@@ -170,14 +168,6 @@ export const initialAppState: AppState = {
   appVersion: "0.0.1",
   devMode: false,
   appLogoDataUrl: "",
-  reactionAssets: {
-    like: "",
-    heart: "",
-    smile: "",
-    surprised: "",
-    cry: "",
-    rage: "",
-  },
   activeDbPath: "zalo_history.db",
   loggedIn: false,
   uin: "",
@@ -820,7 +810,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         appVersion: snap.app_version,
         devMode: snap.dev_mode,
         appLogoDataUrl: snap.app_logo_data_url,
-        reactionAssets: snap.reaction_assets,
         activeDbPath: snap.active_db_path,
         loggedIn: snap.logged_in,
         uin: snap.uin,
