@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { Bug, RefreshCw, ShieldAlert, Terminal, X } from "lucide-react";
+import { Bug, RefreshCw, ShieldAlert, Terminal } from "lucide-react";
 import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
 import type { DevDiagnosticsSnapshot, LogEntry } from "../../../shared/types/ipc";
+import { Badge } from "../../../shared/ui/badge";
+import { Button } from "../../../shared/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
+import { cn } from "../../../shared/utils/cn";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 
 interface DevToolsModalProps {
@@ -29,138 +34,123 @@ export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
   if (!state.devModalOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={() => dispatch({ type: "SET_DEV_MODAL", open: false })}>
-      <div
-        className="modal-card"
-        style={{ width: 820, height: 560, padding: 16, gap: 12 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="settings-row">
-          <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-            <Bug size={17} color="var(--primary)" /> Công cụ kiểm tra & Chẩn đoán giao thức
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button type="button" className="btn" onClick={() => void load()}>
-              <RefreshCw size={14} /> Làm mới
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => dispatch({ type: "SET_DEV_MODAL", open: false })}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
+    <Dialog
+      open={state.devModalOpen}
+      onOpenChange={(open) => !open && dispatch({ type: "SET_DEV_MODAL", open: false })}
+    >
+      <DialogContent className="max-w-4xl h-[560px]">
+        <DialogHeader className="pr-10">
+          <DialogTitle>
+            <Bug className="h-4 w-4 text-primary" /> Công cụ kiểm tra & Chẩn đoán giao thức
+          </DialogTitle>
+          <Button variant="outline" size="sm" onClick={() => void load()}>
+            <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+          </Button>
+        </DialogHeader>
 
-        <div className="filter-tabs" style={{ maxWidth: 420 }}>
-          <button
-            type="button"
-            className={`filter-tab ${tab === "logs" ? "active" : ""}`}
-            onClick={() => setTab("logs")}
-          >
-            <Terminal size={13} /> Nhật ký HTTP ({diag?.logs.length ?? 0})
-          </button>
-          <button
-            type="button"
-            className={`filter-tab ${tab === "scanner" ? "active" : ""}`}
-            onClick={() => setTab("scanner")}
-          >
-            <ShieldAlert size={13} /> Quét chẩn đoán ({diag?.findings.length ?? 0})
-          </button>
-          <button
-            type="button"
-            className={`filter-tab ${tab === "crypto" ? "active" : ""}`}
-            onClick={() => setTab("crypto")}
-          >
-            Tham số giao thức
-          </button>
-        </div>
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as "logs" | "scanner" | "crypto")}
+          className="flex min-h-0 flex-1 flex-col p-4 gap-3"
+        >
+          <TabsList className="w-fit">
+            <TabsTrigger value="logs" className="gap-1.5">
+              <Terminal className="h-3.5 w-3.5" /> Nhật ký HTTP ({diag?.logs.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger value="scanner" className="gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5" /> Quét chẩn đoán ({diag?.findings.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger value="crypto">Tham số giao thức</TabsTrigger>
+          </TabsList>
 
-        <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", gap: 12 }}>
-          {tab === "logs" ? (
-            <>
-              <div style={{ width: 320, overflowY: "auto", borderRight: "1px solid var(--border)", paddingRight: 8 }}>
-                {(diag?.logs ?? []).slice().reverse().map((e) => (
-                  <div
+          <TabsContent value="logs" className="flex min-h-0 flex-1 gap-3 overflow-hidden">
+            <div className="flex w-80 flex-col gap-1 overflow-y-auto border-r border-border pr-2">
+              {(diag?.logs ?? [])
+                .slice()
+                .reverse()
+                .map((e) => (
+                  <button
                     key={e.id}
-                    className={`thread-row ${selectedLog?.id === e.id ? "selected" : ""}`}
-                    style={{ fontSize: 12 }}
+                    type="button"
                     onClick={() => setSelectedLog(e)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs cursor-pointer",
+                      selectedLog?.id === e.id ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+                    )}
                   >
-                    <span style={{ color: e.is_error ? "var(--danger)" : "var(--accent-online)", fontWeight: 700 }}>
+                    <Badge variant={e.is_error ? "destructive" : "online"}>
                       {e.status ?? "ERR"}
-                    </span>
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    </Badge>
+                    <span className="flex-1 truncate font-mono text-[11px]">
                       {e.method} {e.url}
                     </span>
-                    <span style={{ color: "var(--text-muted)" }}>{e.latency_ms}ms</span>
-                  </div>
+                    <span className="text-[11px] text-muted-foreground">{e.latency_ms}ms</span>
+                  </button>
                 ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto text-xs">
+              {selectedLog ? (
+                <div className="flex flex-col gap-2">
+                  <div className="font-mono font-bold text-foreground">
+                    {selectedLog.method} {selectedLog.url}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {selectedLog.timestamp} · {selectedLog.latency_ms}ms · HTTP{" "}
+                    {selectedLog.status ?? "N/A"}
+                  </div>
+                  {selectedLog.error_msg ? (
+                    <div className="text-destructive">Lỗi: {selectedLog.error_msg}</div>
+                  ) : null}
+                  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-[11.5px]">
+                    {selectedLog.decrypted_preview ?? selectedLog.payload_preview}
+                  </pre>
+                </div>
+              ) : (
+                <div className="p-6 text-muted-foreground">
+                  {diag?.dev_mode
+                    ? "Chọn một request bên trái để xem chi tiết."
+                    : "Chế độ ghi nhật ký HTTP chỉ bật khi chạy với cờ --dev."}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="scanner" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+            {(diag?.findings ?? []).map((f, idx) => (
+              <div
+                key={idx}
+                className="flex flex-col gap-1 rounded-lg border border-border bg-card p-3 text-xs"
+              >
+                <div className="font-bold text-foreground">
+                  [{f.level}] {f.title}
+                </div>
+                <div className="text-muted-foreground">{f.detail}</div>
+                <div className="text-primary">Khắc phục: {f.suggestion}</div>
               </div>
-              <div style={{ flex: 1, overflowY: "auto", fontSize: 12.2 }}>
-                {selectedLog ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ fontWeight: 700 }}>{selectedLog.method} {selectedLog.url}</div>
-                    <div style={{ color: "var(--text-muted)" }}>
-                      {selectedLog.timestamp} · {selectedLog.latency_ms}ms · HTTP {selectedLog.status ?? "N/A"}
-                    </div>
-                    {selectedLog.error_msg ? (
-                      <div style={{ color: "var(--danger)" }}>Lỗi: {selectedLog.error_msg}</div>
-                    ) : null}
-                    <pre style={{ whiteSpace: "pre-wrap", background: "var(--bg-input)", padding: 10, borderRadius: 8 }}>
-                      {selectedLog.decrypted_preview ?? selectedLog.payload_preview}
-                    </pre>
-                  </div>
-                ) : (
-                  <div style={{ color: "var(--text-muted)", padding: 20 }}>
-                    {diag?.dev_mode
-                      ? "Chọn một request bên trái để xem chi tiết."
-                      : "Chế độ ghi nhật ký HTTP chỉ bật khi chạy với cờ --dev."}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : tab === "scanner" ? (
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-              {(diag?.findings ?? []).map((f, idx) => (
-                <div key={idx} className="settings-box">
-                  <div style={{ fontWeight: 700 }}>
-                    [{f.level}] {f.title}
-                  </div>
-                  <div style={{ fontSize: 12.5 }}>{f.detail}</div>
-                  <div style={{ fontSize: 12, color: "var(--primary)" }}>Khắc phục: {f.suggestion}</div>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="crypto" className="min-h-0 flex-1 overflow-y-auto">
+            <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card px-4 text-xs">
+              {[
+                ["API Version (zpw_ver)", diag?.crypto.zpw_ver],
+                ["API Type (zpw_type)", diag?.crypto.zpw_type],
+                ["Thuật toán", diag?.crypto.cipher_algo],
+                ["SignKey", diag?.crypto.sign_key_formula],
+                ["ParamCipher key bytes", `${diag?.crypto.param_cipher_key_len ?? 0} bytes`],
+              ].map(([label, val]) => (
+                <div key={String(label)} className="flex items-center justify-between py-2.5">
+                  <span className="text-muted-foreground">{label}</span>
+                  <code className="rounded bg-muted px-2 py-0.5 font-mono text-foreground">
+                    {val}
+                  </code>
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              <div className="settings-box">
-                <div className="settings-row">
-                  <span>API Version (zpw_ver)</span>
-                  <code>{diag?.crypto.zpw_ver}</code>
-                </div>
-                <div className="settings-row">
-                  <span>API Type (zpw_type)</span>
-                  <code>{diag?.crypto.zpw_type}</code>
-                </div>
-                <div className="settings-row">
-                  <span>Thuật toán</span>
-                  <code>{diag?.crypto.cipher_algo}</code>
-                </div>
-                <div className="settings-row">
-                  <span>SignKey</span>
-                  <code>{diag?.crypto.sign_key_formula}</code>
-                </div>
-                <div className="settings-row">
-                  <span>ParamCipher key bytes</span>
-                  <code>{diag?.crypto.param_cipher_key_len} bytes</code>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }

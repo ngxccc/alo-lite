@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Download, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
 import { ipc } from "../api/ipc";
 import { jxlToJpgUrl } from "../utils/text";
+import { Button } from "./button";
+import { Dialog, DialogContent } from "./dialog";
 import type { ImageViewerState } from "../../app/store/appReducer";
 
 interface ImageViewerModalProps {
@@ -27,92 +29,71 @@ export function ImageViewerModal({
 
   const hdKey = `hd_${viewer.texKey}`;
   const src = mediaCache[hdKey] ?? mediaCache[viewer.texKey] ?? jxlToJpgUrl(viewer.fullUrl);
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal-card"
-        style={{ width: "86vw", height: "86vh", background: "var(--bg-app)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className="chat-header"
-          style={{ justifyContent: "space-between", background: "var(--bg-sidebar)" }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {viewer.title || "Xem ảnh"}
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
-              {viewer.sender} {viewer.time ? `· ${viewer.time}` : ""}
+    <Dialog open={Boolean(viewer)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent hideClose className="max-w-[88vw] w-[88vw] h-[86vh] max-h-[86vh] bg-background">
+        <div className="flex items-center justify-between h-14 px-4 border-b border-border bg-sidebar shrink-0">
+          <div className="min-w-0">
+            <div className="font-semibold text-sm truncate">{viewer.title || "Hình ảnh"}</div>
+            <div className="text-xs text-muted-foreground truncate">
+              {viewer.sender} · {viewer.time}
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
-              type="button"
-              className="icon-btn"
+
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon-sm"
               title="Thu nhỏ"
-              onClick={() => setZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2)))}
+              onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))))}
             >
-              <ZoomOut size={16} />
-            </button>
-            <span style={{ fontSize: 12, minWidth: 44, textAlign: "center" }}>
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <span className="min-w-12 text-center text-xs text-muted-foreground font-mono">
               {Math.round(zoom * 100)}%
             </span>
-            <button
-              type="button"
-              className="icon-btn"
+            <Button
+              variant="outline"
+              size="icon-sm"
               title="Phóng to"
-              onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
+              onClick={() => setZoom((z) => Math.min(4, Number((z + 0.25).toFixed(2))))}
             >
-              <ZoomIn size={16} />
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              title="Đặt lại tỷ lệ"
-              onClick={() => setZoom(1)}
-            >
-              <RotateCcw size={15} />
-            </button>
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="icon-sm" title="Đặt lại" onClick={() => setZoom(1)}>
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
             {viewer.fullUrl ? (
-              <button
-                type="button"
-                className="btn"
+              <Button
+                variant="default"
+                size="sm"
                 onClick={() =>
-                  void ipc.downloadFile(viewer.fullUrl, viewer.title || "image.jpg", downloadDir)
+                  void ipc.downloadFile(viewer.fullUrl, viewer.title || "zalo_image.jpg", downloadDir)
                 }
               >
-                <Download size={14} /> Tải về
-              </button>
+                <Download className="h-3.5 w-3.5" /> Tải xuống
+              </Button>
             ) : null}
-            <button type="button" className="icon-btn" title="Đóng" onClick={onClose}>
-              <X size={17} />
-            </button>
+            <Button variant="ghost" size="icon-sm" onClick={onClose} title="Đóng (Esc)">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-            display: "grid",
-            placeItems: "center",
-            padding: 20,
-          }}
-        >
-          <img
-            src={src}
-            alt={viewer.title}
-            style={{
-              maxWidth: zoom === 1 ? "100%" : "none",
-              maxHeight: zoom === 1 ? "100%" : "none",
-              transform: `scale(${zoom})`,
-              transformOrigin: "center center",
-              transition: "transform 0.12s ease",
-              borderRadius: 6,
-            }}
-          />
+
+        <div className="flex-1 overflow-auto flex items-center justify-center p-6 bg-black/80">
+          {src ? (
+            <img
+              src={src}
+              alt={viewer.title}
+              style={{ transform: `scale(${zoom})` }}
+              className="max-w-full max-h-full object-contain rounded-md transition-transform duration-150 origin-center"
+            />
+          ) : (
+            <span className="text-muted-foreground text-xs">Đang tải ảnh độ phân giải cao…</span>
+          )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

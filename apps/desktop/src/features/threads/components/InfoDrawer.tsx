@@ -1,6 +1,8 @@
 import { BellOff, Pin, RefreshCw, Star, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
+import { Button } from "../../../shared/ui/button";
+import { cn } from "../../../shared/utils/cn";
 import { jxlToJpgUrl } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { isPhotoMessage } from "../../chat/utils/messages";
@@ -27,8 +29,8 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
     .reverse();
 
   return (
-    <aside className="info-drawer">
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 8 }}>
+    <aside className="flex h-full w-[290px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-border bg-sidebar p-3.5 text-sidebar-foreground">
+      <div className="flex flex-col items-center gap-2 text-center">
         <Avatar
           id={thread.id}
           name={thread.name}
@@ -37,8 +39,8 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
           size={64}
           mediaCache={state.mediaCache}
         />
-        <div style={{ fontWeight: 700, fontSize: 15 }}>{thread.name || thread.id}</div>
-        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+        <div className="text-sm font-bold text-foreground">{thread.name || thread.id}</div>
+        <div className="text-xs text-muted-foreground">
           {thread.is_group
             ? "Nhóm đang hoạt động"
             : isCloud
@@ -55,68 +57,69 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
         </div>
 
         {!thread.is_group && !isCloud ? (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+          <div className="flex flex-wrap justify-center gap-1.5">
             {friendStatus === "Stranger" ? (
-              <button
-                type="button"
-                className="btn btn-primary"
+              <Button
+                variant="default"
+                size="sm"
                 onClick={() => void ipc.addFriend(thread.id, thread.name)}
               >
-                <UserPlus size={14} /> Kết bạn
-              </button>
+                <UserPlus className="h-3.5 w-3.5" /> Kết bạn
+              </Button>
             ) : null}
             {friendStatus === "IncomingPending" ? (
               <>
-                <button
-                  type="button"
-                  className="btn btn-primary"
+                <Button
+                  variant="default"
+                  size="sm"
                   onClick={() => void ipc.acceptFriend(thread.id, thread.name)}
                 >
-                  <UserCheck size={14} /> Đồng ý
-                </button>
-                <button
-                  type="button"
-                  className="btn"
+                  <UserCheck className="h-3.5 w-3.5" /> Đồng ý
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => void ipc.rejectFriend(thread.id, thread.name)}
                 >
-                  <UserX size={14} /> Từ chối
-                </button>
+                  <UserX className="h-3.5 w-3.5" /> Từ chối
+                </Button>
               </>
             ) : null}
             {friendStatus === "OutgoingPending" ? (
-              <button
-                type="button"
-                className="btn"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => void ipc.undoFriend(thread.id, thread.name)}
               >
                 Thu hồi lời mời
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <button
-          type="button"
-          className="btn"
+      <div className="grid grid-cols-2 gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => {
             dispatch({ type: "START_CLOUD_SYNC" });
             void ipc.syncHistory([[thread.id, thread.name, thread.is_group]]);
           }}
         >
-          <RefreshCw size={14} /> Đồng bộ
-        </button>
-        <button
-          type="button"
-          className="btn"
+          <RefreshCw className="h-3.5 w-3.5" /> Đồng bộ
+        </Button>
+        <Button
+          variant={state.filterStarredOnly ? "accent" : "outline"}
+          size="sm"
           onClick={() => dispatch({ type: "TOGGLE_STARRED_FILTER" })}
         >
-          <Star size={14} color={state.filterStarredOnly ? "var(--warning)" : undefined} /> Tin gắn sao
-        </button>
-        <button
-          type="button"
-          className="btn"
+          <Star className={cn("h-3.5 w-3.5", state.filterStarredOnly && "text-warning")} /> Tin gắn
+          sao
+        </Button>
+        <Button
+          variant={pinned ? "accent" : "outline"}
+          size="sm"
           onClick={() => {
             if (state.settings) {
               const nextPinned = pinned
@@ -129,11 +132,11 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
             void ipc.pinThread(thread.id, thread.is_group, !pinned);
           }}
         >
-          <Pin size={14} /> {pinned ? "Bỏ ghim" : "Ghim"}
-        </button>
-        <button
-          type="button"
-          className="btn"
+          <Pin className="h-3.5 w-3.5" /> {pinned ? "Bỏ ghim" : "Ghim"}
+        </Button>
+        <Button
+          variant={muted ? "accent" : "outline"}
+          size="sm"
           onClick={() => {
             if (state.settings) {
               const nextMuted = { ...state.settings.muted_threads };
@@ -146,40 +149,45 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
             void ipc.muteThread(thread.id, thread.is_group, muted ? 0 : -1, !muted);
           }}
         >
-          <BellOff size={14} /> {muted ? "Bật TB" : "Tắt TB"}
-        </button>
+          <BellOff className="h-3.5 w-3.5" /> {muted ? "Bật TB" : "Tắt TB"}
+        </Button>
       </div>
 
       {thread.is_group && thread.presentation.members.length > 0 ? (
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 12.6, marginBottom: 8 }}>
+        <div className="flex flex-col gap-2">
+          <div className="text-xs font-bold text-foreground">
             Thành viên ({thread.presentation.member_count ?? thread.presentation.members.length})
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 160, overflowY: "auto" }}>
+          <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto pr-1">
             {thread.presentation.members.map((m) => (
-              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                <Avatar id={m.id} name={m.name} avatarUrl={m.avatar} size={26} mediaCache={state.mediaCache} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {m.name || m.id}
-                </span>
+              <div key={m.id} className="flex items-center gap-2 text-xs">
+                <Avatar
+                  id={m.id}
+                  name={m.name}
+                  avatarUrl={m.avatar}
+                  size={26}
+                  mediaCache={state.mediaCache}
+                />
+                <span className="truncate">{m.name || m.id}</span>
               </div>
             ))}
           </div>
         </div>
       ) : null}
 
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 12.6, marginBottom: 8 }}>
+      <div className="flex flex-col gap-2">
+        <div className="text-xs font-bold text-foreground">
           Ảnh đã chia sẻ ({sharedPhotos.length})
         </div>
         {sharedPhotos.length === 0 ? (
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Chưa có hình ảnh nào</div>
+          <div className="text-xs text-muted-foreground">Chưa có hình ảnh nào</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+          <div className="grid grid-cols-3 gap-1.5">
             {sharedPhotos.map((m) => {
               const key = `img_${m.id || m.ts}`;
               const fullUrl = m.link_url || m.link_thumb || "";
-              const thumbSrc = state.mediaCache[key] || jxlToJpgUrl(m.link_thumb || m.link_url || "");
+              const thumbSrc =
+                state.mediaCache[key] || jxlToJpgUrl(m.link_thumb || m.link_url || "");
               return (
                 <div
                   key={key}
@@ -195,21 +203,16 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
                       },
                     })
                   }
-                  style={{
-                    aspectRatio: "1",
-                    borderRadius: 6,
-                    overflow: "hidden",
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--border)",
-                    cursor: "pointer",
-                    display: "grid",
-                    placeItems: "center",
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                  }}
+                  className="grid aspect-square place-items-center overflow-hidden rounded-md border border-border bg-muted text-[11px] text-muted-foreground cursor-pointer hover:opacity-90"
                 >
                   {thumbSrc ? (
-                    <img src={thumbSrc} alt="Ảnh" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img
+                      src={thumbSrc}
+                      alt="Ảnh"
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     "Ảnh"
                   )}
@@ -220,17 +223,20 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
         )}
       </div>
 
-      <button
-        type="button"
-        className="btn btn-danger"
-        style={{ marginTop: "auto" }}
+      <Button
+        variant="destructive"
+        className="mt-auto w-full"
         onClick={() => {
           const last = thread.messages[thread.messages.length - 1];
-          void ipc.deleteThread(thread.id, thread.is_group, last?.client_message_id || last?.id || "");
+          void ipc.deleteThread(
+            thread.id,
+            thread.is_group,
+            last?.client_message_id || last?.id || "",
+          );
         }}
       >
-        <Trash2 size={14} /> Xóa cuộc trò chuyện
-      </button>
+        <Trash2 className="h-3.5 w-3.5" /> Xóa cuộc trò chuyện
+      </Button>
     </aside>
   );
 }

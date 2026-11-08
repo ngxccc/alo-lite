@@ -24,9 +24,10 @@
    - `CoreBootstrapSnapshot` hydrates initial logged-in state, threads, `AppSettings`, saved accounts, built-in sticker packs, and embedded PNG reaction/logo assets in one round trip.
 
 3. **Feature-Based TypeScript Frontend (`apps/desktop/src/`):**
-   - `src/shared/`: typed IPC wrapper (`api/ipc.ts`), DTO contract (`types/ipc.ts`), reusable `Avatar` / `ImageViewerModal`, and Vietnamese search/date helpers.
-   - `src/features/`: domain-sliced UI & logic for `auth`, `navigation`, `threads`, `chat`, `contacts`, `sync`, `settings`, and `devtools`.
-   - Built with Vite 8, React 19, Lucide vector icons, and TypeScript `6.0.x` (`>=6.0.3 <7.0.0`).
-
+   - `src/app/styles/globals.css`: single-source-of-truth Tailwind CSS v4 (`@tailwindcss/vite`) `@theme inline` token stylesheet with 3 layers (`--rail`/`--sidebar`/`--canvas` shell, `shadcn/ui` semantic tokens, and `--bubble-in`/`--bubble-out`/`--online`/`--warning` chat tokens) for Light (`Zalo Slate`) and Dark (`Zinc Dark`) modes.
+   - `src/app/store/`: pure `appReducer.ts` state transitions backed by `useAppStore.ts` (`zustand` v5 selector store).
+   - `src/shared/ui/`: centralized `shadcn/ui` component library built on `@radix-ui/*` + `class-variance-authority` + `clsx` + `tailwind-merge` (`button`, `input`, `badge`, `dialog`, `dropdown-menu`, `context-menu`, `popover`, `tabs`, `switch`, `scroll-area`, `tooltip`, `separator`, `Avatar`, `ImageViewerModal`).
+   - `src/features/`: domain-sliced UI & logic for `auth`, `navigation`, `threads` (virtualized via `@tanstack/react-virtual`), `chat`, `contacts`, `sync`, `settings`, and `devtools`.
+   - Built with Vite 8, React 19, Tailwind CSS v4, Radix UI / `shadcn/ui`, Zustand 5, TanStack Virtual 3, Lucide vector icons, and TypeScript `6.0.x` (`>=6.0.3 <7.0.0`).
 4. **Linux Runtime Packaging Note:**
    - Tauri v2 (`wry`) links dynamically to `webkit2gtk-4.1` (`2.54.x` on Arch Linux, GTK3 + libsoup3). Linux distributions should ship `.deb` / `.rpm` / `PKGBUILD` with `webkit2gtk-4.1` declared as a package dependency (or `.AppImage` bundling WebKit libs), while `alolite` (`egui` / `--mcp`) remains available for zero-WebKit portable `.tar.gz` targets.

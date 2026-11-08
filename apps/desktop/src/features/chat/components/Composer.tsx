@@ -2,6 +2,10 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type 
 import { CornerUpLeft, Image, Paperclip, Send, Smile, X } from "lucide-react";
 import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
 import type { StickerItem, Thread } from "../../../shared/types/ipc";
+import { Button } from "../../../shared/ui/button";
+import { Input } from "../../../shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../shared/ui/popover";
+import { cn } from "../../../shared/utils/cn";
 import { extractFirstUrl } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { stickerThumbnailUrl } from "../utils/messages";
@@ -14,21 +18,20 @@ interface ComposerProps {
 
 type StickerTabId = "popular" | "onion" | "search" | "store" | number;
 
-function StickerThumb({
-  item,
-  onPick,
-}: {
-  item: StickerItem;
-  onPick: () => void;
-}) {
+function StickerThumb({ item, onPick }: { item: StickerItem; onPick: () => void }) {
   return (
-    <button type="button" className="sticker-cell" title={item.label} onClick={onPick}>
+    <button
+      type="button"
+      title={item.label}
+      onClick={onPick}
+      className="flex aspect-square items-center justify-center rounded-lg border border-transparent bg-muted/40 p-1 transition hover:border-border hover:bg-accent cursor-pointer"
+    >
       <img
         src={stickerThumbnailUrl(item)}
         alt={item.label}
         loading="lazy"
         decoding="async"
-        style={{ width: 58, height: 58, objectFit: "contain" }}
+        className="h-14 w-14 object-contain"
       />
     </button>
   );
@@ -176,132 +179,24 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
 
   return (
     <div
-      className="composer-shell"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => void handleDrop(e)}
+      className="relative flex flex-col gap-1.5 border-t border-border bg-sidebar px-3.5 py-2.5"
     >
-      {stickerOpen ? (
-        <div className="popover-panel sticker-picker">
-          <div style={{ display: "flex", gap: 4, padding: "8px 8px 6px", borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
-            <button
-              type="button"
-              className={`filter-tab ${stickerTab === "popular" ? "active" : ""}`}
-              onClick={() => setStickerTab("popular")}
-            >
-              Phổ biến
-            </button>
-            <button
-              type="button"
-              className={`filter-tab ${stickerTab === "onion" ? "active" : ""}`}
-              onClick={() => setStickerTab("onion")}
-            >
-              Củ hành
-            </button>
-            {state.pinnedPacks.map((p) => (
-              <button
-                key={p.cate_id}
-                type="button"
-                className={`filter-tab ${stickerTab === p.cate_id ? "active" : ""}`}
-                onClick={() => setStickerTab(p.cate_id)}
-              >
-                {p.name}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={`filter-tab ${stickerTab === "search" ? "active" : ""}`}
-              onClick={() => setStickerTab("search")}
-            >
-              Tìm kiếm
-            </button>
-            <button
-              type="button"
-              className={`filter-tab ${stickerTab === "store" ? "active" : ""}`}
-              onClick={() => setStickerTab("store")}
-            >
-              Kho
-            </button>
-          </div>
-
-          {stickerTab === "search" ? (
-            <div style={{ padding: "8px 10px", display: "flex", gap: 6 }}>
-              <input
-                className="field-input"
-                value={stickerQuery}
-                onChange={(e) => setStickerQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && stickerQuery.trim()) {
-                    dispatch({ type: "SET_STICKER_SEARCH_LOADING", loading: true });
-                    void ipc.searchStickers(stickerQuery.trim());
-                  }
-                }}
-                placeholder="Tìm nhãn dán theo từ khóa…"
-              />
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  if (!stickerQuery.trim()) return;
-                  dispatch({ type: "SET_STICKER_SEARCH_LOADING", loading: true });
-                  void ipc.searchStickers(stickerQuery.trim());
-                }}
-              >
-                Tìm
-              </button>
-            </div>
-          ) : null}
-
-          {stickerTab === "store" ? (
-            <div style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-              {state.stickerStoreLoading ? (
-                <div style={{ color: "var(--text-muted)", textAlign: "center", padding: 20 }}>
-                  Đang tải kho nhãn dán…
-                </div>
-              ) : (
-                state.stickerStorePacks.map((pack) => (
-                  <button
-                    key={pack.id}
-                    type="button"
-                    className="btn"
-                    style={{ justifyContent: "space-between" }}
-                    onClick={() => {
-                      setStickerTab(pack.id);
-                      if (!state.stickerPackItems[pack.id]) {
-                        void ipc.fetchStickerPack(pack.id, pack.name);
-                      }
-                    }}
-                  >
-                    <span>{pack.name}</span>
-                    <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{pack.total_image} nhãn</span>
-                  </button>
-                ))
-              )}
-            </div>
-          ) : (
-            <div className="sticker-grid">
-              {displayedStickers.map((item) => (
-                <StickerThumb
-                  key={`${item.cate_id}_${item.sticker_id}`}
-                  item={item}
-                  onPick={() => {
-                    void ipc.sendSticker(thread.id, item.sticker_id, item.cate_id, item.sticker_type, thread.is_group);
-                    setStickerOpen(false);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
-
       {state.composerStickerSuggestions.length > 0 && text.trim().length >= 2 ? (
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
           {state.composerStickerSuggestions.slice(0, 8).map((item) => (
-            <div key={`sug_${item.cate_id}_${item.sticker_id}`} style={{ width: 64, flexShrink: 0 }}>
+            <div key={`sug_${item.cate_id}_${item.sticker_id}`} className="w-16 shrink-0">
               <StickerThumb
                 item={item}
                 onPick={() => {
-                  void ipc.sendSticker(thread.id, item.sticker_id, item.cate_id, item.sticker_type, thread.is_group);
+                  void ipc.sendSticker(
+                    thread.id,
+                    item.sticker_id,
+                    item.cate_id,
+                    item.sticker_type,
+                    thread.is_group,
+                  );
                   setText("");
                 }}
               />
@@ -311,138 +206,208 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
       ) : null}
 
       {firstUrl && firstUrl !== dismissedLinkFor ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 10px",
-            borderRadius: 8,
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border)",
-            fontSize: 12.2,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/60 px-2.5 py-1.5 text-xs">
+          <div className="min-w-0">
+            <div className="truncate font-bold text-foreground">
               {linkPreview?.title || "Đang tải xem trước liên kết…"}
             </div>
-            <div style={{ color: "var(--text-muted)", fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div className="truncate text-[11px] text-muted-foreground">
               {linkPreview?.desc || firstUrl}
             </div>
           </div>
-          <button type="button" className="icon-btn" onClick={() => setDismissedLinkFor(firstUrl)}>
-            <X size={14} />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={() => setDismissedLinkFor(firstUrl)}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
       ) : null}
 
       {state.replyingTo ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 10px",
-            borderLeft: "3px solid var(--primary)",
-            background: "var(--bg-elevated)",
-            borderRadius: 6,
-            fontSize: 12.2,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <CornerUpLeft size={14} color="var(--primary)" />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700 }}>Trả lời {state.replyingTo.sender}</div>
-              <div style={{ color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {state.replyingTo.text}
-              </div>
+        <div className="flex items-center justify-between rounded-md border-l-3 border-primary bg-muted/60 px-2.5 py-1.5 text-xs">
+          <div className="flex min-w-0 items-center gap-2">
+            <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <div className="font-bold text-foreground">Trả lời {state.replyingTo.sender}</div>
+              <div className="truncate text-muted-foreground">{state.replyingTo.text}</div>
             </div>
           </div>
-          <button
-            type="button"
-            className="icon-btn"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => dispatch({ type: "SET_REPLYING_TO", msg: null })}
           >
-            <X size={14} />
-          </button>
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
       ) : null}
 
       {pendingUpload ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 10px",
-            background: "var(--bg-elevated)",
-            borderRadius: 8,
-            border: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/60 px-2.5 py-1.5">
+          <div className="flex items-center gap-2.5">
             {pendingUpload.previewUrl ? (
               <img
                 src={pendingUpload.previewUrl}
                 alt={pendingUpload.fileName}
-                style={{ width: 42, height: 42, objectFit: "cover", borderRadius: 6 }}
+                className="h-10 w-10 rounded-md object-cover"
               />
             ) : null}
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{pendingUpload.fileName}</span>
+            <span className="text-xs font-semibold text-foreground">{pendingUpload.fileName}</span>
           </div>
-          <button type="button" className="icon-btn" onClick={() => setPendingUpload(null)}>
-            <X size={14} />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={() => setPendingUpload(null)}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
       ) : null}
 
-      <div className="composer-toolbar">
-        <button
-          type="button"
-          className="icon-btn"
-          title="Gửi nhãn dán"
-          onClick={() => setStickerOpen((v) => !v)}
-        >
-          <Smile size={18} />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
+      <div className="flex items-center gap-1">
+        <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
+          <PopoverTrigger asChild>
+            <Button variant={stickerOpen ? "accent" : "ghost"} size="icon-sm" title="Gửi nhãn dán">
+              <Smile className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="start"
+            className="flex h-[360px] w-[350px] flex-col overflow-hidden p-0"
+          >
+            <div className="flex gap-1 overflow-x-auto border-b border-border p-1.5">
+              {[
+                { id: "popular" as const, label: "Phổ biến" },
+                { id: "onion" as const, label: "Củ hành" },
+                ...state.pinnedPacks.map((p) => ({ id: p.cate_id, label: p.name })),
+                { id: "search" as const, label: "Tìm kiếm" },
+                { id: "store" as const, label: "Kho" },
+              ].map((t) => (
+                <button
+                  key={String(t.id)}
+                  type="button"
+                  onClick={() => setStickerTab(t.id)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer",
+                    stickerTab === t.id
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {stickerTab === "search" ? (
+              <div className="flex gap-1.5 border-b border-border p-2">
+                <Input
+                  value={stickerQuery}
+                  onChange={(e) => setStickerQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && stickerQuery.trim()) {
+                      dispatch({ type: "SET_STICKER_SEARCH_LOADING", loading: true });
+                      void ipc.searchStickers(stickerQuery.trim());
+                    }
+                  }}
+                  placeholder="Tìm nhãn dán theo từ khóa…"
+                />
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    if (!stickerQuery.trim()) return;
+                    dispatch({ type: "SET_STICKER_SEARCH_LOADING", loading: true });
+                    void ipc.searchStickers(stickerQuery.trim());
+                  }}
+                >
+                  Tìm
+                </Button>
+              </div>
+            ) : null}
+
+            {stickerTab === "store" ? (
+              <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-2.5">
+                {state.stickerStoreLoading ? (
+                  <div className="p-5 text-center text-xs text-muted-foreground">
+                    Đang tải kho nhãn dán…
+                  </div>
+                ) : (
+                  state.stickerStorePacks.map((pack) => (
+                    <Button
+                      key={pack.id}
+                      variant="outline"
+                      className="w-full justify-between"
+                      onClick={() => {
+                        setStickerTab(pack.id);
+                        if (!state.stickerPackItems[pack.id]) {
+                          void ipc.fetchStickerPack(pack.id, pack.name);
+                        }
+                      }}
+                    >
+                      <span className="truncate">{pack.name}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {pack.total_image} nhãn
+                      </span>
+                    </Button>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="grid flex-1 grid-cols-4 gap-1.5 overflow-y-auto p-2.5">
+                {displayedStickers.map((item) => (
+                  <StickerThumb
+                    key={`${item.cate_id}_${item.sticker_id}`}
+                    item={item}
+                    onPick={() => {
+                      void ipc.sendSticker(
+                        thread.id,
+                        item.sticker_id,
+                        item.cate_id,
+                        item.sticker_type,
+                        thread.is_group,
+                      );
+                      setStickerOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
           title="Gửi hình ảnh"
           onClick={() => void pickAndUpload(true)}
         >
-          <Image size={18} />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
+          <Image className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
           title="Đính kèm tập tin"
           onClick={() => void pickAndUpload(false)}
         >
-          <Paperclip size={18} />
-        </button>
+          <Paperclip className="h-4 w-4" />
+        </Button>
       </div>
 
-      <div className="composer-row">
+      <div className="flex items-end gap-2">
         <textarea
-          className="composer-input"
           rows={1}
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={(e) => void handlePaste(e)}
           placeholder={`Nhập tin nhắn tới ${thread.name || thread.id}…`}
+          className="max-h-28 min-h-9 flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-[13.2px] text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring select-text"
         />
-        <button
-          type="button"
-          className="btn btn-primary"
+        <Button
+          variant="default"
           disabled={!text.trim() && !pendingUpload}
           onClick={() => void sendNow()}
           title="Gửi tin nhắn"
+          className="h-9 px-3.5"
         >
-          <Send size={15} /> Gửi
-        </button>
+          <Send className="h-3.5 w-3.5" /> Gửi
+        </Button>
       </div>
     </div>
   );

@@ -14,11 +14,16 @@ import {
   Trash2,
   User,
   Wrench,
-  X,
 } from "lucide-react";
 import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
 import type { AppSettings, AutoReplyRule } from "../../../shared/types/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
+import { Badge } from "../../../shared/ui/badge";
+import { Button } from "../../../shared/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "../../../shared/ui/dialog";
+import { Input } from "../../../shared/ui/input";
+import { Switch } from "../../../shared/ui/switch";
+import { cn } from "../../../shared/utils/cn";
 import type { AppAction, AppState, SettingsTab } from "../../../app/store/appReducer";
 
 interface SettingsModalProps {
@@ -38,6 +43,28 @@ const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; icon: typeof Settin
   { id: "update", label: "Cập nhật", icon: Sparkles },
 ];
 
+function SettingSwitchRow({
+  label,
+  desc,
+  checked,
+  onChange,
+}: {
+  label: string;
+  desc?: string;
+  checked: boolean;
+  onChange: (val: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-1.5">
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-medium text-foreground">{label}</div>
+        {desc ? <div className="text-[11px] text-muted-foreground">{desc}</div> : null}
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
 export function SettingsModal({ state, dispatch }: SettingsModalProps) {
   const [migratePath, setMigratePath] = useState("");
   const [autoReplyRules, setAutoReplyRules] = useState<AutoReplyRule[]>([]);
@@ -47,11 +74,14 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
   useEffect(() => {
     if (!state.settingsModalOpen || !isTauriRuntime()) return;
     if (state.settingsTab === "account") {
-      void ipc.listSavedAccounts().then((accounts) =>
-        dispatch({ type: "SET_SAVED_ACCOUNTS", accounts }),
-      );
+      void ipc
+        .listSavedAccounts()
+        .then((accounts) => dispatch({ type: "SET_SAVED_ACCOUNTS", accounts }));
     } else if (state.settingsTab === "utilities") {
-      void ipc.getAutoreplyRules().then(setAutoReplyRules).catch(() => {});
+      void ipc
+        .getAutoreplyRules()
+        .then(setAutoReplyRules)
+        .catch(() => {});
     }
   }, [state.settingsModalOpen, state.settingsTab, dispatch]);
 
@@ -66,65 +96,56 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
     void ipc.saveSettings(next);
   };
 
-  const renderToggle = (label: string, checked: boolean, onChange: (val: boolean) => void, desc?: string) => (
-    <label className="settings-row" style={{ cursor: "pointer" }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500 }}>{label}</div>
-        {desc ? <div style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{desc}</div> : null}
-      </div>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-    </label>
-  );
-
   return (
-    <div className="modal-backdrop" onClick={() => dispatch({ type: "OPEN_SETTINGS", open: false })}>
-      <div className="modal-card settings-modal" onClick={(e) => e.stopPropagation()}>
-        <nav className="settings-nav">
-          <div style={{ fontWeight: 700, fontSize: 14.5, padding: "4px 8px 10px" }}>Cài đặt</div>
+    <Dialog
+      open={state.settingsModalOpen}
+      onOpenChange={(open) => !open && dispatch({ type: "OPEN_SETTINGS", open: false })}
+    >
+      <DialogContent className="flex h-[560px] max-w-3xl flex-row p-0 overflow-hidden">
+        <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-3">
+          <DialogTitle className="px-2 py-1.5 text-sm font-bold">Cài đặt</DialogTitle>
           {SETTINGS_TABS.map((item) => {
             const Icon = item.icon;
+            const active = tab === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
-                className={`settings-nav-item ${tab === item.id ? "active" : ""}`}
                 onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: item.id })}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors cursor-pointer",
+                  active
+                    ? "bg-accent text-accent-foreground font-semibold"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
               >
-                <Icon size={15} />
+                <Icon className="h-4 w-4 shrink-0" />
                 <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
-        <div className="settings-body">
-          <div className="settings-row">
-            <div style={{ fontWeight: 700, fontSize: 15.5 }}>
-              {SETTINGS_TABS.find((t) => t.id === tab)?.label}
-            </div>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => dispatch({ type: "OPEN_SETTINGS", open: false })}
-            >
-              <X size={17} />
-            </button>
+        <div className="flex flex-1 flex-col gap-3.5 overflow-y-auto p-5">
+          <div className="text-base font-bold text-foreground">
+            {SETTINGS_TABS.find((t) => t.id === tab)?.label}
           </div>
 
           {tab === "general" ? (
             <>
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Danh bạ & Ngôn ngữ</div>
-                {renderToggle("Hiển thị tất cả danh bạ", settings.show_all_contacts, (v) =>
-                  updateSettings({ show_all_contacts: v }),
-                )}
-                <div className="settings-row">
-                  <span>Ngôn ngữ</span>
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">Danh bạ & Ngôn ngữ</div>
+                <SettingSwitchRow
+                  label="Hiển thị tất cả danh bạ"
+                  checked={settings.show_all_contacts}
+                  onChange={(v) => updateSettings({ show_all_contacts: v })}
+                />
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs font-medium">Ngôn ngữ</span>
                   <select
-                    className="field-input"
-                    style={{ width: 150 }}
                     value={settings.language}
                     onChange={(e) => updateSettings({ language: e.target.value })}
+                    className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground"
                   >
                     <option value="Tiếng Việt">Tiếng Việt</option>
                     <option value="English">English</option>
@@ -132,35 +153,47 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                 </div>
               </div>
 
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Khởi động & Thư mục tải xuống</div>
-                {renderToggle("Khởi động AloLite cùng hệ thống", settings.autostart_on_boot, (v) =>
-                  updateSettings({ autostart_on_boot: v }),
-                )}
-                {renderToggle("Ghi nhớ tài khoản đăng nhập lần trước", settings.remember_login, (v) =>
-                  updateSettings({ remember_login: v }),
-                )}
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                  Lưu tại: <code>{settings.download_dir}</code>
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">
+                  Khởi động & Thư mục tải xuống
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn"
+                <SettingSwitchRow
+                  label="Khởi động AloLite cùng hệ thống"
+                  checked={settings.autostart_on_boot}
+                  onChange={(v) => updateSettings({ autostart_on_boot: v })}
+                />
+                <SettingSwitchRow
+                  label="Ghi nhớ tài khoản đăng nhập lần trước"
+                  checked={settings.remember_login}
+                  onChange={(v) => updateSettings({ remember_login: v })}
+                />
+                <div className="text-xs text-muted-foreground">
+                  Lưu tại:{" "}
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
+                    {settings.download_dir}
+                  </code>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={async () => {
-                      const dir = await ipc.pickFile({ directory: true, title: "Chọn thư mục lưu file" });
+                      const dir = await ipc.pickFile({
+                        directory: true,
+                        title: "Chọn thư mục lưu file",
+                      });
                       if (dir) updateSettings({ download_dir: dir });
                     }}
                   >
-                    <FolderOpen size={14} /> Thay đổi thư mục
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
+                    <FolderOpen className="h-3.5 w-3.5" /> Thay đổi thư mục
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => void ipc.openPathInOs(settings.download_dir)}
                   >
                     Mở thư mục
-                  </button>
+                  </Button>
                 </div>
               </div>
             </>
@@ -168,51 +201,55 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
 
           {tab === "account" ? (
             <>
-              <div className="settings-box">
-                <div className="settings-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <Avatar
-                      id={state.uin || "self"}
-                      name={state.displayName || "Me"}
-                      avatarUrl={state.avatar}
-                      size={44}
-                      mediaCache={state.mediaCache}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{state.displayName || "Người dùng Zalo"}</div>
-                      <div style={{ fontSize: 12, color: "var(--accent-online)" }}>
-                        Đang hoạt động {state.uin ? `· UIN: ${state.uin}` : ""}
-                      </div>
+              <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3.5">
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    id={state.uin || "self"}
+                    name={state.displayName || "Me"}
+                    avatarUrl={state.avatar}
+                    size={44}
+                    mediaCache={state.mediaCache}
+                  />
+                  <div>
+                    <div className="text-sm font-bold text-foreground">
+                      {state.displayName || "Người dùng Zalo"}
+                    </div>
+                    <div className="text-xs font-medium text-online">
+                      Đang hoạt động {state.uin ? `· UIN: ${state.uin}` : ""}
                     </div>
                   </div>
-                  <button type="button" className="btn btn-danger" onClick={() => void ipc.logout()}>
-                    Đăng xuất
-                  </button>
                 </div>
+                <Button variant="destructive" size="sm" onClick={() => void ipc.logout()}>
+                  Đăng xuất
+                </Button>
               </div>
 
-              <div className="settings-box">
-                <div className="settings-row">
-                  <span style={{ fontWeight: 700 }}>Đa tài khoản đã lưu</span>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">Đa tài khoản đã lưu</span>
+                  <Button
+                    variant="default"
+                    size="sm"
                     onClick={() => {
                       dispatch({ type: "OPEN_SETTINGS", open: false });
                       void ipc.addNewAccount();
                     }}
                   >
                     + Thêm tài khoản (QR)
-                  </button>
+                  </Button>
                 </div>
+
                 {state.savedAccounts.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  <div className="text-xs text-muted-foreground">
                     Chưa có tài khoản phụ nào được lưu trong thư mục accounts/.
                   </div>
                 ) : (
                   state.savedAccounts.map((acc) => (
-                    <div key={acc.uin} className="settings-row" style={{ paddingTop: 6, borderTop: "1px solid var(--border)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      key={acc.uin}
+                      className="flex items-center justify-between border-t border-border pt-2.5"
+                    >
+                      <div className="flex items-center gap-2.5">
                         <Avatar
                           id={acc.uin}
                           name={acc.display_name}
@@ -221,35 +258,35 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                           mediaCache={state.mediaCache}
                         />
                         <div>
-                          <div style={{ fontWeight: 600 }}>{acc.display_name}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>UIN: {acc.uin}</div>
+                          <div className="text-xs font-semibold text-foreground">
+                            {acc.display_name}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">UIN: {acc.uin}</div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div className="flex items-center gap-1.5">
                         {acc.is_current ? (
-                          <span style={{ fontSize: 12, color: "var(--accent-online)", fontWeight: 600 }}>
-                            Đang dùng
-                          </span>
+                          <Badge variant="online">Đang dùng</Badge>
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              className="btn btn-primary"
+                            <Button
+                              variant="default"
+                              size="sm"
                               onClick={() => void ipc.switchAccount(acc.uin)}
                             >
                               Chuyển đổi
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-danger"
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="icon-sm"
                               onClick={async () => {
                                 await ipc.deleteSavedAccount(acc.uin);
                                 const next = await ipc.listSavedAccounts();
                                 dispatch({ type: "SET_SAVED_ACCOUNTS", accounts: next });
                               }}
                             >
-                              <Trash2 size={13} />
-                            </button>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -262,65 +299,79 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
 
           {tab === "privacy" ? (
             <>
-              <div className="settings-box">
-                <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Shield size={15} color="var(--primary)" /> Chặn gửi trạng thái lên máy chủ (Ctrl+Shift+P)
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                  <Shield className="h-4 w-4 text-primary" /> Chặn gửi trạng thái lên máy chủ
+                  (Ctrl+Shift+P)
                 </div>
-                {renderToggle(
-                  "Ẩn trạng thái \"Đang soạn tin\" (Block Typing)",
-                  settings.block_typing,
-                  (v) => updateSettings({ block_typing: v }),
-                  "Chặn gửi gói /api/message/typing & /api/group/typing.",
-                )}
-                {renderToggle(
-                  "Ẩn trạng thái \"Đã nhận\" (Block Delivered)",
-                  settings.block_delivered,
-                  (v) => updateSettings({ block_delivered: v }),
-                  "Chặn gửi xác nhận đã nhận tin.",
-                )}
-                {renderToggle(
-                  "Ẩn trạng thái \"Đã xem\" (Block Seen)",
-                  settings.block_seen,
-                  (v) => updateSettings({ block_seen: v, show_seen_status: !v }),
-                  "Đọc tin nhắn mà không gửi /api/message/seenv2.",
-                )}
+                <SettingSwitchRow
+                  label='Ẩn trạng thái "Đang soạn tin" (Block Typing)'
+                  desc="Chặn gửi gói /api/message/typing & /api/group/typing."
+                  checked={settings.block_typing}
+                  onChange={(v) => updateSettings({ block_typing: v })}
+                />
+                <SettingSwitchRow
+                  label='Ẩn trạng thái "Đã nhận" (Block Delivered)'
+                  desc="Chặn gửi xác nhận đã nhận tin."
+                  checked={settings.block_delivered}
+                  onChange={(v) => updateSettings({ block_delivered: v })}
+                />
+                <SettingSwitchRow
+                  label='Ẩn trạng thái "Đã xem" (Block Seen)'
+                  desc="Đọc tin nhắn mà không gửi /api/message/seenv2."
+                  checked={settings.block_seen}
+                  onChange={(v) => updateSettings({ block_seen: v, show_seen_status: !v })}
+                />
               </div>
 
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Quyền riêng tư hiển thị</div>
-                {renderToggle("Hiển thị trạng thái truy cập", settings.show_online_status, (v) =>
-                  updateSettings({ show_online_status: v }),
-                )}
-                {renderToggle("Cho phép tìm kiếm qua số điện thoại", settings.allow_search_by_phone, (v) =>
-                  updateSettings({ allow_search_by_phone: v }),
-                )}
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">Quyền riêng tư hiển thị</div>
+                <SettingSwitchRow
+                  label="Hiển thị trạng thái truy cập"
+                  checked={settings.show_online_status}
+                  onChange={(v) => updateSettings({ show_online_status: v })}
+                />
+                <SettingSwitchRow
+                  label="Cho phép tìm kiếm qua số điện thoại"
+                  checked={settings.allow_search_by_phone}
+                  onChange={(v) => updateSettings({ allow_search_by_phone: v })}
+                />
               </div>
             </>
           ) : null}
 
           {tab === "sync" ? (
             <>
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Đồng bộ từ điện thoại & Đám mây</div>
-                <div style={{ fontSize: 12.2, color: "var(--text-secondary)" }}>
-                  Cơ sở dữ liệu đang hoạt động: <code>{state.activeDbPath}</code>
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">
+                  Đồng bộ từ điện thoại & Đám mây
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
+                <div className="text-xs text-muted-foreground">
+                  Cơ sở dữ liệu đang hoạt động:{" "}
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
+                    {state.activeDbPath}
+                  </code>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
                     onClick={() => dispatch({ type: "SET_PHONE_SYNC_MODAL", open: true })}
                   >
                     Đồng bộ từ điện thoại
-                  </button>
+                  </Button>
                   {state.syncRunning ? (
-                    <button type="button" className="btn btn-danger" onClick={() => void ipc.cancelCloudSync()}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => void ipc.cancelCloudSync()}
+                    >
                       Dừng đồng bộ Nhóm/Cloud
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         const targets = state.threads
                           .filter((t) => t.is_group || t.name.includes("Cloud của tôi"))
@@ -329,34 +380,35 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                         void ipc.syncHistory(targets);
                       }}
                     >
-                      <RefreshCw size={14} /> Đồng bộ Nhóm & Cloud
-                    </button>
+                      <RefreshCw className="h-3.5 w-3.5" /> Đồng bộ Nhóm & Cloud
+                    </Button>
                   )}
                 </div>
               </div>
 
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Nhập lịch sử từ tệp sao lưu (.db / .sqlite / .json)</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input
-                    className="field-input"
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">
+                  Nhập lịch sử từ tệp sao lưu (.db / .sqlite / .json)
+                </div>
+                <div className="flex gap-1.5">
+                  <Input
                     value={migratePath}
                     onChange={(e) => setMigratePath(e.target.value)}
                     placeholder="Đường dẫn file hoặc thư mục Zalo…"
                   />
-                  <button
-                    type="button"
-                    className="btn"
+                  <Button
+                    variant="outline"
                     onClick={async () => {
-                      const p = await ipc.pickFile({ title: "Chọn file hoặc thư mục dữ liệu Zalo" });
+                      const p = await ipc.pickFile({
+                        title: "Chọn file hoặc thư mục dữ liệu Zalo",
+                      });
                       if (p) setMigratePath(p);
                     }}
                   >
                     Duyệt…
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
+                  </Button>
+                  <Button
+                    variant="default"
                     onClick={async () => {
                       if (!migratePath.trim()) return;
                       try {
@@ -367,11 +419,12 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     }}
                   >
                     Nhập ngay
-                  </button>
+                  </Button>
                 </div>
-                <button
-                  type="button"
-                  className="btn"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-fit"
                   onClick={async () => {
                     try {
                       await ipc.autoDetectImportHistory();
@@ -381,161 +434,187 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                   }}
                 >
                   Tự động quét dữ liệu Zalo trên máy
-                </button>
+                </Button>
               </div>
 
-              <div className="settings-box">
-                <div className="settings-row">
-                  <div>
-                    <div style={{ fontWeight: 700, color: "var(--danger)" }}>Xóa dữ liệu tin nhắn cục bộ</div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                      Giữ nguyên phiên đăng nhập session.json.
-                    </div>
+              <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3.5">
+                <div>
+                  <div className="text-xs font-bold text-destructive">
+                    Xóa dữ liệu tin nhắn cục bộ
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: true })}
-                  >
-                    <Trash2 size={14} /> Xóa dữ liệu
-                  </button>
+                  <div className="text-xs text-muted-foreground">
+                    Giữ nguyên phiên đăng nhập session.json.
+                  </div>
                 </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: true })}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Xóa dữ liệu
+                </Button>
               </div>
             </>
           ) : null}
 
           {tab === "appearance" ? (
-            <div className="settings-box">
-              <div style={{ fontWeight: 700 }}>Chủ đề giao diện</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5">
+              <div className="text-xs font-bold text-foreground">Chủ đề giao diện</div>
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: "light" as const, label: "Sáng (Zalo Light)" },
-                  { id: "dark" as const, label: "Tối (Atom One Dark)" },
+                  { id: "light" as const, label: "Sáng (Zalo Slate)" },
+                  { id: "dark" as const, label: "Tối (Zinc Dark)" },
                   { id: "system" as const, label: "Theo hệ thống" },
                 ].map((opt) => (
-                  <button
+                  <Button
                     key={opt.id}
-                    type="button"
-                    className={`btn ${settings.theme_mode === opt.id ? "btn-primary" : ""}`}
+                    variant={settings.theme_mode === opt.id ? "default" : "outline"}
                     onClick={() => updateSettings({ theme_mode: opt.id })}
                   >
                     {opt.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
-              {renderToggle("Sử dụng ảnh đại diện làm nền mờ", settings.use_avatar_as_wallpaper, (v) =>
-                updateSettings({ use_avatar_as_wallpaper: v }),
-              )}
+              <SettingSwitchRow
+                label="Sử dụng ảnh đại diện làm nền mờ"
+                checked={settings.use_avatar_as_wallpaper}
+                onChange={(v) => updateSettings({ use_avatar_as_wallpaper: v })}
+              />
             </div>
           ) : null}
 
           {tab === "notifications" ? (
-            <div className="settings-box">
-              {renderToggle("Bật thông báo tin nhắn mới", settings.enable_notifications, (v) =>
-                updateSettings({ enable_notifications: v }),
-              )}
-              {renderToggle("Phát âm thanh thông báo", settings.play_notification_sound, (v) =>
-                updateSettings({ play_notification_sound: v }),
-              )}
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+              <SettingSwitchRow
+                label="Bật thông báo tin nhắn mới"
+                checked={settings.enable_notifications}
+                onChange={(v) => updateSettings({ enable_notifications: v })}
+              />
+              <SettingSwitchRow
+                label="Phát âm thanh thông báo"
+                checked={settings.play_notification_sound}
+                onChange={(v) => updateSettings({ play_notification_sound: v })}
+              />
             </div>
           ) : null}
 
           {tab === "messages" ? (
-            <div className="settings-box">
-              {renderToggle("Nhấn đúp vào tin nhắn để trả lời nhanh", settings.double_click_to_reply, (v) =>
-                updateSettings({ double_click_to_reply: v }),
-              )}
-              {renderToggle("Hiển thị trạng thái đang soạn tin", settings.show_typing_indicator, (v) =>
-                updateSettings({ show_typing_indicator: v }),
-              )}
-              <div className="settings-row">
-                <span>Phím gửi tin nhắn</span>
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+              <SettingSwitchRow
+                label="Nhấn đúp vào tin nhắn để trả lời nhanh"
+                checked={settings.double_click_to_reply}
+                onChange={(v) => updateSettings({ double_click_to_reply: v })}
+              />
+              <SettingSwitchRow
+                label="Hiển thị trạng thái đang soạn tin"
+                checked={settings.show_typing_indicator}
+                onChange={(v) => updateSettings({ show_typing_indicator: v })}
+              />
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-medium">Phím gửi tin nhắn</span>
                 <select
-                  className="field-input"
-                  style={{ width: 170 }}
                   value={settings.send_message_key}
                   onChange={(e) =>
-                    updateSettings({ send_message_key: e.target.value as "enter" | "cmd_enter" })
+                    updateSettings({
+                      send_message_key: e.target.value as "enter" | "cmd_enter",
+                    })
                   }
+                  className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground"
                 >
                   <option value="enter">Enter để gửi</option>
                   <option value="cmd_enter">Ctrl/Cmd + Enter để gửi</option>
                 </select>
               </div>
-              {renderToggle("Bật tin nhắn nhanh", settings.quick_messages_enabled, (v) =>
-                updateSettings({ quick_messages_enabled: v }),
-              )}
-              {renderToggle("Phân tách hộp thư Ưu tiên / Khác", settings.split_priority_inbox, (v) =>
-                updateSettings({ split_priority_inbox: v }),
-              )}
+              <SettingSwitchRow
+                label="Bật tin nhắn nhanh"
+                checked={settings.quick_messages_enabled}
+                onChange={(v) => updateSettings({ quick_messages_enabled: v })}
+              />
+              <SettingSwitchRow
+                label="Phân tách hộp thư Ưu tiên / Khác"
+                checked={settings.split_priority_inbox}
+                onChange={(v) => updateSettings({ split_priority_inbox: v })}
+              />
             </div>
           ) : null}
 
           {tab === "utilities" ? (
             <>
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Gợi ý & Sticker</div>
-                {renderToggle("Gợi ý nhãn dán theo nội dung đang soạn", settings.suggest_stickers_while_typing, (v) =>
-                  updateSettings({ suggest_stickers_while_typing: v }),
-                )}
-                {renderToggle("Gợi ý nhắc tên (@mention) trong nhóm", settings.suggest_mentions, (v) =>
-                  updateSettings({ suggest_mentions: v }),
-                )}
-                {renderToggle("Bật tìm kiếm nhãn dán theo từ khóa", settings.enable_sticker_keyword_search, (v) =>
-                  updateSettings({ enable_sticker_keyword_search: v }),
-                )}
-                <button
-                  type="button"
-                  className="btn"
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">Gợi ý & Sticker</div>
+                <SettingSwitchRow
+                  label="Gợi ý nhãn dán theo nội dung đang soạn"
+                  checked={settings.suggest_stickers_while_typing}
+                  onChange={(v) => updateSettings({ suggest_stickers_while_typing: v })}
+                />
+                <SettingSwitchRow
+                  label="Gợi ý nhắc tên (@mention) trong nhóm"
+                  checked={settings.suggest_mentions}
+                  onChange={(v) => updateSettings({ suggest_mentions: v })}
+                />
+                <SettingSwitchRow
+                  label="Bật tìm kiếm nhãn dán theo từ khóa"
+                  checked={settings.enable_sticker_keyword_search}
+                  onChange={(v) => updateSettings({ enable_sticker_keyword_search: v })}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-fit"
                   onClick={async () => {
                     const p = await ipc.exportCustomStickersTemplate();
                     dispatch({ type: "SHOW_TOAST", message: `Đã xuất mẫu ${p}` });
                   }}
                 >
                   Xuất mẫu custom_stickers.json
-                </button>
+                </Button>
               </div>
 
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Proxy & Đa phiên bản</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input
-                    className="field-input"
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">Proxy & Đa phiên bản</div>
+                <div className="flex gap-1.5">
+                  <Input
                     value={settings.proxy_url}
                     onChange={(e) => updateSettings({ proxy_url: e.target.value })}
                     placeholder="http://127.0.0.1:8080 hoặc socks5://..."
                   />
-                  <button type="button" className="btn btn-primary" onClick={() => void ipc.setProxy(settings.proxy_url)}>
+                  <Button variant="default" onClick={() => void ipc.setProxy(settings.proxy_url)}>
                     Áp dụng Proxy
-                  </button>
+                  </Button>
                 </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input
-                    className="field-input"
+                <div className="flex gap-1.5">
+                  <Input
                     value={settings.multi_profile_name}
                     onChange={(e) => updateSettings({ multi_profile_name: e.target.value })}
                     placeholder="Tên profile phụ (vd. acc2)"
                   />
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => void ipc.spawnMultiProfile(settings.multi_profile_name, settings.proxy_url)}
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void ipc.spawnMultiProfile(settings.multi_profile_name, settings.proxy_url)
+                    }
                   >
                     Mở cửa sổ Profile mới
-                  </button>
+                  </Button>
                 </div>
               </div>
 
-              <div className="settings-box">
-                <div style={{ fontWeight: 700 }}>Tự động trả lời (Auto-Reply Rules)</div>
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
+                <div className="text-xs font-bold text-foreground">
+                  Tự động trả lời (Auto-Reply Rules)
+                </div>
                 {autoReplyRules.map((rule) => (
-                  <div key={rule.id} className="settings-row" style={{ fontSize: 12.2 }}>
+                  <div
+                    key={rule.id}
+                    className="flex items-center justify-between border-t border-border pt-2 text-xs"
+                  >
                     <span>
-                      <code>{rule.keyword}</code> → {rule.reply_text}
+                      <code className="rounded bg-muted px-1.5 py-0.5">{rule.keyword}</code> →{" "}
+                      {rule.reply_text}
                     </span>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
+                    <Button
+                      variant="destructive"
+                      size="sm"
                       onClick={async () => {
                         const next = autoReplyRules.filter((r) => r.id !== rule.id);
                         setAutoReplyRules(next);
@@ -543,25 +622,22 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                       }}
                     >
                       Xóa
-                    </button>
+                    </Button>
                   </div>
                 ))}
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input
-                    className="field-input"
+                <div className="flex gap-1.5">
+                  <Input
                     value={newRuleKw}
                     onChange={(e) => setNewRuleKw(e.target.value)}
                     placeholder="Từ khóa (vd. /ping)"
                   />
-                  <input
-                    className="field-input"
+                  <Input
                     value={newRuleReply}
                     onChange={(e) => setNewRuleReply(e.target.value)}
                     placeholder="Nội dung trả lời…"
                   />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
+                  <Button
+                    variant="default"
                     onClick={async () => {
                       if (!newRuleKw.trim() || !newRuleReply.trim()) return;
                       const next: AutoReplyRule[] = [
@@ -582,18 +658,20 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     }}
                   >
                     Thêm
-                  </button>
+                  </Button>
                 </div>
               </div>
             </>
           ) : null}
 
           {tab === "update" ? (
-            <div className="settings-box">
-              <div className="settings-row">
+            <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+              <div className="flex items-center justify-between">
                 <div>
-                  <div style={{ fontWeight: 700 }}>AloLite v{state.appVersion}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  <div className="text-xs font-bold text-foreground">
+                    AloLite v{state.appVersion}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
                     {state.updateChecking
                       ? "Đang kiểm tra bản phát hành mới…"
                       : state.updateInfo?.has_update
@@ -601,22 +679,21 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                         : "Kiểm tra cập nhật trực tiếp từ GitHub Releases"}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-primary"
+                <Button
+                  variant="default"
+                  size="sm"
                   disabled={state.updateChecking}
                   onClick={() => {
                     dispatch({ type: "SET_UPDATE_CHECKING", checking: true });
                     void ipc.checkForUpdates(false);
                   }}
                 >
-                  <RefreshCw size={14} /> Kiểm tra ngay
-                </button>
+                  <RefreshCw className="h-3.5 w-3.5" /> Kiểm tra ngay
+                </Button>
               </div>
               {state.updateInfo?.has_update && state.updateInfo.download_url ? (
-                <button
-                  type="button"
-                  className="btn btn-primary"
+                <Button
+                  variant="default"
                   disabled={state.updateDownloading}
                   onClick={() =>
                     void ipc.downloadAndApplyUpdate(
@@ -627,16 +704,17 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     )
                   }
                 >
-                  <Download size={14} /> Tải và cài đặt v{state.updateInfo.latest_version}
-                </button>
+                  <Download className="h-3.5 w-3.5" /> Tải và cài đặt v
+                  {state.updateInfo.latest_version}
+                </Button>
               ) : null}
               {state.updateDownloadMessage ? (
-                <div style={{ fontSize: 12 }}>{state.updateDownloadMessage}</div>
+                <div className="text-xs text-muted-foreground">{state.updateDownloadMessage}</div>
               ) : null}
             </div>
           ) : null}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+/*
+ * Single Source of Truth Design Tokens (shadcn/ui + Tailwind v4 + Zalo Chat Tokens)
+ * Layer 1: App 4-Column Shell (--rail, --sidebar, --canvas)
+ * Layer 2: shadcn/ui Core Tokens (--background, --foreground, --card, --popover, --primary, --secondary, --muted, --accent, --destructive, --border, --input, --ring, --radius)
+ * Layer 3: Chat Semantic Tokens (--bubble-in, --bubble-out, --online, --warning)
+ */
+
+:root,
+[data-theme="light"] {
+ --radius: 0.5rem;
+
+ /* Layer 1: 4-Column Shell */
+ --rail: #005ae0;
+ --rail-foreground: #e2eeff;
+ --rail-muted: rgba(255, 255, 255, 0.16);
+ --sidebar: #ffffff;
+ --sidebar-foreground: #0f172a;
+ --canvas: #eef0f4;
+
+ /* Layer 2: shadcn/ui Core */
+ --background: #ffffff;
+ --foreground: #0f172a;
+ --card: #ffffff;
+ --card-foreground: #0f172a;
+ --popover: #ffffff;
+ --popover-foreground: #0f172a;
+ --primary: #0068ff;
+ --primary-foreground: #ffffff;
+ --secondary: #f1f5f9;
+ --secondary-foreground: #1e293b;
+ --muted: #f1f5f9;
+ --muted-foreground: #64748b;
+ --accent: #e8f2ff;
+ --accent-foreground: #005ae0;
+ --destructive: #dc2626;
+ --destructive-foreground: #ffffff;
+ --border: #e2e8f0;
+ --input: #cbd5e1;
+ --ring: #0068ff;
+
+ /* Layer 3: Chat Semantic Tokens */
+ --bubble-in: #ffffff;
+ --bubble-in-foreground: #0f172a;
+ --bubble-in-border: #dde3ec;
+ --bubble-out: #dbebff;
+ --bubble-out-foreground: #0f172a;
+ --bubble-out-border: #bfd8ff;
+ --online: #10b981;
+ --warning: #f59e0b;
+}
+
+[data-theme="dark"] {
+ --radius: 0.5rem;
+
+ /* Layer 1: 4-Column Shell (Slate / Zinc Dark) */
+ --rail: #111318;
+ --rail-foreground: #cbd5e1;
+ --rail-muted: rgba(255, 255, 255, 0.08);
+ --sidebar: #181b20;
+ --sidebar-foreground: #f1f5f9;
+ --canvas: #1e2229;
+
+ /* Layer 2: shadcn/ui Core */
+ --background: #14171c;
+ --foreground: #f1f5f9;
+ --card: #1d2128;
+ --card-foreground: #f1f5f9;
+ --popover: #20252d;
+ --popover-foreground: #f1f5f9;
+ --primary: #3b82f6;
+ --primary-foreground: #ffffff;
+ --secondary: #262b33;
+ --secondary-foreground: #e2e8f0;
+ --muted: #232830;
+ --muted-foreground: #94a3b8;
+ --accent: #223047;
+ --accent-foreground: #60a5fa;
+ --destructive: #ef4444;
+ --destructive-foreground: #ffffff;
+ --border: #2a2f3a;
+ --input: #333946;
+ --ring: #3b82f6;
+
+ /* Layer 3: Chat Semantic Tokens */
+ --bubble-in: #262b34;
+ --bubble-in-foreground: #f1f5f9;
+ --bubble-in-border: #333946;
+ --bubble-out: #1e3a5f;
+ --bubble-out-foreground: #eff6ff;
+ --bubble-out-border: #2b5082;
+ --online: #22c55e;
+ --warning: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+ :root:not([data-theme="light"]) {
+  --rail: #111318;
+  --rail-foreground: #cbd5e1;
+  --rail-muted: rgba(255, 255, 255, 0.08);
+  --sidebar: #181b20;
+  --sidebar-foreground: #f1f5f9;
+  --canvas: #1e2229;
+  --background: #14171c;
+  --foreground: #f1f5f9;
+  --card: #1d2128;
+  --card-foreground: #f1f5f9;
+  --popover: #20252d;
+  --popover-foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #262b33;
+  --secondary-foreground: #e2e8f0;
+  --muted: #232830;
+  --muted-foreground: #94a3b8;
+  --accent: #223047;
+  --accent-foreground: #60a5fa;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2a2f3a;
+  --input: #333946;
+  --ring: #3b82f6;
+  --bubble-in: #262b34;
+  --bubble-in-foreground: #f1f5f9;
+  --bubble-in-border: #333946;
+  --bubble-out: #1e3a5f;
+  --bubble-out-foreground: #eff6ff;
+  --bubble-out-border: #2b5082;
+  --online: #22c55e;
+  --warning: #fbbf24;
+ }
+}
+
+@theme inline {
+ --color-rail: var(--rail);
+ --color-rail-foreground: var(--rail-foreground);
+ --color-rail-muted: var(--rail-muted);
+ --color-sidebar: var(--sidebar);
+ --color-sidebar-foreground: var(--sidebar-foreground);
+ --color-canvas: var(--canvas);
+
+ --color-background: var(--background);
+ --color-foreground: var(--foreground);
+ --color-card: var(--card);
+ --color-card-foreground: var(--card-foreground);
+ --color-popover: var(--popover);
+ --color-popover-foreground: var(--popover-foreground);
+ --color-primary: var(--primary);
+ --color-primary-foreground: var(--primary-foreground);
+ --color-secondary: var(--secondary);
+ --color-secondary-foreground: var(--secondary-foreground);
+ --color-muted: var(--muted);
+ --color-muted-foreground: var(--muted-foreground);
+ --color-accent: var(--accent);
+ --color-accent-foreground: var(--accent-foreground);
+ --color-destructive: var(--destructive);
+ --color-destructive-foreground: var(--destructive-foreground);
+ --color-border: var(--border);
+ --color-input: var(--input);
+ --color-ring: var(--ring);
+
+ --color-bubble-in: var(--bubble-in);
+ --color-bubble-in-foreground: var(--bubble-in-foreground);
+ --color-bubble-in-border: var(--bubble-in-border);
+ --color-bubble-out: var(--bubble-out);
+ --color-bubble-out-foreground: var(--bubble-out-foreground);
+ --color-bubble-out-border: var(--bubble-out-border);
+ --color-online: var(--online);
+ --color-warning: var(--warning);
+
+ --radius-sm: calc(var(--radius) - 2px);
+ --radius-md: var(--radius);
+ --radius-lg: calc(var(--radius) + 4px);
+}
+
+@layer base {
+ * {
+  @apply border-border;
+  box-sizing: border-box;
+ }
+
+ html,
+ body,
+ #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family:
+   "Inter",
+   "Be Vietnam Pro",
+   -apple-system,
+   BlinkMacSystemFont,
+   "Segoe UI",
+   Roboto,
+   "Noto Sans",
+   sans-serif;
+  font-size: 13.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+ }
+
+ /* Custom subtle desktop scrollbars */
+ ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+ }
+
+ ::-webkit-scrollbar-track {
+  background: transparent;
+ }
+
+ ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
+  border-radius: 9999px;
+ }
+
+ ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+ }
+}
