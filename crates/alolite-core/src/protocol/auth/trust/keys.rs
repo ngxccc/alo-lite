@@ -172,7 +172,7 @@ impl PrivateKey {
 
 /// Fill `buf` from the operating-system CSPRNG.
 pub(super) fn fill_random(buf: &mut [u8]) -> Result<()> {
-    getrandom::getrandom(buf).map_err(|_| {
+    getrandom::fill(buf).map_err(|_| {
         TrustError::new(
             super::error::ErrorCode::InternalError,
             "random source unavailable",
