@@ -19,9 +19,11 @@ Operating guide for AI agents and humans working in this repository.
 |Test|`cargo test`|
 |Format|`cargo fmt --all`|
 |Lint|`cargo clippy --all-targets -- -D warnings`|
-|Run GUI|`cargo run -- --gui`|
+|Run GUI (egui)|`cargo run -- --gui`|
 |Run MCP (stdio)|`cargo run -- --mcp`|
 |Run headless REST + MCP HTTP|`cargo run -- --api-port 18128 --api-only`|
+|Check Tauri frontend (`ui/tauri/`)|`bun run typecheck && bun test && bun run build`|
+|Build Tauri host|`cargo build --manifest-path ui/tauri/src-tauri/Cargo.toml`|
 
 ## Architecture Map
 
@@ -29,12 +31,13 @@ Operating guide for AI agents and humans working in this repository.
 |:---|:---|
 |`src/main.rs`|CLI & Linux desktop entrypoint|
 |`src/lib.rs`|Library surface & core/protocol/storage/mcp/services exports|
-|`src/core/`|UI-independent `CoreEngine`, `CoreEvent`, `CoreEventSink`, `CoreImageData` shared by GUI, MCP, and future Tauri UI|
+|`src/core/`|UI-independent `CoreEngine`, `CoreEventDto`, `CoreBootstrapSnapshot`, `AppSettings`, `CoreImageData` shared by GUI, MCP, and Tauri UI|
 |`src/protocol/`|Pure network protocol (`client`, `auth/{login,qr,trust}`, `social/{friends,groups}`, `messaging/{model,threads,send,polling,attachments,links,stickers,reactions,unread}`, `session/`, `registry/`, `sync/`, `socket`, `crypto`, `param_cipher`, `endpoints`, `wire`)|
 |`src/storage/`|SQLite persistence (`messages`, `threads`, `models`, `importer/`, `sync_ingest`, `thread_cache`)|
 |`src/mcp/`|Model Context Protocol JSON-RPC 2.0 (`--mcp`), local HTTP REST API (`--api-port`), and auto-reply rules|
 |`src/services/`|Host support services (`account_manager`, `media_resources`, `native_notifications`, `updater`)|
 |`src/gui/`|Native egui GUI app shell (`worker/` adapter over `CoreEngine`, messages, workspace, modals)|
+|`ui/tauri/`|Feature-based TypeScript (`app/`, `shared/`, `features/`) + Tauri v2 Rust host (`src-tauri/`) over `CoreEngine`|
 |`src/common/`|Shared utilities (`clock`, `data_dir`, `logger`, `ui`)|
 
 ### Protocol Submodule Map (`src/protocol/`)

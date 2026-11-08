@@ -6,6 +6,14 @@
 
 pub mod engine;
 pub mod events;
+pub mod ipc;
+pub mod settings;
+pub mod stickers;
 
 pub use engine::{CoreEngine, CoreStatus};
 pub use events::{CoreEvent, CoreEventSink, CoreImageData, NoopEventSink};
+pub use ipc::{
+    CoreBootstrapSnapshot, CoreEventDto, DevCryptoInfo, DevDiagnosticsSnapshot, ImportSummaryDto,
+    PinnedPackMeta, ReactionAssetMap,
+};
+pub use settings::AppSettings;

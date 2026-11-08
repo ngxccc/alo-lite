@@ -2020,6 +2020,285 @@ impl CoreEngine {
             download_attachment_with_original_name(&client, &url, &file_name, &download_dir).await;
         self.emit(CoreEvent::FileDownloaded(res));
     }
+
+    /// Build the full initial snapshot required by desktop UI hosts (Tauri WebView, etc.).
+    pub async fn bootstrap_snapshot(
+        &self,
+        preloaded_threads: Vec<Thread>,
+    ) -> super::CoreBootstrapSnapshot {
+        let settings = super::AppSettings::load();
+        settings.apply_privacy_blockers();
+
+        let (logged_in, uin, display_name, avatar, send2me_id) = {
+            let mut s = self.session.lock().await;
+            if s.proxy_url.is_none() && !settings.proxy_url.trim().is_empty() {
+                let _ = s.set_proxy(Some(&settings.proxy_url));
+            }
+            let logged_in = s.login.is_some() && !s.is_expired_marked();
+            let (uin, display_name, avatar, send2me_id) = s
+                .login
+                .as_ref()
+                .map(|l| {
+                    (
+                        l.uin.clone(),
+                        l.display_name.clone(),
+                        (!l.avatar.is_empty()).then_some(l.avatar.clone()),
+                        l.send2me_id.clone(),
+                    )
+                })
+                .unwrap_or_default();
+            (logged_in, uin, display_name, avatar, send2me_id)
+        };
+
+        let mut threads = if preloaded_threads.is_empty() && logged_in {
+            self.list_threads(MessageStore::PRELOAD_MSGS).await
+        } else {
+            preloaded_threads
+        };
+        if !send2me_id.is_empty() {
+            for t in threads.iter_mut() {
+                if !t.is_group && t.name.contains("Cloud của tôi") {
+                    t.id = send2me_id.clone();
+                }
+            }
+        }
+        let now_ts = unix_now();
+        for t in threads.iter_mut() {
+            if let Some(&until) = settings.muted_threads.get(&t.id) {
+                if until == -1 || until > now_ts {
+                    t.presentation.muted = true;
+                    t.unread.muted = true;
+                    t.unread.muted_until = (until > 0).then_some(until);
+                }
+            } else if t.unread.is_muted() {
+                t.presentation.muted = true;
+            }
+        }
+        crate::protocol::messaging::threads::deduplicate_threads(&mut threads, None);
+        self.set_known_threads(
+            threads
+                .iter()
+                .map(|t| (t.id.clone(), t.name.clone(), t.is_group))
+                .collect(),
+        );
+
+        let saved_accounts = crate::services::account_manager::list_saved_accounts(&uin);
+        let db_path = self.resolve_db_path_for_uin(&uin);
+        let popular_stickers = super::stickers::POPULAR_STICKERS
+            .iter()
+            .map(|p| p.to_item())
+            .collect();
+        let onion_stickers = super::stickers::ONION_STICKERS
+            .iter()
+            .map(|p| p.to_item())
+            .collect();
+        let mut pinned_packs = Vec::new();
+        for custom in super::stickers::load_custom_sticker_packs() {
+            if let Some(items) = super::stickers::builtin_pack_stickers(custom.cate_id) {
+                pinned_packs.push(super::PinnedPackMeta {
+                    cate_id: custom.cate_id,
+                    name: custom.name,
+                    items,
+                });
+            }
+        }
+        for &(cid, title) in super::stickers::FEATURED_PACK_TABS {
+            if pinned_packs.iter().any(|p| p.cate_id == cid) {
+                continue;
+            }
+            if let Some(items) = super::stickers::builtin_pack_stickers(cid) {
+                pinned_packs.push(super::PinnedPackMeta {
+                    cate_id: cid,
+                    name: title.to_string(),
+                    items,
+                });
+            }
+        }
+
+        super::CoreBootstrapSnapshot {
+            app_version: env!("CARGO_PKG_VERSION"),
+            dev_mode: crate::logger::is_dev_mode(),
+            logged_in,
+            uin,
+            display_name,
+            avatar,
+            threads,
+            settings,
+            saved_accounts,
+            popular_stickers,
+            onion_stickers,
+            pinned_packs,
+            reaction_assets: super::ipc::embedded_reaction_assets(),
+            app_logo_data_url: super::ipc::embedded_app_logo_data_url(),
+            active_db_path: db_path,
+            sync_running: crate::protocol::sync::RUNNING.load(Ordering::Relaxed),
+            phone_sync_running: PHONE_SYNC_RUNNING.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Save UI settings, synchronize runtime privacy blockers, and return the persisted copy.
+    pub fn save_settings(&self, settings: super::AppSettings) -> super::AppSettings {
+        settings.apply_privacy_blockers();
+        settings.save();
+        settings
+    }
+
+    /// Save the active account snapshot, log out, and request a fresh QR code to add another account.
+    pub async fn add_new_account(self: &Arc<Self>) {
+        let cur_uin = {
+            let s = self.session.lock().await;
+            s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default()
+        };
+        if !cur_uin.is_empty() {
+            let _ = save_current_account_snapshot(&cur_uin);
+        }
+        self.logout().await;
+        self.request_qr().await;
+    }
+
+    /// List saved multi-account profiles (`accounts/<uin>.json`).
+    pub async fn list_saved_accounts(
+        &self,
+    ) -> Vec<crate::services::account_manager::AccountProfile> {
+        let cur_uin = {
+            let s = self.session.lock().await;
+            s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default()
+        };
+        crate::services::account_manager::list_saved_accounts(&cur_uin)
+    }
+
+    /// Remove a saved non-active account snapshot from `accounts/`.
+    pub fn delete_saved_account(&self, uin: &str) -> Result<(), String> {
+        crate::services::account_manager::delete_saved_account(uin).map_err(|e| e.to_string())
+    }
+
+    /// Cancel an in-progress cloud history sync or phone message sync.
+    pub fn cancel_cloud_sync(&self) {
+        crate::protocol::sync::CANCEL.store(true, Ordering::Relaxed);
+    }
+
+    pub fn cancel_phone_sync(&self) {
+        PHONE_SYNC_CANCEL.store(true, Ordering::Relaxed);
+    }
+
+    /// Write pasted/dropped WebView file bytes to a temp path and upload as an attachment.
+    pub async fn send_attachment_bytes(
+        &self,
+        to_id: String,
+        is_group: bool,
+        file_name: String,
+        bytes: Vec<u8>,
+        caption: String,
+    ) {
+        let sanitized: String = file_name
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        let safe_name = if sanitized.is_empty() {
+            format!("upload_{}.png", unix_now())
+        } else {
+            sanitized
+        };
+        let temp_path =
+            std::env::temp_dir().join(format!("alolite_up_{}_{}", unix_now(), safe_name));
+        let write_path = temp_path.clone();
+        let write_res = tokio::task::spawn_blocking(move || std::fs::write(&write_path, &bytes))
+            .await
+            .map_err(|e| std::io::Error::other(e.to_string()))
+            .and_then(|r| r);
+        if let Err(e) = write_res {
+            self.emit(CoreEvent::SendFailed {
+                thread_id: to_id,
+                text: caption,
+                error: format!("Không thể lưu tệp tạm: {e}"),
+            });
+            return;
+        }
+        self.send_attachment_file(to_id, is_group, temp_path.clone(), caption)
+            .await;
+        let _ = tokio::task::spawn_blocking(move || std::fs::remove_file(&temp_path)).await;
+    }
+
+    /// Import local SQLite/JSON Zalo history backup into the active account's SQLite DB.
+    pub async fn import_history_from_path(
+        &self,
+        src_path: PathBuf,
+    ) -> std::result::Result<super::ImportSummaryDto, String> {
+        if !src_path.exists() {
+            return Err(format!("Đường dẫn không tồn tại: {}", src_path.display()));
+        }
+        let db_path = self.active_db_path().await;
+        let src_display = src_path.display().to_string();
+        let report = tokio::task::spawn_blocking(move || {
+            crate::storage::import_history_from_path(&src_path, &db_path)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+        let threads = self.list_threads(MessageStore::PRELOAD_MSGS).await;
+        self.emit(CoreEvent::ThreadsUpdated(threads));
+        let dto = super::ImportSummaryDto {
+            threads_imported: report.threads_imported,
+            messages_imported: report.messages_imported,
+            source_path: src_display,
+        };
+        self.emit(CoreEvent::StatusUpdate(format!(
+            "Đã nhập thành công {} tin nhắn từ {} hội thoại!",
+            dto.messages_imported, dto.threads_imported
+        )));
+        Ok(dto)
+    }
+
+    /// Scan common Linux/Wine/Flatpak Zalo directories and import the first existing store.
+    pub async fn auto_detect_and_import_history(
+        &self,
+    ) -> std::result::Result<super::ImportSummaryDto, String> {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+        let home_p = PathBuf::from(home);
+        let candidates = [
+            home_p.join(".local/share/zalo"),
+            home_p.join(".local/share/Zalo"),
+            home_p.join(".config/zalo"),
+            home_p.join(".config/Zalo"),
+            home_p.join(".var/app/com.vng.zalo/data/zalo"),
+            home_p.join(".var/app/com.vng.zalo/config/zalo"),
+            home_p
+                .join(".wine/drive_c/users")
+                .join(std::env::var("USER").unwrap_or_default())
+                .join("AppData/Roaming/Zalo"),
+            home_p.join("zalo_history.db"),
+            home_p.join("threads_cache.json"),
+        ];
+        for cand in candidates {
+            if cand.exists() {
+                return self.import_history_from_path(cand).await;
+            }
+        }
+        Err("Không tìm thấy thư mục Zalo mặc định. Vui lòng nhập đường dẫn thủ công.".into())
+    }
+
+    /// Return diagnostic HTTP logs, scan findings, and public protocol parameters (never secrets).
+    pub fn dev_diagnostics(&self) -> super::DevDiagnosticsSnapshot {
+        super::DevDiagnosticsSnapshot {
+            dev_mode: crate::logger::is_dev_mode(),
+            logs: crate::logger::get_entries(),
+            findings: crate::logger::scan_logs(),
+            crypto: super::DevCryptoInfo {
+                zpw_ver: crate::session::ZPW_VER,
+                zpw_type: crate::session::ZPW_TYPE,
+                cipher_algo: "AES-128-CBC / AES-256-CBC (PKCS7, Zero IV)",
+                sign_key_formula: "md5('zsecure' + tag + sorted_values)",
+                param_cipher_key_len: crate::param_cipher::PARAM_CIPHER_KEY.len(),
+            },
+        }
+    }
 }
 
 fn merge_thread_headers(list: &mut Vec<Thread>, incoming: Vec<Thread>, force_group: bool) {

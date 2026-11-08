@@ -17,7 +17,10 @@ pub mod storage;
 
 // 2. Convenience Re-exports & Aliases
 pub use common::{clock, data_dir, logger, ui};
-pub use core::{CoreEngine, CoreEvent, CoreEventSink, CoreImageData, CoreStatus, NoopEventSink};
+pub use core::{
+    AppSettings, CoreBootstrapSnapshot, CoreEngine, CoreEvent, CoreEventDto, CoreEventSink,
+    CoreImageData, CoreStatus, DevDiagnosticsSnapshot, ImportSummaryDto, NoopEventSink,
+};
 pub use gui::message_navigation;
 pub use protocol as zalo;
 pub use protocol::{
