@@ -19,21 +19,20 @@ help:
 
 dev dev-desktop run:
 	cd apps/desktop && bun run build
-	cargo run --bin alolite-desktop
+	cargo run -p alolite-desktop --bin alolite-desktop
 
 mcp:
-	cargo run --bin alolite -- --mcp
+	cargo run -p alolite-cli --bin alolite -- --mcp
 
 qr:
-	cargo run --bin alolite -- --qr
+	cargo run -p alolite-cli --bin alolite -- --qr
 
 build:
-	cargo build --release --bin alolite
+	cargo build --release -p alolite-cli --bin alolite
 
 build-desktop:
 	cd apps/desktop && bun run build
-	cargo build --release --bin alolite-desktop
-
+	cargo build --release -p alolite-desktop --bin alolite-desktop
 test:
 	cargo test --locked
 	cd apps/desktop && bun test
