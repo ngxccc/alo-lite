@@ -10,8 +10,8 @@ inputs:
     description: "Enable Swatinem/rust-cache"
     required: false
     default: "true"
-  cache-all-targets:
-    description: "Cache all build targets (debug, release, tests)"
+  cache-all-crates:
+    description: "Cache all crates in the cargo cache"
     required: false
     default: "true"
   packaging-tools:
@@ -31,7 +31,8 @@ runs:
       if: inputs.cache == 'true'
       uses: Swatinem/rust-cache@v2
       with:
-        cache-all-targets: ${{ inputs.cache-all-targets }}
+        cache-targets: "true"
+        cache-all-crates: ${{ inputs.cache-all-crates }}
         cache-on-failure: "true"
     - name: Install system build dependencies
       shell: bash

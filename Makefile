@@ -1,4 +1,4 @@
-.PHONY: all dev dev-desktop run qr build build-desktop mcp test lint fmt package install uninstall clean help
+.PHONY: all dev dev-desktop run qr build build-desktop mcp test lint fmt package install uninstall clean version-check version-bump release help
 
 all: dev-desktop
 
@@ -15,6 +15,9 @@ help:
 	@echo "  make package       - Build all Linux packages (.deb, .rpm, .AppImage, .tar.gz)"
 	@echo "  make install       - Install desktop entry and icon into ~/.local"
 	@echo "  make uninstall     - Uninstall desktop entry from ~/.local"
+	@echo "  make version-check - Verify all workspace manifests agree on version"
+	@echo "  make version-bump  - Bump version across manifests (e.g. make version-bump VERSION=0.1.1)"
+	@echo "  make release       - Cut release: bump, changelog, tag (e.g. make release VERSION=minor)"
 	@echo "  make clean         - Clean build artifacts and dist/"
 
 dev dev-desktop run:
@@ -56,3 +59,12 @@ uninstall:
 clean:
 	cargo clean
 	rm -rf dist/ apps/desktop/dist/
+
+version-check:
+	bun scripts/version.ts check
+
+version-bump:
+	bun scripts/version.ts bump $(VERSION)
+
+release:
+	bun scripts/release.ts $(VERSION)

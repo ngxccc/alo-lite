@@ -46,6 +46,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
 
+      - name: Verify Manifest Versions
+        run: bun scripts/version.ts check
+
       - name: Desktop Frontend Check & Tests
         working-directory: apps/desktop
         run: |
