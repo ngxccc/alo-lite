@@ -1,11 +1,7 @@
 import { FolderOpen, RefreshCw, Square } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import { Button } from "@/shared/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/shared/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import type { AppAction, AppState } from "@/app/store/appReducer";
 
 interface PhoneSyncModalProps {
@@ -19,9 +15,7 @@ export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
   return (
     <Dialog
       open={state.phoneSyncModalOpen}
-      onOpenChange={(open) =>
-        !open && dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false })
-      }
+      onOpenChange={(open) => !open && dispatch({ type: "SET_PHONE_SYNC_MODAL", open: false })}
     >
       <DialogContent className="w-[480px] max-w-[480px] rounded-lg p-0">
         {/* Header */}

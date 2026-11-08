@@ -213,7 +213,8 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
       <div className="flex h-14 shrink-0 items-center justify-center gap-2 border-t border-border bg-sidebar px-4 text-[13px] text-muted-foreground dark:border-[rgba(255,255,255,0.1)]">
         <Info className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
         <span>
-          Chỉ <span className="font-semibold text-primary">trưởng/phó nhóm</span> mới được gửi tin nhắn vào nhóm này.{" "}
+          Chỉ <span className="font-semibold text-primary">trưởng/phó nhóm</span> mới được gửi tin
+          nhắn vào nhóm này.{" "}
           <span className="cursor-pointer text-primary hover:underline">Tìm hiểu thêm</span>
         </span>
       </div>

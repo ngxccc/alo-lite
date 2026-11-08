@@ -55,6 +55,7 @@ const REACTION_ICONS = {
   cry: cryIcon,
   rage: rageIcon,
 } as const;
+import { threadMemberCount } from "@/features/threads/utils/threads";
 import { Composer } from "./Composer";
 
 interface ChatAreaProps {
@@ -72,7 +73,7 @@ function StickerMessageMedia({ msg }: { msg: ChatMessage }) {
       alt={msg.text}
       loading="lazy"
       decoding="async"
-      className="h-32 w-32 object-contain select-none transition-transform hover:scale-105"
+      className="h-32 w-32 object-contain transition-transform select-none hover:scale-105"
     />
   );
 }
@@ -102,7 +103,7 @@ function PhotoMessageMedia({
       {src ? (
         <div className="relative">
           {/* HD badge as in Zalo */}
-          <span className="absolute left-2 top-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
+          <span className="absolute top-2 left-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
             HD
           </span>
           <img
@@ -202,7 +203,7 @@ function VideoMessageMedia({
           className="group/vid relative flex min-h-[150px] max-w-[320px] min-w-[220px] cursor-pointer items-center justify-center overflow-hidden rounded-[6px] border border-border bg-black/80"
         >
           {/* HD badge */}
-          <span className="absolute left-2 top-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
+          <span className="absolute top-2 left-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
             HD
           </span>
           {posterUrl ? (
@@ -220,7 +221,7 @@ function VideoMessageMedia({
             </div>
           </div>
           {!inlineVideoSupported || playbackError ? (
-            <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+            <div className="absolute right-0 bottom-2 left-0 flex justify-center">
               <span className="rounded bg-black/60 px-2 py-0.5 text-[11px] text-white/80">
                 {playbackError ? "Nhấn để mở ngoài" : "Nhấn để xem"}
               </span>
@@ -229,7 +230,7 @@ function VideoMessageMedia({
         </button>
       ) : null}
       {!shouldHideMediaCaption(msg) ? (
-        <span className="select-text text-[15px]">{msg.text}</span>
+        <span className="text-[15px] select-text">{msg.text}</span>
       ) : null}
       {/* Download button for videos */}
       {videoUrl ? (
@@ -288,16 +289,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
     () => thread?.messages.filter((m) => m.is_pinned) ?? [],
     [thread?.messages],
   );
-  const pinnedMessage =
-    pinnedMessages[0] ??
-    (thread?.is_group && thread.messages.length > 0
-      ? thread.messages.find(
-          (m) =>
-            m.text?.toLowerCase().includes("lưu ý") ||
-            m.text?.toLowerCase().includes("thông báo") ||
-            m.text?.toLowerCase().includes("chú ý"),
-        )
-      : undefined);
+  const pinnedMessage = pinnedMessages.at(0);
   const senderLookup = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; avatar?: string | null }>();
     const byName = new Map<string, { id: string; name: string; avatar?: string | null }>();
@@ -526,10 +518,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             name={thread.name}
             avatarUrl={thread.avatar}
             isGroup={thread.is_group}
-            memberCount={
-              thread.presentation.member_count ||
-              (thread.is_group ? thread.presentation.members.length : undefined)
-            }
+            memberCount={thread.is_group ? threadMemberCount(thread) : undefined}
             size={48}
             mediaCache={state.mediaCache}
           />
@@ -649,7 +638,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
               <MessageSquare className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold leading-tight text-foreground">
+              <div className="text-[13px] leading-tight font-semibold text-foreground">
                 Tin nhắn
               </div>
               <div className="truncate text-[12px] leading-tight text-muted-foreground">
@@ -739,7 +728,10 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
           const isTextOrRich = !isBareSticker;
 
           return (
-            <div key={msgKey} className={cn("flex flex-col", isGroupedWithPrev ? "mt-0.5" : "mt-2")}>
+            <div
+              key={msgKey}
+              className={cn("flex flex-col", isGroupedWithPrev ? "mt-0.5" : "mt-2")}
+            >
               {/* Date divider chip */}
               {showDivider ? (
                 <div className="my-3 self-center rounded-xl bg-[rgba(255,255,255,0.05)] px-3 py-0.5 text-[13px] text-muted-foreground">
@@ -792,12 +784,12 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                       isBareSticker
                         ? "relative"
                         : cn(
-                            "relative max-w-[640px] break-words rounded-[6px] text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm",
+                            "relative max-w-[640px] rounded-[6px] text-[15px] leading-relaxed break-words whitespace-pre-wrap shadow-sm",
                             isRecalled
-                              ? "px-3 py-2.5 italic text-muted-foreground opacity-70 bg-bubble-in"
+                              ? "bg-bubble-in px-3 py-2.5 text-muted-foreground italic opacity-70"
                               : msg.is_outgoing
-                                ? "bg-bubble-out text-bubble-out-foreground px-3 py-2.5"
-                                : "bg-bubble-in text-bubble-in-foreground px-3 py-2.5",
+                                ? "bg-bubble-out px-3 py-2.5 text-bubble-out-foreground"
+                                : "bg-bubble-in px-3 py-2.5 text-bubble-in-foreground",
                           ),
                     )}
                   >
@@ -883,7 +875,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                       />
                     ) : isFileMessage(msg) && msg.link_url ? (
                       /* File card — 40px colored icon */
-                      <div className="flex min-w-[220px] max-w-[340px] items-center gap-3">
+                      <div className="flex max-w-[340px] min-w-[220px] items-center gap-3">
                         <div
                           className={cn(
                             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
@@ -925,7 +917,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                         {msg.link_url ? (
                           <div
                             onClick={() => void ipc.openExternalUrl(msg.link_url!)}
-                            className="mt-2 max-w-[360px] cursor-pointer rounded-[6px] border border-border/60 bg-background/50 p-2.5 hover:bg-background/80 transition-colors"
+                            className="mt-2 max-w-[360px] cursor-pointer rounded-[6px] border border-border/60 bg-background/50 p-2.5 transition-colors hover:bg-background/80"
                           >
                             {msg.link_thumb ? (
                               <img
@@ -966,7 +958,9 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                       <div
                         className={cn(
                           "mt-1.5 flex items-center gap-1 text-[12px]",
-                          msg.is_outgoing ? "justify-end text-bubble-out-foreground/60" : "text-muted-foreground",
+                          msg.is_outgoing
+                            ? "justify-end text-bubble-out-foreground/60"
+                            : "text-muted-foreground",
                         )}
                       >
                         <span>{msg.time}</span>
@@ -983,16 +977,14 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                     {isTextOrRich && !isRecalled ? (
                       <Popover
                         open={reactPickerFor === `quick_${msgKey}`}
-                        onOpenChange={(open) =>
-                          setReactPickerFor(open ? `quick_${msgKey}` : null)
-                        }
+                        onOpenChange={(open) => setReactPickerFor(open ? `quick_${msgKey}` : null)}
                       >
                         <PopoverTrigger asChild>
                           <button
                             type="button"
                             title="Thả cảm xúc"
                             className={cn(
-                              "absolute -bottom-2.5 -right-2.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-sidebar shadow-sm transition-opacity",
+                              "absolute -right-2.5 -bottom-2.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-sidebar shadow-sm transition-opacity",
                               "opacity-0 group-hover:opacity-100",
                             )}
                           >
@@ -1043,8 +1035,8 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   {msg.reactions && msg.reactions.length > 0 ? (
                     <div
                       className={cn(
-                        "-mt-1.5 flex cursor-pointer items-center gap-0.5 rounded-full border border-border/80 bg-sidebar px-2 py-0.5 text-xs shadow-sm select-none hover:bg-secondary transition-colors",
-                        msg.is_outgoing ? "self-end mr-1" : "self-start ml-1",
+                        "-mt-1.5 flex cursor-pointer items-center gap-0.5 rounded-full border border-border/80 bg-sidebar px-2 py-0.5 text-xs shadow-sm transition-colors select-none hover:bg-secondary",
+                        msg.is_outgoing ? "mr-1 self-end" : "ml-1 self-start",
                       )}
                     >
                       {Array.from(new Set(msg.reactions))

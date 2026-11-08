@@ -23,6 +23,12 @@ export function threadUnreadCount(
   return Math.max(serverCount, local);
 }
 
+/** Server-reported member count when positive, otherwise the locally known member list length. */
+export function threadMemberCount(thread: Thread): number {
+  const reported = thread.presentation.member_count;
+  return reported != null && reported > 0 ? reported : thread.presentation.members.length;
+}
+
 export function threadLastActivityTs(thread: Thread): number {
   const lastMsg = thread.messages.at(-1);
   return Math.max(

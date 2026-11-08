@@ -63,7 +63,7 @@ export function Avatar({
     return (
       <div className="relative inline-flex shrink-0">
         {avatarNode}
-        <span className="absolute -bottom-1 -right-1 flex h-4 min-w-4 items-center justify-center gap-0.5 rounded-full bg-[#1c1e23] px-1 text-[9.5px] font-semibold text-gray-300 ring-1 ring-border shadow-xs">
+        <span className="absolute -right-1 -bottom-1 flex h-4 min-w-4 items-center justify-center gap-0.5 rounded-full bg-[#1c1e23] px-1 text-[9.5px] font-semibold text-gray-300 shadow-xs ring-1 ring-border">
           <Users className="h-2.5 w-2.5" />
           <span>{memberCount > 999 ? "999+" : memberCount}</span>
         </span>

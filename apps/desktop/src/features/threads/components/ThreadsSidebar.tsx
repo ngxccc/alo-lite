@@ -37,7 +37,11 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { matchesVnQuery } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/appReducer";
-import { isThreadMuted, threadUnreadCount } from "@/features/threads/utils/threads";
+import {
+  isThreadMuted,
+  threadMemberCount,
+  threadUnreadCount,
+} from "@/features/threads/utils/threads";
 
 interface ThreadsSidebarProps {
   state: AppState;
@@ -175,7 +179,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             className={cn(
               "relative flex h-full cursor-pointer items-center transition-colors",
               !unreadOnly
-                ? "font-medium text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-accent-foreground"
+                ? "font-medium text-accent-foreground after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-accent-foreground"
                 : "font-normal text-muted-foreground hover:text-foreground",
             )}
           >
@@ -187,7 +191,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             className={cn(
               "relative flex h-full cursor-pointer items-center transition-colors",
               unreadOnly
-                ? "font-medium text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-accent-foreground"
+                ? "font-medium text-accent-foreground after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-accent-foreground"
                 : "font-normal text-muted-foreground hover:text-foreground",
             )}
           >
@@ -304,10 +308,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         name={t.name}
                         avatarUrl={t.avatar}
                         isGroup={t.is_group}
-                        memberCount={
-                          t.presentation.member_count ||
-                          (t.is_group ? t.presentation.members.length : undefined)
-                        }
+                        memberCount={t.is_group ? threadMemberCount(t) : undefined}
                         size={48}
                         mediaCache={state.mediaCache}
                       />
@@ -331,22 +332,18 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                             !t.preview.startsWith("Bạn:") &&
                             !t.preview.startsWith("You:")
                               ? `You: ${t.preview || "Hình ảnh"}`
-                              : t.is_group &&
-                                  t.presentation.last_sender &&
-                                  !t.preview.includes(":")
+                              : t.is_group && t.presentation.last_sender && !t.preview.includes(":")
                                 ? `${t.presentation.last_sender}: ${t.preview}`
                                 : t.preview || "Chưa có tin nhắn"}
                           </span>
                           <div className="inline-flex shrink-0 items-center gap-1">
                             {pinned ? <Pin className="h-3 w-3 text-muted-foreground" /> : null}
-                            {muted ? (
-                              <BellOff className="h-3 w-3 text-muted-foreground" />
-                            ) : null}
+                            {muted ? <BellOff className="h-3 w-3 text-muted-foreground" /> : null}
                             {unread > 0 ? (
                               <Badge
                                 variant="destructive"
                                 className={cn(
-                                  "h-4 rounded-full text-[11px] font-bold leading-none",
+                                  "h-4 rounded-full text-[11px] leading-none font-bold",
                                   unread > 9 ? "min-w-4 px-1" : "w-4 p-0",
                                 )}
                               >

@@ -71,7 +71,7 @@ function RailBtn({
         >
           {children}
           {badge != null && badge > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-[3px] text-[11px] font-bold leading-none text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-[3px] text-[11px] leading-none font-bold text-white">
               {badge > 99 ? "99+" : badge}
             </span>
           )}
@@ -147,9 +147,7 @@ function SettingsMenu({
           {/* Account information */}
           <DropdownMenuPrimitive.Item
             className={dmItemCls}
-            onSelect={() =>
-              dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })
-            }
+            onSelect={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })}
           >
             <User className="h-4 w-4 shrink-0 opacity-70" />
             Thông tin tài khoản
@@ -158,9 +156,7 @@ function SettingsMenu({
           {/* General settings */}
           <DropdownMenuPrimitive.Item
             className={dmItemCls}
-            onSelect={() =>
-              dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })
-            }
+            onSelect={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })}
           >
             <Settings className="h-4 w-4 shrink-0 opacity-70" />
             Cài đặt
@@ -169,9 +165,7 @@ function SettingsMenu({
 
           {/* Data sub-menu */}
           <DropdownMenuPrimitive.Sub>
-            <DropdownMenuPrimitive.SubTrigger
-              className={cn(dmItemCls, "justify-between")}
-            >
+            <DropdownMenuPrimitive.SubTrigger className={cn(dmItemCls, "justify-between")}>
               <span className="flex items-center gap-2.5">
                 <Database className="h-4 w-4 shrink-0 opacity-70" />
                 Dữ liệu
@@ -179,10 +173,7 @@ function SettingsMenu({
               <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50" />
             </DropdownMenuPrimitive.SubTrigger>
             <DropdownMenuPrimitive.Portal>
-              <DropdownMenuPrimitive.SubContent
-                sideOffset={4}
-                className={dmSubContentCls}
-              >
+              <DropdownMenuPrimitive.SubContent sideOffset={4} className={dmSubContentCls}>
                 <DropdownMenuPrimitive.Item
                   className={dmItemCls}
                   onSelect={() => dispatch({ type: "START_CLOUD_SYNC" })}
@@ -192,9 +183,7 @@ function SettingsMenu({
                 </DropdownMenuPrimitive.Item>
                 <DropdownMenuPrimitive.Item
                   className={dmItemCls}
-                  onSelect={() =>
-                    dispatch({ type: "SET_PHONE_SYNC_MODAL", open: true })
-                  }
+                  onSelect={() => dispatch({ type: "SET_PHONE_SYNC_MODAL", open: true })}
                 >
                   <Smartphone className="h-4 w-4 shrink-0 opacity-60" />
                   Đồng bộ tin nhắn từ điện thoại
@@ -205,9 +194,7 @@ function SettingsMenu({
 
           {/* Language sub-menu */}
           <DropdownMenuPrimitive.Sub>
-            <DropdownMenuPrimitive.SubTrigger
-              className={cn(dmItemCls, "justify-between")}
-            >
+            <DropdownMenuPrimitive.SubTrigger className={cn(dmItemCls, "justify-between")}>
               <span className="flex items-center gap-2.5">
                 <Globe className="h-4 w-4 shrink-0 opacity-70" />
                 Ngôn ngữ
@@ -215,10 +202,7 @@ function SettingsMenu({
               <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50" />
             </DropdownMenuPrimitive.SubTrigger>
             <DropdownMenuPrimitive.Portal>
-              <DropdownMenuPrimitive.SubContent
-                sideOffset={4}
-                className={dmSubContentCls}
-              >
+              <DropdownMenuPrimitive.SubContent sideOffset={4} className={dmSubContentCls}>
                 <DropdownMenuPrimitive.Item className={dmItemCls} disabled>
                   Tiếng Việt (mặc định)
                 </DropdownMenuPrimitive.Item>
@@ -228,9 +212,7 @@ function SettingsMenu({
 
           {/* Help sub-menu */}
           <DropdownMenuPrimitive.Sub>
-            <DropdownMenuPrimitive.SubTrigger
-              className={cn(dmItemCls, "justify-between")}
-            >
+            <DropdownMenuPrimitive.SubTrigger className={cn(dmItemCls, "justify-between")}>
               <span className="flex items-center gap-2.5">
                 <CircleHelp className="h-4 w-4 shrink-0 opacity-70" />
                 Hỗ trợ
@@ -238,10 +220,7 @@ function SettingsMenu({
               <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50" />
             </DropdownMenuPrimitive.SubTrigger>
             <DropdownMenuPrimitive.Portal>
-              <DropdownMenuPrimitive.SubContent
-                sideOffset={4}
-                className={dmSubContentCls}
-              >
+              <DropdownMenuPrimitive.SubContent sideOffset={4} className={dmSubContentCls}>
                 <DropdownMenuPrimitive.Item className={dmItemCls} disabled>
                   Trung tâm hỗ trợ
                 </DropdownMenuPrimitive.Item>
@@ -310,9 +289,7 @@ function ToolItemBtn({ item }: { item: ToolItemDef }) {
       onClick={item.onSelect}
       className={cn(
         "flex flex-col items-center gap-1.5 rounded-lg p-2.5 text-center transition-colors",
-        item.disabled
-          ? "cursor-not-allowed opacity-50"
-          : "cursor-pointer hover:bg-white/[0.05]",
+        item.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-white/[0.05]",
       )}
     >
       <div
@@ -325,7 +302,7 @@ function ToolItemBtn({ item }: { item: ToolItemDef }) {
         {item.badge && (
           <span
             className={cn(
-              "absolute -top-1 -right-1 rounded-full px-[5px] text-[9px] font-bold leading-[14px] text-white",
+              "absolute -top-1 -right-1 rounded-full px-[5px] text-[9px] leading-[14px] font-bold text-white",
               item.badge === "BASIC" ? "bg-sky-500" : "bg-orange-500",
             )}
           >
@@ -333,19 +310,12 @@ function ToolItemBtn({ item }: { item: ToolItemDef }) {
           </span>
         )}
       </div>
-      <span className="w-full text-[11px] leading-tight text-popover-foreground">
-        {item.label}
-      </span>
+      <span className="w-full text-[11px] leading-tight text-popover-foreground">{item.label}</span>
     </button>
   );
 }
 
-function ToolsPopover({
-  dispatch,
-}: {
-  dispatch: (action: AppAction) => void;
-  isDark: boolean;
-}) {
+function ToolsPopover({ dispatch }: { dispatch: (action: AppAction) => void; isDark: boolean }) {
   const [open, setOpen] = useState(false);
 
   const tools: ToolItemDef[] = [
@@ -440,9 +410,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
   const isDark = (state.settings?.theme_mode ?? "dark") !== "light";
 
   const openCloudThread = () => {
-    const cloud = state.threads.find(
-      (t) => !t.is_group && t.name.includes("Cloud của tôi"),
-    );
+    const cloud = state.threads.find((t) => !t.is_group && t.name.includes("Cloud của tôi"));
     if (cloud) {
       dispatch({ type: "SELECT_THREAD", threadId: cloud.id });
     } else {
@@ -462,9 +430,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
           <TooltipTrigger asChild>
             <button
               type="button"
-              onClick={() =>
-                dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })
-              }
+              onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })}
               className="relative mb-2 cursor-pointer rounded-full ring-2 ring-white/25 transition hover:ring-white/50 focus-visible:outline-none"
             >
               <Avatar
@@ -478,9 +444,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
               <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-rail bg-online" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">
-            {state.displayName || "Tài khoản"}
-          </TooltipContent>
+          <TooltipContent side="right">{state.displayName || "Tài khoản"}</TooltipContent>
         </Tooltip>
 
         {/* Messages tab */}
@@ -488,9 +452,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
           active={state.activeSection === "chat"}
           isDark={isDark}
           label="Tin nhắn"
-          onClick={() =>
-            dispatch({ type: "SET_NAV_SECTION", section: "chat" })
-          }
+          onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "chat" })}
           badge={totalUnread}
         >
           <MessageSquare
@@ -504,9 +466,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
           active={state.activeSection === "contacts"}
           isDark={isDark}
           label="Danh bạ"
-          onClick={() =>
-            dispatch({ type: "SET_NAV_SECTION", section: "contacts" })
-          }
+          onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "contacts" })}
         >
           <Users
             className="h-6 w-6"
@@ -527,11 +487,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
         </RailBtn>
 
         {/* My Documents – opens Cloud của tôi thread */}
-        <RailBtn
-          isDark={isDark}
-          label="Cloud của tôi"
-          onClick={openCloudThread}
-        >
+        <RailBtn isDark={isDark} label="Cloud của tôi" onClick={openCloudThread}>
           <FolderOpen className="h-6 w-6" />
         </RailBtn>
 

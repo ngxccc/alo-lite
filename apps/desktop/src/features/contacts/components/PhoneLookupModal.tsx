@@ -31,11 +31,9 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
       {/* Zalo-style: rounded-lg (8px), dark overlay, bg-card body */}
       <DialogContent className="max-w-[460px] rounded-lg border border-border bg-card p-0 shadow-2xl">
         {/* Dialog header: bg-background, 52px */}
-        <DialogHeader className="flex h-[52px] flex-row items-center gap-2 border-b border-border bg-background px-4 rounded-t-lg">
+        <DialogHeader className="flex h-[52px] flex-row items-center gap-2 rounded-t-lg border-b border-border bg-background px-4">
           <UserPlus className="h-5 w-5 text-muted-foreground" />
-          <DialogTitle className="text-[18px] font-medium text-foreground">
-            Thêm bạn
-          </DialogTitle>
+          <DialogTitle className="text-[18px] font-medium text-foreground">Thêm bạn</DialogTitle>
         </DialogHeader>
 
         {/* Body */}

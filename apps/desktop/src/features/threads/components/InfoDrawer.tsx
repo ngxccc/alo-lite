@@ -22,7 +22,7 @@ import { cn } from "@/shared/utils/cn";
 import { jxlToJpgUrl } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/appReducer";
 import { isPhotoMessage } from "@/features/chat/utils/messages";
-import { isThreadMuted } from "@/features/threads/utils/threads";
+import { isThreadMuted, threadMemberCount } from "@/features/threads/utils/threads";
 
 interface InfoDrawerProps {
   state: AppState;
@@ -55,11 +55,7 @@ function SectionHeader({
       <span className="text-base font-medium text-foreground">{label}</span>
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {trailing}
-        {expanded ? (
-          <ChevronDown className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
+        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </div>
     </button>
   );
@@ -93,12 +89,8 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
   const online = state.userOnlineMap[thread.id];
   const muted = state.settings ? isThreadMuted(thread, state.settings) : false;
   const pinned =
-    thread.presentation.pinned ||
-    (state.settings?.pinned_threads.includes(thread.id) ?? false);
-  const memberCount =
-    thread.presentation.member_count ||
-    thread.presentation.members.length ||
-    0;
+    thread.presentation.pinned || (state.settings?.pinned_threads.includes(thread.id) ?? false);
+  const memberCount = threadMemberCount(thread);
 
   const sharedPhotos = thread.messages
     .filter((m) => isPhotoMessage(m) && Boolean(m.link_thumb ?? m.link_url))
@@ -156,7 +148,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 cursor-pointer group"
+      className="group flex cursor-pointer flex-col items-center gap-1.5"
     >
       <div
         className={cn(
@@ -200,9 +192,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
       <ActionBtn
         icon={<Shield className="h-5 w-5" />}
         label="Quản lý nhóm"
-        onClick={() =>
-          dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })
-        }
+        onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })}
       />
     </div>
   ) : (
@@ -244,10 +234,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
           name={thread.name}
           avatarUrl={thread.avatar}
           isGroup={thread.is_group}
-          memberCount={
-            thread.presentation.member_count ||
-            (thread.is_group ? thread.presentation.members.length : undefined)
-          }
+          memberCount={thread.is_group ? threadMemberCount(thread) : undefined}
           size={56}
           mediaCache={state.mediaCache}
         />
@@ -340,7 +327,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
               <div className="flex flex-col px-4 pb-2">
                 <button
                   type="button"
-                  className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+                  className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
                 >
                   <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <span className="text-[14px]">{memberCount} thành viên</span>
@@ -379,14 +366,14 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
               <div className="flex flex-col px-4 pb-3">
                 <button
                   type="button"
-                  className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+                  className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
                 >
                   <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <span className="text-[14px]">Danh sách nhắc hẹn</span>
                 </button>
                 <button
                   type="button"
-                  className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+                  className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
                 >
                   <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <span className="text-[14px]">Ghi chú, ghim, bình chọn</span>
@@ -402,7 +389,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
           <div className="flex flex-col bg-background px-4 py-1.5">
             <button
               type="button"
-              className="flex items-center gap-3 py-2.5 cursor-pointer text-foreground hover:text-accent-foreground"
+              className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
             >
               <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
               <span className="text-[14px]">Danh sách nhắc hẹn</span>
@@ -421,7 +408,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
         {photosExpanded ? (
           <>
             {sharedPhotos.length === 0 ? (
-              <p className="px-4 pb-3 text-[13px] text-muted-foreground text-center">
+              <p className="px-4 pb-3 text-center text-[13px] text-muted-foreground">
                 Chưa có hình ảnh nào
               </p>
             ) : (
@@ -431,8 +418,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
                     const key = `img_${m.id || m.ts}`;
                     const fullUrl = m.link_url ?? m.link_thumb ?? "";
                     const thumbSrc =
-                      state.mediaCache[key] ??
-                      jxlToJpgUrl(m.link_thumb ?? m.link_url ?? "");
+                      state.mediaCache[key] ?? jxlToJpgUrl(m.link_thumb ?? m.link_url ?? "");
                     return (
                       <div
                         key={key}
@@ -459,9 +445,7 @@ export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full items-center justify-center">
-                            Ảnh
-                          </div>
+                          <div className="flex h-full items-center justify-center">Ảnh</div>
                         )}
                       </div>
                     );

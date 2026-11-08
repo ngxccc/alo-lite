@@ -1,10 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type {
-  AppSettings,
-  ChatMessage,
-  CoreBootstrapSnapshot,
-  Thread,
-} from "@/shared/types/ipc";
+import type { AppSettings, ChatMessage, CoreBootstrapSnapshot, Thread } from "@/shared/types/ipc";
 import { matchesVnQuery } from "@/shared/utils/text";
 import { uniqueReferenceIndex } from "@/features/chat/utils/messages";
 import { appReducer, initialAppState } from "./appReducer";

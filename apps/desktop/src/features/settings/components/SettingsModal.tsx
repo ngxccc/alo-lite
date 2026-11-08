@@ -122,15 +122,13 @@ function ChevronRow({ label, desc }: { label: string; desc?: string }) {
 /** Section heading (not inside a card) */
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-2 mt-4 text-base font-medium text-foreground first:mt-0">{children}</div>
+    <div className="mt-4 mb-2 text-base font-medium text-foreground first:mt-0">{children}</div>
   );
 }
 
 /** Card wrapper */
 function SettingCard({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn("overflow-hidden rounded-lg bg-card", className)}>{children}</div>
-  );
+  return <div className={cn("overflow-hidden rounded-lg bg-card", className)}>{children}</div>;
 }
 
 /** Divider between rows inside card */
@@ -146,7 +144,7 @@ function ThemeThumbnail({ mode }: { mode: "light" | "dark" | "system" }) {
         {/* sidebar strip */}
         <div className="absolute inset-y-0 left-0 w-[30%] bg-white" />
         {/* chat bubble out */}
-        <div className="absolute bottom-3 right-3 h-[12px] w-[45%] rounded-sm bg-[#e5f1ff]" />
+        <div className="absolute right-3 bottom-3 h-[12px] w-[45%] rounded-sm bg-[#e5f1ff]" />
         {/* chat bubble in */}
         <div className="absolute bottom-7 left-[32%] h-[12px] w-[40%] rounded-sm bg-white" />
         {/* header bar */}
@@ -158,7 +156,7 @@ function ThemeThumbnail({ mode }: { mode: "light" | "dark" | "system" }) {
     return (
       <div className="relative h-[72px] w-full overflow-hidden rounded bg-[#16191d]">
         <div className="absolute inset-y-0 left-0 w-[30%] bg-[#22262b]" />
-        <div className="absolute bottom-3 right-3 h-[12px] w-[45%] rounded-sm bg-[#1f344d]" />
+        <div className="absolute right-3 bottom-3 h-[12px] w-[45%] rounded-sm bg-[#1f344d]" />
         <div className="absolute bottom-7 left-[32%] h-[12px] w-[40%] rounded-sm bg-[#282d33]" />
         <div className="absolute inset-x-0 top-0 h-[14px] bg-[#22262b]" />
       </div>
@@ -175,7 +173,7 @@ function ThemeThumbnail({ mode }: { mode: "light" | "dark" | "system" }) {
       {/* right half light */}
       <div className="absolute inset-y-0 right-0 w-1/2 bg-[#ebecf0]">
         <div className="absolute inset-x-0 top-0 h-[14px] bg-white" />
-        <div className="absolute bottom-3 right-2 h-[10px] w-[55%] rounded-sm bg-[#e5f1ff]" />
+        <div className="absolute right-2 bottom-3 h-[10px] w-[55%] rounded-sm bg-[#e5f1ff]" />
       </div>
     </div>
   );
@@ -197,9 +195,7 @@ function NotifThumbnail({ active }: { active: boolean }) {
           active ? "border-primary" : "border-muted-foreground",
         )}
       >
-        {active && (
-          <div className="mt-1 ml-1 h-2 w-6 rounded-sm bg-primary/40" />
-        )}
+        {active && <div className="mt-1 ml-1 h-2 w-6 rounded-sm bg-primary/40" />}
       </div>
       {/* laptop base */}
       <div
@@ -266,14 +262,10 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
               <button
                 key={item.id}
                 type="button"
-                onClick={() =>
-                  dispatch({ type: "OPEN_SETTINGS", open: true, tab: item.id })
-                }
+                onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: item.id })}
                 className={cn(
                   "flex h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-sm font-normal transition-colors",
-                  active
-                    ? "bg-accent text-foreground"
-                    : "text-foreground hover:bg-white/[0.05]",
+                  active ? "bg-accent text-foreground" : "text-foreground hover:bg-white/[0.05]",
                 )}
               >
                 <Icon className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
@@ -436,9 +428,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                               <div className="text-sm font-medium text-foreground">
                                 {acc.display_name}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                UIN: {acc.uin}
-                              </div>
+                              <div className="text-xs text-muted-foreground">UIN: {acc.uin}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -503,9 +493,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                   <SwitchRow
                     label='Hiển thị trạng thái "Đã xem"'
                     checked={settings.show_seen_status}
-                    onChange={(v) =>
-                      updateSettings({ show_seen_status: v, block_seen: !v })
-                    }
+                    onChange={(v) => updateSettings({ show_seen_status: v, block_seen: !v })}
                   />
                   <RowDivider />
                   <SelectRow
@@ -573,9 +561,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                           <input
                             type="checkbox"
                             checked={settings[item.key]}
-                            onChange={(e) =>
-                              updateSettings({ [item.key]: e.target.checked })
-                            }
+                            onChange={(e) => updateSettings({ [item.key]: e.target.checked })}
                             className="h-4 w-4 rounded border-border accent-primary"
                           />
                           <span className="text-sm text-foreground">{item.label}</span>
@@ -595,9 +581,24 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                   <div className="mb-3 flex items-center gap-3">
                     {/* phone icon */}
                     <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-border">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="text-primary"
+                      >
                         <rect x="5" y="2" width="14" height="20" rx="2" />
-                        <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="2" strokeLinecap="round" />
+                        <line
+                          x1="12"
+                          y1="18"
+                          x2="12"
+                          y2="18.01"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
                       </svg>
                     </div>
                     <div className="flex gap-1">
@@ -607,10 +608,32 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     </div>
                     {/* PC icon */}
                     <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary bg-primary/10">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="text-primary"
+                      >
                         <rect x="2" y="3" width="20" height="14" rx="2" />
-                        <line x1="8" y1="21" x2="16" y2="21" strokeWidth="2" strokeLinecap="round" />
-                        <line x1="12" y1="17" x2="12" y2="21" strokeWidth="2" strokeLinecap="round" />
+                        <line
+                          x1="8"
+                          y1="21"
+                          x2="16"
+                          y2="21"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <line
+                          x1="12"
+                          y1="17"
+                          x2="12"
+                          y2="21"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -650,14 +673,8 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                           size="sm"
                           onClick={() => {
                             const targets = state.threads
-                              .filter(
-                                (t) => t.is_group || t.name.includes("Cloud của tôi"),
-                              )
-                              .map<[string, string, boolean]>((t) => [
-                                t.id,
-                                t.name,
-                                t.is_group,
-                              ]);
+                              .filter((t) => t.is_group || t.name.includes("Cloud của tôi"))
+                              .map<[string, string, boolean]>((t) => [t.id, t.name, t.is_group]);
                             dispatch({ type: "START_CLOUD_SYNC" });
                             void ipc.syncHistory(targets);
                           }}
@@ -765,7 +782,9 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                             onClick={() => updateSettings({ theme_mode: opt.id })}
                             className={cn(
                               "flex flex-col gap-2 rounded-lg border-2 p-2 transition-colors",
-                              selected ? "border-primary" : "border-border hover:border-muted-foreground",
+                              selected
+                                ? "border-primary"
+                                : "border-border hover:border-muted-foreground",
                             )}
                           >
                             <ThemeThumbnail mode={opt.id} />
@@ -817,9 +836,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                           <button
                             key={opt.label}
                             type="button"
-                            onClick={() =>
-                              updateSettings({ enable_notifications: opt.active })
-                            }
+                            onClick={() => updateSettings({ enable_notifications: opt.active })}
                             className={cn(
                               "flex flex-col items-center gap-3 rounded-lg border-2 py-4 transition-colors",
                               selected
@@ -1041,9 +1058,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     <div className="flex gap-1.5">
                       <Input
                         value={settings.multi_profile_name}
-                        onChange={(e) =>
-                          updateSettings({ multi_profile_name: e.target.value })
-                        }
+                        onChange={(e) => updateSettings({ multi_profile_name: e.target.value })}
                         placeholder="Tên profile phụ (vd. acc2)"
                       />
                       <Button
@@ -1064,7 +1079,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                 <SectionHeading>Tự động trả lời</SectionHeading>
                 <SettingCard>
                   <div className="px-4 py-3">
-                    {(autoReplyRules ?? []).map((rule) => (
+                    {autoReplyRules.map((rule) => (
                       <div
                         key={rule.id}
                         className="flex items-center justify-between border-b border-border py-2 last:border-0"

@@ -54,3 +54,6 @@ __pycache__/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# graphify knowledge-graph output
+graphify-out/

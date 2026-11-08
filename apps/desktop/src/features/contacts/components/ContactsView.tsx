@@ -23,27 +23,31 @@ interface ContactsViewProps {
 }
 
 // Nav items in the left column
-const CONTACT_TABS: { id: ContactsSubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "friends",         label: "Danh sách bạn bè",               icon: UserCheck },
-  { id: "groups",          label: "Danh sách nhóm và cộng đồng",    icon: Users },
-  { id: "friend_requests", label: "Lời mời kết bạn",                icon: UserPlus },
-  { id: "group_invites",   label: "Lời mời vào nhóm và cộng đồng", icon: ClipboardList },
+const CONTACT_TABS: {
+  id: ContactsSubTab;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: "friends", label: "Danh sách bạn bè", icon: UserCheck },
+  { id: "groups", label: "Danh sách nhóm và cộng đồng", icon: Users },
+  { id: "friend_requests", label: "Lời mời kết bạn", icon: UserPlus },
+  { id: "group_invites", label: "Lời mời vào nhóm và cộng đồng", icon: ClipboardList },
 ];
 
 // Header display label for each sub-tab
 const TAB_HEADER: Record<ContactsSubTab, string> = {
-  friends:         "Danh sách bạn bè",
-  groups:          "Danh sách nhóm và cộng đồng",
+  friends: "Danh sách bạn bè",
+  groups: "Danh sách nhóm và cộng đồng",
   friend_requests: "Lời mời kết bạn",
-  group_invites:   "Lời mời vào nhóm và cộng đồng",
+  group_invites: "Lời mời vào nhóm và cộng đồng",
 };
 
 // Caption prefix for each sub-tab
 const TAB_CAPTION: Record<ContactsSubTab, string> = {
-  friends:         "Bạn bè",
-  groups:          "Nhóm và cộng đồng",
+  friends: "Bạn bè",
+  groups: "Nhóm và cộng đồng",
   friend_requests: "Yêu cầu nhận được",
-  group_invites:   "Lời mời nhóm",
+  group_invites: "Lời mời nhóm",
 };
 
 type SortKey = "name_asc" | "name_desc" | "recent";
@@ -96,7 +100,7 @@ export function ContactsView({ state, dispatch }: ContactsViewProps) {
     if (sortKey === "name_asc") return foldVnSearch(a.name).localeCompare(foldVnSearch(b.name));
     if (sortKey === "name_desc") return foldVnSearch(b.name).localeCompare(foldVnSearch(a.name));
     // recent: last_message_ts descending
-    return (b.presentation.last_message_ts ?? 0) - (a.presentation.last_message_ts ?? 0);
+    return b.presentation.last_message_ts - a.presentation.last_message_ts;
   });
 
   const headerIcon = (() => {
@@ -157,12 +161,15 @@ export function ContactsView({ state, dispatch }: ContactsViewProps) {
                 }}
                 className={cn(
                   "flex h-12 w-full cursor-pointer items-center gap-3 rounded-[6px] px-3 text-left text-sm font-normal transition-colors",
-                  active
-                    ? "bg-accent text-foreground"
-                    : "text-foreground hover:bg-foreground/5",
+                  active ? "bg-accent text-foreground" : "text-foreground hover:bg-foreground/5",
                 )}
               >
-                <Icon className={cn("h-5 w-5 shrink-0", active ? "text-foreground" : "text-muted-foreground")} />
+                <Icon
+                  className={cn(
+                    "h-5 w-5 shrink-0",
+                    active ? "text-foreground" : "text-muted-foreground",
+                  )}
+                />
                 <span className="truncate">{tab.label}</span>
               </button>
             );
@@ -314,19 +321,12 @@ function ContactListPanel({
           </div>
         ) : isGroups ? (
           // Groups: flat list, no letter headings
-          items.map((t) => (
-            <GroupRow
-              key={t.id}
-              thread={t}
-              state={state}
-              dispatch={dispatch}
-            />
-          ))
+          items.map((t) => <GroupRow key={t.id} thread={t} state={state} dispatch={dispatch} />)
         ) : (
           // Friends: alphabetical sections
           sections.map(({ letter, rows }) => (
             <div key={letter}>
-              <div className="px-4 pb-1 pt-3 text-base font-medium text-foreground">{letter}</div>
+              <div className="px-4 pt-3 pb-1 text-base font-medium text-foreground">{letter}</div>
               {rows.map((t) => (
                 <FriendRow key={t.id} thread={t} state={state} dispatch={dispatch} />
               ))}
@@ -366,7 +366,7 @@ function FriendRow({ thread, state, dispatch }: RowProps) {
       <button
         type="button"
         onClick={(e) => e.stopPropagation()}
-        className="invisible flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 group-hover:visible"
+        className="invisible flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors group-hover:visible hover:bg-foreground/10"
         title="Tùy chọn"
       >
         <MoreHorizontal className="h-4 w-4" />
@@ -400,7 +400,7 @@ function GroupRow({ thread, state, dispatch }: RowProps) {
       <button
         type="button"
         onClick={(e) => e.stopPropagation()}
-        className="invisible flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 group-hover:visible"
+        className="invisible flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors group-hover:visible hover:bg-foreground/10"
         title="Tùy chọn"
       >
         <MoreHorizontal className="h-4 w-4" />
@@ -457,9 +457,7 @@ function FriendRequestCard({ thread, state }: FriendRequestCardProps) {
         />
         <div className="min-w-0 flex-1">
           <div className="text-[16px] font-medium text-foreground">{thread.name}</div>
-          <div className="text-[13px] text-muted-foreground">
-            {thread.time} - Từ số điện thoại
-          </div>
+          <div className="text-[13px] text-muted-foreground">{thread.time} - Từ số điện thoại</div>
         </div>
         <button type="button" className="mt-0.5 text-muted-foreground hover:text-foreground">
           <ClipboardList className="h-5 w-5" />
