@@ -258,26 +258,38 @@ pub fn parse_reactions(value: &Value) -> Vec<ReactionSummary> {
     let payload = root.get("reactions").unwrap_or(root);
     let mut out = Vec::new();
     if let Some(users) = payload.as_object() {
-        for (user, types) in users {
-            let Some(types) = types.as_object() else {
-                continue;
-            };
-            for (kind, value) in types {
-                let Ok(kind) = kind.parse::<i32>() else {
-                    continue;
-                };
-                if kind < 0 {
-                    continue;
+        for (key, val) in users {
+            if let Some(types) = val.as_object() {
+                for (kind, v) in types {
+                    let Ok(kind) = kind.parse::<i32>() else {
+                        continue;
+                    };
+                    if kind < 0 {
+                        continue;
+                    }
+                    if let Some((n, lower)) = count(v) {
+                        add(
+                            &mut out,
+                            Some(kind),
+                            emoji_for_type(kind).into(),
+                            n,
+                            lower,
+                            Some(key),
+                        );
+                    }
                 }
-                if let Some((n, lower)) = count(value) {
-                    add(
-                        &mut out,
-                        Some(kind),
-                        emoji_for_type(kind).into(),
-                        n,
-                        lower,
-                        Some(user),
-                    );
+            } else if let Ok(kind) = key.parse::<i32>() {
+                if kind >= 0 {
+                    if let Some((n, lower)) = count(val) {
+                        add(
+                            &mut out,
+                            Some(kind),
+                            emoji_for_type(kind).into(),
+                            n,
+                            lower,
+                            None,
+                        );
+                    }
                 }
             }
         }

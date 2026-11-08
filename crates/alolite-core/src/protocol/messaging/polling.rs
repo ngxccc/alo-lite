@@ -582,15 +582,25 @@ fn extract_sticker_info(v: &Value) -> Option<(u64, u64, u32)> {
 }
 
 fn extract_reactions(it: &Value) -> Vec<String> {
+    let summaries = crate::protocol::messaging::reactions::parse_reactions(it);
+    if !summaries.is_empty() {
+        return crate::protocol::messaging::reactions::legacy_emojis(&summaries);
+    }
     let mut res = Vec::new();
-    if let Some(r) = it.get("reacts").or_else(|| it.get("reactions")) {
-        if let Some(arr) = r.get("reactions").and_then(Value::as_array) {
-            for item in arr {
-                if let Some(icon) = item.get("rIcon").and_then(Value::as_str) {
-                    let em = icon_to_emoji(icon);
-                    if !res.contains(&em.to_string()) {
-                        res.push(em.to_string());
-                    }
+    let root = it.get("reacts").unwrap_or(it);
+    let payload = root.get("reactions").unwrap_or(root);
+    if let Some(arr) = payload.as_array() {
+        for item in arr {
+            if let Some(s) = item.as_str() {
+                res.push(s.to_string());
+            } else if let Some(icon) = item
+                .get("rIcon")
+                .or_else(|| item.get("icon"))
+                .and_then(Value::as_str)
+            {
+                let em = icon_to_emoji(icon);
+                if !res.contains(&em.to_string()) {
+                    res.push(em.to_string());
                 }
             }
         }

@@ -195,7 +195,12 @@ impl MessageStore {
                             .get("reply_to_text")
                             .and_then(|v| v.as_str())
                             .map(str::to_string);
-                        if let Some(arr) = val.get("reactions").and_then(|v| v.as_array()) {
+                        let r_summaries =
+                            crate::protocol::messaging::reactions::parse_reactions(&val);
+                        if !r_summaries.is_empty() {
+                            reactions =
+                                crate::protocol::messaging::reactions::legacy_emojis(&r_summaries);
+                        } else if let Some(arr) = val.get("reactions").and_then(|v| v.as_array()) {
                             reactions = arr
                                 .iter()
                                 .filter_map(|v| v.as_str().map(str::to_string))

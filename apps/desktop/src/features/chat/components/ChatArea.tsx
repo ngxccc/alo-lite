@@ -300,6 +300,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
       return;
     }
     const target = thread.messages[idx];
+    if (!target) return;
     const targetKey = target.id || String(target.ts);
     dispatch({ type: "SET_QUOTE_HIGHLIGHT", msgId: targetKey });
     requestAnimationFrame(() => {
@@ -311,13 +312,50 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
     window.setTimeout(() => dispatch({ type: "SET_QUOTE_HIGHLIGHT", msgId: null }), 2200);
   };
 
-  const renderReactionBadge = (emoji: string) => {
-    const found = REACTION_LIST.find((r) => r.emoji === emoji);
-    const asset = found ? state.reactionAssets[found.key] : "";
+  const resolveReactionKey = (
+    emoji: string,
+  ): "like" | "heart" | "smile" | "surprised" | "cry" | "rage" | null => {
+    const clean = emoji.trim();
+    if (clean === "👍" || clean === "/-strong" || clean === "like" || clean === "3") return "like";
+    if (
+      clean === "❤️" ||
+      clean === "❤" ||
+      clean === "/-heart" ||
+      clean === "heart" ||
+      clean === "5"
+    )
+      return "heart";
+    if (clean === "😆" || clean === ":>" || clean === "smile" || clean === "haha" || clean === "0")
+      return "smile";
+    if (
+      clean === "😮" ||
+      clean === ":o" ||
+      clean === "surprised" ||
+      clean === "wow" ||
+      clean === "32"
+    )
+      return "surprised";
+    if (clean === "😢" || clean === ":-((" || clean === "cry" || clean === "buồn" || clean === "2")
+      return "cry";
+    if (
+      clean === "😠" ||
+      clean === ":-h" ||
+      clean === "rage" ||
+      clean === "phẫn nộ" ||
+      clean === "20"
+    )
+      return "rage";
+    return null;
+  };
+
+  const renderReactionBadge = (raw: string) => {
+    const key = resolveReactionKey(raw);
+    const asset = key ? state.reactionAssets[key] : "";
     if (asset) {
-      return <img src={asset} alt={emoji} className="h-4 w-4 object-contain" />;
+      return <img src={asset} alt={raw} className="h-4.5 w-4.5 object-contain" />;
     }
-    return <span>{emoji}</span>;
+    const found = REACTION_LIST.find((r) => r.emoji === raw || r.key === key);
+    return <span className="text-sm leading-none">{found?.emoji ?? raw}</span>;
   };
 
   let prevDay = "";
@@ -671,6 +709,18 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                                 size="icon-sm"
                                 title={r.label}
                                 onClick={() => {
+                                  dispatch({
+                                    type: "CORE_EVENT",
+                                    event: {
+                                      type: "Reacted",
+                                      payload: {
+                                        thread_id: thread.id,
+                                        msg_id: msg.id,
+                                        ts: msg.ts,
+                                        reaction: r.emoji,
+                                      },
+                                    },
+                                  });
                                   void ipc.reactMessage(thread.id, thread.is_group, msg, r.emoji);
                                   setReactPickerFor(null);
                                 }}
@@ -735,14 +785,29 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   <div className="flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground">
                     <span>{msg.time}</span>
                     {msg.is_starred ? <Star className="h-3 w-3 text-warning" /> : null}
-                    {msg.reactions && msg.reactions.length > 0 ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-1.5 py-0.5 text-xs">
-                        {msg.reactions.slice(0, 4).map((em, i) => (
-                          <span key={`${em}_${i}`}>{renderReactionBadge(em)}</span>
-                        ))}
-                      </span>
-                    ) : null}
                   </div>
+
+                  {msg.reactions && msg.reactions.length > 0 ? (
+                    <div
+                      className={cn(
+                        "absolute -bottom-2 z-10 flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs shadow-xs select-none",
+                        msg.is_outgoing ? "right-2" : "left-2",
+                      )}
+                    >
+                      {Array.from(new Set(msg.reactions))
+                        .slice(0, 5)
+                        .map((em, i) => (
+                          <span key={`${em}_${i}`} className="flex items-center">
+                            {renderReactionBadge(em)}
+                          </span>
+                        ))}
+                      {msg.reactions.length > 1 ? (
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          {msg.reactions.length}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

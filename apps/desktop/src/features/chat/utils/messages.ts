@@ -18,13 +18,13 @@ export function uniqueReferenceIndex(messages: ChatMessage[], reference: string)
     if (m.id === ref || m.client_message_id === ref) acc.push(idx);
     return acc;
   }, []);
-  if (byId.length === 1) return byId[0];
+  if (byId.length === 1) return byId[0] ?? null;
   if (byId.length > 1) return null;
   const byText = messages.reduce<number[]>((acc, m, idx) => {
     if (m.text === ref) acc.push(idx);
     return acc;
   }, []);
-  return byText.length === 1 ? byText[0] : null;
+  return byText.length === 1 ? (byText[0] ?? null) : null;
 }
 
 export interface CallCardMeta {
