@@ -1,38 +1,20 @@
 version: 2
 updates:
   # ── Cargo (Rust Dependencies) ──
-  # Updates are batched so a weekly run opens at most two PRs: one for minor/patch bumps and
-  # one for major bumps (which may need code changes and are reviewed separately).
+  # Group all non-breaking updates (minor and patch) into a single weekly PR.
+  # Major version updates (breaking API changes) are excluded so automated PRs do not break CI.
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore(deps)"
     groups:
-      rust-minor-patch:
+      rust-dependencies:
         patterns: ["*"]
         update-types: ["minor", "patch"]
-      rust-major:
-        patterns: ["*"]
-        update-types: ["major"]
-    ignore:
-      # RustCrypto "digest 0.11 / crypto-bigint" generation: these crates must be migrated
-      # together by hand (trait versions are shared), so a bot PR for any one of them cannot compile.
-      - dependency-name: "sha2"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "hmac"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "md-5"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "aes-gcm"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "generic-array"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "curve25519-dalek"
-        update-types: ["version-update:semver-major"]
 
   # ── GitHub Actions Workflows & Composite Actions ──
   - package-ecosystem: "github-actions"
