@@ -164,6 +164,7 @@ dependencies = [
  "alolite-core",
  "anyhow",
  "gpui",
+ "unicode-segmentation",
 ]
 
 [[package]]

@@ -9,3 +9,4 @@ description = "AloLite Native GPU Desktop Client (GPUI Experiment)"
 alolite-core = { path = "../alolite-core" }
 anyhow = "1.0"
 gpui = "0.2.2"
+unicode-segmentation = "1.12"
