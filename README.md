@@ -164,6 +164,7 @@ Details: [`docs/adr/`](docs/adr/) and [`docs/standards/`](docs/standards/).
 
 ## Documentation
 
+> Online documentation book is published at **[https://ngxccc.github.io/alo-lite/](https://ngxccc.github.io/alo-lite/)**.
 | Document | Contents |
 |:---|:---|
 | [`AGENTS.md`](AGENTS.md) | Operating guide for humans and AI agents: commands, architecture map, non-negotiables |
