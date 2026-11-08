@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Download built package artifacts
         uses: actions/download-artifact@v8
@@ -42,23 +44,13 @@ jobs:
       - name: Generate SHA256SUMS.txt
         run: ./scripts/generate-checksums.sh release_assets
 
+      - name: Generate Automatic Release Notes
+        run: ./scripts/generate-release-notes.sh "${{ github.ref_name || inputs.tag_name }}" > release_notes.md
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name || inputs.tag_name }}
           name: AloLite Release ${{ github.ref_name || inputs.tag_name }}
           files: release_assets/*
-          generate_release_notes: true
-          body: |
-            ### AloLite Release (${{ github.ref_name || inputs.tag_name }})
-
-            Lightweight, native messaging desktop client for Linux written in Rust (Zero Node.js, Zero Electron).
-
-            #### Available Linux Packages:
-            - **Debian / Ubuntu / Linux Mint / Pop!_OS:** `alolite_*_amd64.deb`
-            - **Fedora / RHEL / Rocky / openSUSE:** `alolite-*-1.x86_64.rpm`
-            - **Universal Single-File Executable:** `alolite-*-x86_64.AppImage`
-            - **Portable Standalone Archive:** `alolite-*-linux-x86_64.tar.gz`
-
-            #### Checksums:
-            Verify downloaded assets with `sha256sum -c SHA256SUMS.txt`.
+          body_path: release_notes.md
