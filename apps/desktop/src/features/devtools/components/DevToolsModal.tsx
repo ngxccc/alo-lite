@@ -1,24 +1,11 @@
 import { useEffect, useState } from "react";
 import { Bug, RefreshCw, ShieldAlert, Terminal } from "lucide-react";
 import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
-import type {
-  DevDiagnosticsSnapshot,
-  LogEntry,
-} from "../../../shared/types/ipc";
+import type { DevDiagnosticsSnapshot, LogEntry } from "../../../shared/types/ipc";
 import { Badge } from "../../../shared/ui/badge";
 import { Button } from "../../../shared/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../shared/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../shared/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
 import { cn } from "../../../shared/utils/cn";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 
@@ -49,15 +36,12 @@ export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
   return (
     <Dialog
       open={state.devModalOpen}
-      onOpenChange={(open) =>
-        !open && dispatch({ type: "SET_DEV_MODAL", open: false })
-      }
+      onOpenChange={(open) => !open && dispatch({ type: "SET_DEV_MODAL", open: false })}
     >
       <DialogContent className="h-[560px] max-w-4xl">
         <DialogHeader className="pr-10">
           <DialogTitle>
-            <Bug className="h-4 w-4 text-primary" /> Công cụ kiểm tra & Chẩn
-            đoán giao thức
+            <Bug className="h-4 w-4 text-primary" /> Công cụ kiểm tra & Chẩn đoán giao thức
           </DialogTitle>
           <Button variant="outline" size="sm" onClick={() => void load()}>
             <RefreshCw className="h-3.5 w-3.5" /> Làm mới
@@ -71,20 +55,15 @@ export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
         >
           <TabsList className="w-fit">
             <TabsTrigger value="logs" className="gap-1.5">
-              <Terminal className="h-3.5 w-3.5" /> Nhật ký HTTP (
-              {diag?.logs.length ?? 0})
+              <Terminal className="h-3.5 w-3.5" /> Nhật ký HTTP ({diag?.logs.length ?? 0})
             </TabsTrigger>
             <TabsTrigger value="scanner" className="gap-1.5">
-              <ShieldAlert className="h-3.5 w-3.5" /> Quét chẩn đoán (
-              {diag?.findings.length ?? 0})
+              <ShieldAlert className="h-3.5 w-3.5" /> Quét chẩn đoán ({diag?.findings.length ?? 0})
             </TabsTrigger>
             <TabsTrigger value="crypto">Tham số giao thức</TabsTrigger>
           </TabsList>
 
-          <TabsContent
-            value="logs"
-            className="flex min-h-0 flex-1 gap-3 overflow-hidden"
-          >
+          <TabsContent value="logs" className="flex min-h-0 flex-1 gap-3 overflow-hidden">
             <div className="flex w-80 flex-col gap-1 overflow-y-auto border-r border-border pr-2">
               {(diag?.logs ?? []).toReversed().map((e) => (
                 <button
@@ -98,15 +77,11 @@ export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
                       : "hover:bg-muted",
                   )}
                 >
-                  <Badge variant={e.is_error ? "destructive" : "online"}>
-                    {e.status ?? "ERR"}
-                  </Badge>
+                  <Badge variant={e.is_error ? "destructive" : "online"}>{e.status ?? "ERR"}</Badge>
                   <span className="flex-1 truncate font-mono text-[11px]">
                     {e.method} {e.url}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {e.latency_ms}ms
-                  </span>
+                  <span className="text-[11px] text-muted-foreground">{e.latency_ms}ms</span>
                 </button>
               ))}
             </div>
@@ -122,13 +97,10 @@ export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
                     {selectedLog.status ?? "N/A"}
                   </div>
                   {selectedLog.error_msg ? (
-                    <div className="text-destructive">
-                      Lỗi: {selectedLog.error_msg}
-                    </div>
+                    <div className="text-destructive">Lỗi: {selectedLog.error_msg}</div>
                   ) : null}
                   <pre className="overflow-x-auto rounded-lg border border-border bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap">
-                    {selectedLog.decrypted_preview ??
-                      selectedLog.payload_preview}
+                    {selectedLog.decrypted_preview ?? selectedLog.payload_preview}
                   </pre>
                 </div>
               ) : (
@@ -159,25 +131,16 @@ export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
             ))}
           </TabsContent>
 
-          <TabsContent
-            value="crypto"
-            className="min-h-0 flex-1 overflow-y-auto"
-          >
+          <TabsContent value="crypto" className="min-h-0 flex-1 overflow-y-auto">
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card px-4 text-xs">
               {[
                 ["API Version (zpw_ver)", diag?.crypto.zpw_ver],
                 ["API Type (zpw_type)", diag?.crypto.zpw_type],
                 ["Thuật toán", diag?.crypto.cipher_algo],
                 ["SignKey", diag?.crypto.sign_key_formula],
-                [
-                  "ParamCipher key bytes",
-                  `${diag?.crypto.param_cipher_key_len ?? 0} bytes`,
-                ],
+                ["ParamCipher key bytes", `${diag?.crypto.param_cipher_key_len ?? 0} bytes`],
               ].map(([label, val]) => (
-                <div
-                  key={String(label)}
-                  className="flex items-center justify-between py-2.5"
-                >
+                <div key={String(label)} className="flex items-center justify-between py-2.5">
                   <span className="text-muted-foreground">{label}</span>
                   <code className="rounded bg-muted px-2 py-0.5 font-mono text-foreground">
                     {val}

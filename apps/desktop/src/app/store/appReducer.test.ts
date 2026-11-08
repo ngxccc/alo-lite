@@ -58,12 +58,7 @@ function makeSettings(): AppSettings {
   };
 }
 
-function makeThread(
-  id: string,
-  name: string,
-  ts: number,
-  msgs: ChatMessage[] = [],
-): Thread {
+function makeThread(id: string, name: string, ts: number, msgs: ChatMessage[] = []): Thread {
   return {
     id,
     name,

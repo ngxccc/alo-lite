@@ -28,8 +28,7 @@ export function App() {
 
   useEffect(() => {
     const resolved =
-      themeMode === "system" &&
-      window.matchMedia("(prefers-color-scheme: light)").matches
+      themeMode === "system" && window.matchMedia("(prefers-color-scheme: light)").matches
         ? "light"
         : themeMode === "light"
           ? "light"
@@ -39,9 +38,7 @@ export function App() {
 
   useEffect(() => {
     if (!isTauriRuntime()) {
-      setBootError(
-        "Giao diện cần chạy bên trong cửa sổ ứng dụng Tauri AloLite.",
-      );
+      setBootError("Giao diện cần chạy bên trong cửa sổ ứng dụng Tauri AloLite.");
       return;
     }
 
@@ -83,11 +80,7 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        e.key.toLowerCase() === "p"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
         dispatch({ type: "OPEN_SETTINGS", open: true, tab: "privacy" });
       }
@@ -110,9 +103,7 @@ export function App() {
   if (!bootstrapped) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-canvas">
-        <div className="text-sm text-muted-foreground">
-          Đang khởi tạo CoreEngine…
-        </div>
+        <div className="text-sm text-muted-foreground">Đang khởi tạo CoreEngine…</div>
       </div>
     );
   }

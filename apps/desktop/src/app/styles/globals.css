@@ -191,8 +191,8 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family:
-      "Inter", "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI",
-      Roboto, "Noto Sans", sans-serif;
+      "Inter", "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans",
+      sans-serif;
     font-size: 14.5px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;

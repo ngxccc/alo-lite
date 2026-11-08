@@ -16,13 +16,7 @@ export type MessageKind =
   | "delete"
   | "unknown";
 
-export type DeliveryState =
-  | "sending"
-  | "sent"
-  | "delivered"
-  | "seen"
-  | "failed"
-  | "unknown";
+export type DeliveryState = "sending" | "sent" | "delivered" | "seen" | "failed" | "unknown";
 
 export interface ReactionSummary {
   emoji: string;

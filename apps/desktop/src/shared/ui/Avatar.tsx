@@ -24,8 +24,7 @@ export function Avatar({
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
   const cachedDataUrl = mediaCache?.[`ava_${id}`];
-  const src =
-    cachedDataUrl || (avatarUrl && !failed ? jxlToJpgUrl(avatarUrl) : "");
+  const src = cachedDataUrl || (avatarUrl && !failed ? jxlToJpgUrl(avatarUrl) : "");
 
   if (src) {
     return (
@@ -58,11 +57,7 @@ export function Avatar({
         className,
       )}
     >
-      {isGroup ? (
-        <Users size={Math.round(size * 0.5)} />
-      ) : (
-        initialsOf(name || "Z")
-      )}
+      {isGroup ? <Users size={Math.round(size * 0.5)} /> : initialsOf(name || "Z")}
     </div>
   );
 }

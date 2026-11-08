@@ -2,7 +2,7 @@
   "arrowParens": "always",
   "tabWidth": 2,
   "useTabs": false,
-  "printWidth": 80,
+  "printWidth": 100,
   "semi": true,
   "endOfLine": "lf",
   "sortPackageJson": false,
