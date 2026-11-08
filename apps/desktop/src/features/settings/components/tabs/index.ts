@@ -1,0 +1,9 @@
+export { GeneralTab } from "./GeneralTab";
+export { AccountTab } from "./AccountTab";
+export { PrivacyTab } from "./PrivacyTab";
+export { SyncTab } from "./SyncTab";
+export { AppearanceTab } from "./AppearanceTab";
+export { NotificationsTab } from "./NotificationsTab";
+export { MessagesTab } from "./MessagesTab";
+export { UtilitiesTab } from "./UtilitiesTab";
+export { UpdateTab } from "./UpdateTab";
