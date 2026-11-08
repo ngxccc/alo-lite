@@ -163,7 +163,9 @@ function VideoMessageMedia({
           controls
           autoPlay
           preload="auto"
-          onError={() => {
+          onError={(e) => {
+            const err = e.currentTarget.error;
+            console.error("Video playback error:", err?.code, err?.message, videoUrl);
             setPlaybackError(true);
             onNotify("Không thể phát trực tiếp video này — hãy thử mở ngoài hoặc tải về.");
           }}
