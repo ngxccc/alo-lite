@@ -1,11 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { AppSettings, Thread } from "../../../shared/types/ipc";
-import {
-  isThreadMuted,
-  mergeThreadInto,
-  reconcileSentMessage,
-  sortThreads,
-} from "./threads";
+import { isThreadMuted, mergeThreadInto, reconcileSentMessage, sortThreads } from "./threads";
 
 const baseSettings: AppSettings = {
   show_all_contacts: false,
@@ -86,10 +81,7 @@ function thread(id: string, ts: number): Thread {
 
 describe("threads domain utils", () => {
   it("orders pinned threads above newer unpinned threads", () => {
-    const sorted = sortThreads(
-      [thread("a", 5000), thread("b", 1000)],
-      baseSettings,
-    );
+    const sorted = sortThreads([thread("a", 5000), thread("b", 1000)], baseSettings);
     expect(sorted.map((t) => t.id)).toEqual(["b", "a"]);
   });
 

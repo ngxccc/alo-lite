@@ -1,8 +1,4 @@
-import type {
-  AppSettings,
-  ChatMessage,
-  Thread,
-} from "../../../shared/types/ipc";
+import type { AppSettings, ChatMessage, Thread } from "../../../shared/types/ipc";
 import { normalizeTsMs } from "../../../shared/utils/text";
 
 export function isThreadMuted(
@@ -11,12 +7,9 @@ export function isThreadMuted(
   nowUnix = Math.floor(Date.now() / 1000),
 ): boolean {
   const until = settings.muted_threads[thread.id];
-  if (typeof until === "number" && (until === -1 || until > nowUnix))
-    return true;
+  if (typeof until === "number" && (until === -1 || until > nowUnix)) return true;
   if (thread.unread.muted) {
-    return (
-      thread.unread.muted_until == null || thread.unread.muted_until > nowUnix
-    );
+    return thread.unread.muted_until == null || thread.unread.muted_until > nowUnix;
   }
   return thread.presentation.muted;
 }
@@ -38,10 +31,7 @@ export function threadLastActivityTs(thread: Thread): number {
   );
 }
 
-export function sortThreads(
-  threads: Thread[],
-  settings: AppSettings,
-): Thread[] {
+export function sortThreads(threads: Thread[], settings: AppSettings): Thread[] {
   const pinnedSet = new Set(settings.pinned_threads);
   return [...threads].sort((a, b) => {
     const aPinned = a.presentation.pinned || pinnedSet.has(a.id) ? 1 : 0;
@@ -54,8 +44,7 @@ export function sortThreads(
 export function reconcileSentMessage(thread: Thread, msg: ChatMessage): Thread {
   const existingIdx = thread.messages.findIndex(
     (m) =>
-      (msg.client_message_id &&
-        m.client_message_id === msg.client_message_id) ||
+      (msg.client_message_id && m.client_message_id === msg.client_message_id) ||
       (msg.id && m.id === msg.id),
   );
   const messages = [...thread.messages];
@@ -91,8 +80,7 @@ export function mergeThreadInto(existing: Thread, incoming: Thread): Thread {
     const prev = seen.get(key);
     if (prev) {
       const prevNumeric = /^\d{6,}$/.test(prev.sender.trim());
-      const incNonNumeric =
-        Boolean(m.sender) && !/^\d{6,}$/.test(m.sender.trim());
+      const incNonNumeric = Boolean(m.sender) && !/^\d{6,}$/.test(m.sender.trim());
       seen.set(key, {
         ...prev,
         ...m,
@@ -128,9 +116,7 @@ export function mergeThreadInto(existing: Thread, incoming: Thread): Thread {
         incoming.presentation.members.length > 0
           ? incoming.presentation.members
           : existing.presentation.members,
-      member_count:
-        incoming.presentation.member_count ??
-        existing.presentation.member_count,
+      member_count: incoming.presentation.member_count ?? existing.presentation.member_count,
       pinned: existing.presentation.pinned || incoming.presentation.pinned,
       muted: existing.presentation.muted || incoming.presentation.muted,
       hidden: existing.presentation.hidden || incoming.presentation.hidden,

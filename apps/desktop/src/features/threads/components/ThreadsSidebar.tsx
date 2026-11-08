@@ -87,8 +87,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
     if (!settings) return;
     const nextMuted = { ...settings.muted_threads };
     if (mute) {
-      nextMuted[thread.id] =
-        durationSec > 0 ? Math.floor(Date.now() / 1000) + durationSec : -1;
+      nextMuted[thread.id] = durationSec > 0 ? Math.floor(Date.now() / 1000) + durationSec : -1;
     } else {
       delete nextMuted[thread.id];
     }
@@ -116,9 +115,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             <input
               type="text"
               value={state.searchQuery}
-              onChange={(e) =>
-                dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })
-              }
+              onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
               onKeyDown={(e) => handleSearchKeyDown(e.key)}
               placeholder="Tìm hội thoại, tin nhắn, SĐT…"
               className="w-full bg-transparent text-[13.5px] text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -126,9 +123,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             {state.searchQuery ? (
               <button
                 type="button"
-                onClick={() =>
-                  dispatch({ type: "SET_SEARCH_QUERY", query: "" })
-                }
+                onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
                 title="Xóa tìm kiếm"
                 className="inline-flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
               >
@@ -169,10 +164,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             Không có hội thoại phù hợp
           </div>
         ) : (
-          <div
-            style={{ height: virtualizer.getTotalSize() }}
-            className="relative w-full"
-          >
+          <div style={{ height: virtualizer.getTotalSize() }} className="relative w-full">
             {virtualizer.getVirtualItems().map((vRow) => {
               const t = visibleThreads.at(vRow.index);
               if (!t) return null;
@@ -199,9 +191,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                       }}
                       className={cn(
                         "absolute top-0 right-0 left-0 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors",
-                        selected
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-muted/70",
+                        selected ? "bg-accent text-accent-foreground" : "hover:bg-muted/70",
                       )}
                     >
                       <Avatar
@@ -222,18 +212,14 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                           >
                             {t.name || t.id}
                           </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {t.time}
-                          </span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{t.time}</span>
                         </div>
                         <div className="flex items-center justify-between gap-1.5">
                           <span className="truncate text-[13px] text-muted-foreground">
                             {t.preview || "Chưa có tin nhắn"}
                           </span>
                           <div className="inline-flex shrink-0 items-center gap-1">
-                            {pinned ? (
-                              <Pin className="h-3.5 w-3.5 text-primary" />
-                            ) : null}
+                            {pinned ? <Pin className="h-3.5 w-3.5 text-primary" /> : null}
                             {muted ? (
                               <BellOff className="h-3.5 w-3.5 text-muted-foreground" />
                             ) : null}
@@ -287,14 +273,10 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                       </ContextMenuItem>
                     ) : (
                       <>
-                        <ContextMenuItem
-                          onSelect={() => toggleMute(t, 3600, true)}
-                        >
+                        <ContextMenuItem onSelect={() => toggleMute(t, 3600, true)}>
                           <BellOff className="h-4 w-4" /> Tắt thông báo 1 giờ
                         </ContextMenuItem>
-                        <ContextMenuItem
-                          onSelect={() => toggleMute(t, -1, true)}
-                        >
+                        <ContextMenuItem onSelect={() => toggleMute(t, -1, true)}>
                           <BellOff className="h-4 w-4" /> Tắt đến khi bật lại
                         </ContextMenuItem>
                       </>

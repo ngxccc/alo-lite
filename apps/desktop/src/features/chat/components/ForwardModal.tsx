@@ -2,12 +2,7 @@ import { useState } from "react";
 import { Forward, Search } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../shared/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui/dialog";
 import { Input } from "../../../shared/ui/input";
 import { matchesVnQuery } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
@@ -23,16 +18,12 @@ export function ForwardModal({ state, dispatch }: ForwardModalProps) {
 
   const msg = state.forwardMsg;
   const preview = msg.sticker_id ? "[Nhãn dán]" : msg.text.slice(0, 80);
-  const candidates = state.threads.filter((t) =>
-    matchesVnQuery(t.name, filter),
-  );
+  const candidates = state.threads.filter((t) => matchesVnQuery(t.name, filter));
 
   return (
     <Dialog
       open={Boolean(state.forwardMsg)}
-      onOpenChange={(open) =>
-        !open && dispatch({ type: "SET_FORWARD_MSG", msg: null })
-      }
+      onOpenChange={(open) => !open && dispatch({ type: "SET_FORWARD_MSG", msg: null })}
     >
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -80,9 +71,7 @@ export function ForwardModal({ state, dispatch }: ForwardModalProps) {
                   size={30}
                   mediaCache={state.mediaCache}
                 />
-                <span className="truncate">
-                  {t.is_group ? `[Nhóm] ${t.name}` : t.name}
-                </span>
+                <span className="truncate">{t.is_group ? `[Nhóm] ${t.name}` : t.name}</span>
               </button>
             ))}
           </div>

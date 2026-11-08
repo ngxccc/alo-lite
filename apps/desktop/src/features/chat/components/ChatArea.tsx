@@ -17,25 +17,12 @@ import {
   X,
 } from "lucide-react";
 import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
-import {
-  REACTION_LIST,
-  type ChatMessage,
-  type Thread,
-} from "../../../shared/types/ipc";
+import { REACTION_LIST, type ChatMessage, type Thread } from "../../../shared/types/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
 import { Button } from "../../../shared/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../../../shared/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../shared/ui/popover";
 import { cn } from "../../../shared/utils/cn";
-import {
-  dayKey,
-  formatDayDivider,
-  jxlToJpgUrl,
-  matchesVnQuery,
-} from "../../../shared/utils/text";
+import { dayKey, formatDayDivider, jxlToJpgUrl, matchesVnQuery } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import {
   isFileMessage,
@@ -107,28 +94,16 @@ function PhotoMessageMedia({
           className="max-h-[280px] max-w-[300px] cursor-zoom-in rounded-lg object-contain"
         />
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onOpenViewer(key, fullUrl)}
-        >
+        <Button variant="outline" size="sm" onClick={() => onOpenViewer(key, fullUrl)}>
           Xem hình ảnh
         </Button>
       )}
-      {!shouldHideMediaCaption(msg) ? (
-        <span className="select-text">{msg.text}</span>
-      ) : null}
+      {!shouldHideMediaCaption(msg) ? <span className="select-text">{msg.text}</span> : null}
     </div>
   );
 }
 
-function VideoMessageMedia({
-  msg,
-  downloadDir,
-}: {
-  msg: ChatMessage;
-  downloadDir: string;
-}) {
+function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir: string }) {
   const videoUrl = msg.link_url ?? "";
   const posterUrl = msg.link_thumb ? jxlToJpgUrl(msg.link_thumb) : undefined;
   const fileName =
@@ -158,9 +133,7 @@ function VideoMessageMedia({
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              void ipc.downloadFile(videoUrl, fileName, downloadDir)
-            }
+            onClick={() => void ipc.downloadFile(videoUrl, fileName, downloadDir)}
           >
             <Download className="h-3.5 w-3.5" /> Tải về
           </Button>
@@ -186,14 +159,8 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
   );
 
   const senderLookup = useMemo(() => {
-    const byId = new Map<
-      string,
-      { id: string; name: string; avatar?: string | null }
-    >();
-    const byName = new Map<
-      string,
-      { id: string; name: string; avatar?: string | null }
-    >();
+    const byId = new Map<string, { id: string; name: string; avatar?: string | null }>();
+    const byName = new Map<string, { id: string; name: string; avatar?: string | null }>();
 
     if (state.uin) {
       const me = {
@@ -231,16 +198,13 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
         avatar: currentThread.avatar,
       };
     }
-    const rawId =
-      msg.sender_id ?? (isNumericUid(msg.sender) ? msg.sender.trim() : "");
+    const rawId = msg.sender_id ?? (isNumericUid(msg.sender) ? msg.sender.trim() : "");
     if (rawId) {
       const foundById = senderLookup.byId.get(rawId);
       if (foundById) {
         return {
           id: foundById.id,
-          name: !isNumericUid(foundById.name)
-            ? foundById.name
-            : `Thành viên · ${rawId.slice(-4)}`,
+          name: !isNumericUid(foundById.name) ? foundById.name : `Thành viên · ${rawId.slice(-4)}`,
           avatar: foundById.avatar,
         };
       }
@@ -280,9 +244,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
       list = list.filter((m) => Boolean(m.is_starred));
     }
     if (state.inChatSearchOpen && state.inChatSearchQuery.trim()) {
-      list = list.filter((m) =>
-        matchesVnQuery(m.text, state.inChatSearchQuery),
-      );
+      list = list.filter((m) => matchesVnQuery(m.text, state.inChatSearchQuery));
     }
     const limit = state.renderLimitByThread[thread.id] ?? 150;
     return list.length > limit ? list.slice(-limit) : list;
@@ -295,8 +257,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
   ]);
 
   useEffect(() => {
-    if (!thread || thread.is_group || thread.name.includes("Cloud của tôi"))
-      return;
+    if (!thread || thread.is_group || thread.name.includes("Cloud của tôi")) return;
     if (!state.friendStatusMap[thread.id] && isTauriRuntime()) {
       void ipc.checkFriendStatus(thread.id);
     }
@@ -312,12 +273,9 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
     return (
       <main className="grid flex-1 place-items-center bg-canvas p-6">
         <div className="max-w-sm text-center text-muted-foreground">
-          <div className="mb-1.5 text-lg font-bold text-foreground">
-            Chào mừng đến với AloLite
-          </div>
+          <div className="mb-1.5 text-lg font-bold text-foreground">Chào mừng đến với AloLite</div>
           <div className="text-sm">
-            Chọn một hội thoại bên trái để bắt đầu trò chuyện hoặc tra cứu số
-            điện thoại mới.
+            Chọn một hội thoại bên trái để bắt đầu trò chuyện hoặc tra cứu số điện thoại mới.
           </div>
         </div>
       </main>
@@ -350,10 +308,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
         block: "center",
       });
     });
-    window.setTimeout(
-      () => dispatch({ type: "SET_QUOTE_HIGHLIGHT", msgId: null }),
-      2200,
-    );
+    window.setTimeout(() => dispatch({ type: "SET_QUOTE_HIGHLIGHT", msgId: null }), 2200);
   };
 
   const renderReactionBadge = (emoji: string) => {
@@ -386,9 +341,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             <div
               className={cn(
                 "truncate text-xs",
-                onlineInfo?.[0]
-                  ? "font-medium text-online"
-                  : "text-muted-foreground",
+                onlineInfo?.[0] ? "font-medium text-online" : "text-muted-foreground",
               )}
             >
               {thread.is_group
@@ -397,8 +350,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                   : "Nhóm trò chuyện"
                 : thread.name.includes("Cloud của tôi")
                   ? "Lưu trữ đám mây cá nhân"
-                  : onlineInfo?.[1] ||
-                    (friendStatus === "Stranger" ? "Người lạ" : "Trực tuyến")}
+                  : onlineInfo?.[1] || (friendStatus === "Stranger" ? "Người lạ" : "Trực tuyến")}
             </div>
           </div>
         </div>
@@ -421,9 +373,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
               />
               <button
                 type="button"
-                onClick={() =>
-                  dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: false })
-                }
+                onClick={() => dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: false })}
                 className="inline-flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
@@ -434,9 +384,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
               variant="ghost"
               size="icon"
               title="Tìm tin nhắn trong hội thoại"
-              onClick={() =>
-                dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: true })
-              }
+              onClick={() => dispatch({ type: "TOGGLE_IN_CHAT_SEARCH", open: true })}
             >
               <Search className="h-4.5 w-4.5" />
             </Button>
@@ -448,12 +396,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
             title="Lọc tin nhắn đã gắn sao"
             onClick={() => dispatch({ type: "TOGGLE_STARRED_FILTER" })}
           >
-            <Star
-              className={cn(
-                "h-4.5 w-4.5",
-                state.filterStarredOnly && "text-warning",
-              )}
-            />
+            <Star className={cn("h-4.5 w-4.5", state.filterStarredOnly && "text-warning")} />
           </Button>
 
           <Button
@@ -467,10 +410,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
         </div>
       </header>
 
-      <div
-        ref={scrollRef}
-        className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4"
-      >
+      <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
         {(canShowMoreLocal || !reachedStart) && (
           <div className="mb-2 flex justify-center gap-2">
             {canShowMoreLocal ? (
@@ -488,17 +428,12 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                 <ChevronUp className="h-3.5 w-3.5" /> Xem thêm tin cũ trong máy
               </Button>
             ) : null}
-            {!reachedStart &&
-            (thread.is_group || thread.name.includes("Cloud của tôi")) ? (
+            {!reachedStart && (thread.is_group || thread.name.includes("Cloud của tôi")) ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  void ipc.loadGroupHistory(
-                    thread.id,
-                    thread.is_group,
-                    thread.messages.length,
-                  )
+                  void ipc.loadGroupHistory(thread.id, thread.is_group, thread.messages.length)
                 }
               >
                 <ChevronUp className="h-3.5 w-3.5" /> Tải lịch sử cũ từ máy chủ
@@ -512,19 +447,15 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
           const showDivider = Boolean(dk && dk !== prevDay);
           if (dk) prevDay = dk;
 
-          const prevMsg =
-            !showDivider && idx > 0 ? visibleMessages.at(idx - 1) : undefined;
+          const prevMsg = !showDivider && idx > 0 ? visibleMessages.at(idx - 1) : undefined;
           const isGroupedWithPrev =
-            prevMsg?.is_outgoing === msg.is_outgoing &&
-            prevMsg.sender === msg.sender;
+            prevMsg?.is_outgoing === msg.is_outgoing && prevMsg.sender === msg.sender;
 
           const msgKey = msg.id || `${msg.ts}_${idx}`;
           const isRecalled = msg.text.trim() === "[Tin nhắn đã thu hồi]";
           const callCard = parseCallCard(msg);
           const highlighted = state.quoteHighlightId === msgKey;
-          const senderInfo = !msg.is_outgoing
-            ? resolveSender(msg, thread)
-            : null;
+          const senderInfo = !msg.is_outgoing ? resolveSender(msg, thread) : null;
 
           return (
             <div key={msgKey} className="flex flex-col">
@@ -570,10 +501,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                     msg.is_outgoing ? "items-end" : "items-start",
                   )}
                 >
-                  {!msg.is_outgoing &&
-                  thread.is_group &&
-                  !isGroupedWithPrev &&
-                  senderInfo ? (
+                  {!msg.is_outgoing && thread.is_group && !isGroupedWithPrev && senderInfo ? (
                     <div className="px-1 text-xs font-semibold text-muted-foreground">
                       {senderInfo.name}
                     </div>
@@ -624,12 +552,8 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                             )}
                           </div>
                           <div>
-                            <div className="text-[13.5px] font-bold">
-                              {callCard.title}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {callCard.subtitle}
-                            </div>
+                            <div className="text-[13.5px] font-bold">{callCard.title}</div>
+                            <div className="text-xs text-muted-foreground">{callCard.subtitle}</div>
                           </div>
                         </div>
                       ) : isVideoMessage(msg) && msg.link_url ? (
@@ -638,9 +562,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                           downloadDir={state.settings?.download_dir ?? ""}
                         />
                       ) : isPhotoMessage(msg) &&
-                        Boolean(
-                          msg.link_thumb ?? msg.link_url ?? isGifUrl(msg.text),
-                        ) ? (
+                        Boolean(msg.link_thumb ?? msg.link_url ?? isGifUrl(msg.text)) ? (
                         <PhotoMessageMedia
                           msg={msg}
                           onOpenViewer={(texKey, fullUrl) =>
@@ -664,9 +586,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                               {msg.link_title ?? msg.text}
                             </div>
                             {msg.link_desc ? (
-                              <div className="text-xs text-muted-foreground">
-                                {msg.link_desc}
-                              </div>
+                              <div className="text-xs text-muted-foreground">{msg.link_desc}</div>
                             ) : null}
                           </div>
                           <Button
@@ -689,16 +609,12 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                           <div className="select-text">{msg.text}</div>
                           {msg.link_url ? (
                             <div
-                              onClick={() =>
-                                void ipc.openExternalUrl(msg.link_url!)
-                              }
+                              onClick={() => void ipc.openExternalUrl(msg.link_url!)}
                               className="mt-1.5 max-w-[340px] cursor-pointer rounded-lg border border-border bg-background/60 p-2.5 hover:bg-background/90"
                             >
                               <div className="flex items-center gap-1.5 text-[13px] font-bold text-foreground">
                                 <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                <span className="truncate">
-                                  {msg.link_title ?? msg.link_url}
-                                </span>
+                                <span className="truncate">{msg.link_title ?? msg.link_url}</span>
                               </div>
                               {msg.link_desc ? (
                                 <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
@@ -728,18 +644,14 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                           size="icon-sm"
                           className="h-6.5 w-6.5"
                           title="Trả lời"
-                          onClick={() =>
-                            dispatch({ type: "SET_REPLYING_TO", msg })
-                          }
+                          onClick={() => dispatch({ type: "SET_REPLYING_TO", msg })}
                         >
                           <CornerUpLeft className="h-3.5 w-3.5" />
                         </Button>
 
                         <Popover
                           open={reactPickerFor === msgKey}
-                          onOpenChange={(open) =>
-                            setReactPickerFor(open ? msgKey : null)
-                          }
+                          onOpenChange={(open) => setReactPickerFor(open ? msgKey : null)}
                         >
                           <PopoverTrigger asChild>
                             <Button
@@ -751,10 +663,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                               <SmilePlus className="h-3.5 w-3.5" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent
-                            side="top"
-                            className="flex items-center gap-1 p-1.5"
-                          >
+                          <PopoverContent side="top" className="flex items-center gap-1 p-1.5">
                             {REACTION_LIST.map((r) => (
                               <Button
                                 key={r.key}
@@ -762,12 +671,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                                 size="icon-sm"
                                 title={r.label}
                                 onClick={() => {
-                                  void ipc.reactMessage(
-                                    thread.id,
-                                    thread.is_group,
-                                    msg,
-                                    r.emoji,
-                                  );
+                                  void ipc.reactMessage(thread.id, thread.is_group, msg, r.emoji);
                                   setReactPickerFor(null);
                                 }}
                               >
@@ -782,9 +686,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                           size="icon-sm"
                           className="h-6.5 w-6.5"
                           title="Chuyển tiếp"
-                          onClick={() =>
-                            dispatch({ type: "SET_FORWARD_MSG", msg })
-                          }
+                          onClick={() => dispatch({ type: "SET_FORWARD_MSG", msg })}
                         >
                           <Forward className="h-3.5 w-3.5" />
                         </Button>
@@ -802,12 +704,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                             })
                           }
                         >
-                          <Star
-                            className={cn(
-                              "h-3.5 w-3.5",
-                              msg.is_starred && "text-warning",
-                            )}
-                          />
+                          <Star className={cn("h-3.5 w-3.5", msg.is_starred && "text-warning")} />
                         </Button>
 
                         {msg.is_outgoing ? (
@@ -816,13 +713,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                             size="icon-sm"
                             className="h-6.5 w-6.5"
                             title="Thu hồi tin nhắn"
-                            onClick={() =>
-                              void ipc.recallMessage(
-                                thread.id,
-                                thread.is_group,
-                                msg,
-                              )
-                            }
+                            onClick={() => void ipc.recallMessage(thread.id, thread.is_group, msg)}
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
                           </Button>
@@ -833,13 +724,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                           size="icon-sm"
                           className="h-6.5 w-6.5 text-destructive hover:text-destructive"
                           title="Xóa chỉ ở phía tôi"
-                          onClick={() =>
-                            void ipc.deleteForMe(
-                              thread.id,
-                              thread.is_group,
-                              msg,
-                            )
-                          }
+                          onClick={() => void ipc.deleteForMe(thread.id, thread.is_group, msg)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -849,15 +734,11 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
 
                   <div className="flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground">
                     <span>{msg.time}</span>
-                    {msg.is_starred ? (
-                      <Star className="h-3 w-3 text-warning" />
-                    ) : null}
+                    {msg.is_starred ? <Star className="h-3 w-3 text-warning" /> : null}
                     {msg.reactions && msg.reactions.length > 0 ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-1.5 py-0.5 text-xs">
                         {msg.reactions.slice(0, 4).map((em, i) => (
-                          <span key={`${em}_${i}`}>
-                            {renderReactionBadge(em)}
-                          </span>
+                          <span key={`${em}_${i}`}>{renderReactionBadge(em)}</span>
                         ))}
                       </span>
                     ) : null}

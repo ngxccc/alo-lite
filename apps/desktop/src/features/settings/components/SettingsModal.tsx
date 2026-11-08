@@ -24,11 +24,7 @@ import { Dialog, DialogContent, DialogTitle } from "../../../shared/ui/dialog";
 import { Input } from "../../../shared/ui/input";
 import { Switch } from "../../../shared/ui/switch";
 import { cn } from "../../../shared/utils/cn";
-import type {
-  AppAction,
-  AppState,
-  SettingsTab,
-} from "../../../app/store/appReducer";
+import type { AppAction, AppState, SettingsTab } from "../../../app/store/appReducer";
 
 interface SettingsModalProps {
   state: AppState;
@@ -66,9 +62,7 @@ function SettingSwitchRow({
     <div className="flex items-center justify-between gap-4 py-1.5">
       <div className="min-w-0 flex-1">
         <div className="text-xs font-medium text-foreground">{label}</div>
-        {desc ? (
-          <div className="text-[11px] text-muted-foreground">{desc}</div>
-        ) : null}
+        {desc ? <div className="text-[11px] text-muted-foreground">{desc}</div> : null}
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
@@ -109,15 +103,11 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
   return (
     <Dialog
       open={state.settingsModalOpen}
-      onOpenChange={(open) =>
-        !open && dispatch({ type: "OPEN_SETTINGS", open: false })
-      }
+      onOpenChange={(open) => !open && dispatch({ type: "OPEN_SETTINGS", open: false })}
     >
       <DialogContent className="flex h-[560px] max-w-3xl flex-row overflow-hidden p-0">
         <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-3">
-          <DialogTitle className="px-2 py-1.5 text-sm font-bold">
-            Cài đặt
-          </DialogTitle>
+          <DialogTitle className="px-2 py-1.5 text-sm font-bold">Cài đặt</DialogTitle>
           {SETTINGS_TABS.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
@@ -125,9 +115,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
               <button
                 key={item.id}
                 type="button"
-                onClick={() =>
-                  dispatch({ type: "OPEN_SETTINGS", open: true, tab: item.id })
-                }
+                onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: item.id })}
                 className={cn(
                   "flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors",
                   active
@@ -150,9 +138,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
           {tab === "general" ? (
             <>
               <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
-                <div className="text-xs font-bold text-foreground">
-                  Danh bạ & Ngôn ngữ
-                </div>
+                <div className="text-xs font-bold text-foreground">Danh bạ & Ngôn ngữ</div>
                 <SettingSwitchRow
                   label="Hiển thị tất cả danh bạ"
                   checked={settings.show_all_contacts}
@@ -162,9 +148,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                   <span className="text-xs font-medium">Ngôn ngữ</span>
                   <select
                     value={settings.language}
-                    onChange={(e) =>
-                      updateSettings({ language: e.target.value })
-                    }
+                    onChange={(e) => updateSettings({ language: e.target.value })}
                     className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground"
                   >
                     <option value="Tiếng Việt">Tiếng Việt</option>
@@ -239,20 +223,14 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void ipc.logout()}
-                >
+                <Button variant="destructive" size="sm" onClick={() => void ipc.logout()}>
                   Đăng xuất
                 </Button>
               </div>
 
               <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
-                    Đa tài khoản đã lưu
-                  </span>
+                  <span className="text-xs font-bold text-foreground">Đa tài khoản đã lưu</span>
                   <Button
                     variant="default"
                     size="sm"
@@ -287,9 +265,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                           <div className="text-xs font-semibold text-foreground">
                             {acc.display_name}
                           </div>
-                          <div className="text-[11px] text-muted-foreground">
-                            UIN: {acc.uin}
-                          </div>
+                          <div className="text-[11px] text-muted-foreground">UIN: {acc.uin}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -332,8 +308,8 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
             <>
               <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                  <Shield className="h-4 w-4 text-primary" /> Chặn gửi trạng
-                  thái lên máy chủ (Ctrl+Shift+P)
+                  <Shield className="h-4 w-4 text-primary" /> Chặn gửi trạng thái lên máy chủ
+                  (Ctrl+Shift+P)
                 </div>
                 <SettingSwitchRow
                   label='Ẩn trạng thái "Đang soạn tin" (Block Typing)'
@@ -351,16 +327,12 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                   label='Ẩn trạng thái "Đã xem" (Block Seen)'
                   desc="Đọc tin nhắn mà không gửi /api/message/seenv2."
                   checked={settings.block_seen}
-                  onChange={(v) =>
-                    updateSettings({ block_seen: v, show_seen_status: !v })
-                  }
+                  onChange={(v) => updateSettings({ block_seen: v, show_seen_status: !v })}
                 />
               </div>
 
               <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
-                <div className="text-xs font-bold text-foreground">
-                  Quyền riêng tư hiển thị
-                </div>
+                <div className="text-xs font-bold text-foreground">Quyền riêng tư hiển thị</div>
                 <SettingSwitchRow
                   label="Hiển thị trạng thái truy cập"
                   checked={settings.show_online_status}
@@ -391,9 +363,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() =>
-                      dispatch({ type: "SET_PHONE_SYNC_MODAL", open: true })
-                    }
+                    onClick={() => dispatch({ type: "SET_PHONE_SYNC_MODAL", open: true })}
                   >
                     Đồng bộ từ điện thoại
                   </Button>
@@ -411,15 +381,8 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                       size="sm"
                       onClick={() => {
                         const targets = state.threads
-                          .filter(
-                            (t) =>
-                              t.is_group || t.name.includes("Cloud của tôi"),
-                          )
-                          .map<[string, string, boolean]>((t) => [
-                            t.id,
-                            t.name,
-                            t.is_group,
-                          ]);
+                          .filter((t) => t.is_group || t.name.includes("Cloud của tôi"))
+                          .map<[string, string, boolean]>((t) => [t.id, t.name, t.is_group]);
                         dispatch({ type: "START_CLOUD_SYNC" });
                         void ipc.syncHistory(targets);
                       }}
@@ -493,9 +456,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() =>
-                    dispatch({ type: "SET_WIPE_CONFIRM", open: true })
-                  }
+                  onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: true })}
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Xóa dữ liệu
                 </Button>
@@ -505,9 +466,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
 
           {tab === "appearance" ? (
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5">
-              <div className="text-xs font-bold text-foreground">
-                Chủ đề giao diện
-              </div>
+              <div className="text-xs font-bold text-foreground">Chủ đề giao diện</div>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: "light" as const, label: "Sáng (Zalo Slate)" },
@@ -516,9 +475,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                 ].map((opt) => (
                   <Button
                     key={opt.id}
-                    variant={
-                      settings.theme_mode === opt.id ? "default" : "outline"
-                    }
+                    variant={settings.theme_mode === opt.id ? "default" : "outline"}
                     onClick={() => updateSettings({ theme_mode: opt.id })}
                   >
                     {opt.label}
@@ -591,15 +548,11 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
           {tab === "utilities" ? (
             <>
               <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5">
-                <div className="text-xs font-bold text-foreground">
-                  Gợi ý & Sticker
-                </div>
+                <div className="text-xs font-bold text-foreground">Gợi ý & Sticker</div>
                 <SettingSwitchRow
                   label="Gợi ý nhãn dán theo nội dung đang soạn"
                   checked={settings.suggest_stickers_while_typing}
-                  onChange={(v) =>
-                    updateSettings({ suggest_stickers_while_typing: v })
-                  }
+                  onChange={(v) => updateSettings({ suggest_stickers_while_typing: v })}
                 />
                 <SettingSwitchRow
                   label="Gợi ý nhắc tên (@mention) trong nhóm"
@@ -609,9 +562,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                 <SettingSwitchRow
                   label="Bật tìm kiếm nhãn dán theo từ khóa"
                   checked={settings.enable_sticker_keyword_search}
-                  onChange={(v) =>
-                    updateSettings({ enable_sticker_keyword_search: v })
-                  }
+                  onChange={(v) => updateSettings({ enable_sticker_keyword_search: v })}
                 />
                 <Button
                   variant="outline"
@@ -630,39 +581,27 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
               </div>
 
               <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
-                <div className="text-xs font-bold text-foreground">
-                  Proxy & Đa phiên bản
-                </div>
+                <div className="text-xs font-bold text-foreground">Proxy & Đa phiên bản</div>
                 <div className="flex gap-1.5">
                   <Input
                     value={settings.proxy_url}
-                    onChange={(e) =>
-                      updateSettings({ proxy_url: e.target.value })
-                    }
+                    onChange={(e) => updateSettings({ proxy_url: e.target.value })}
                     placeholder="http://127.0.0.1:8080 hoặc socks5://..."
                   />
-                  <Button
-                    variant="default"
-                    onClick={() => void ipc.setProxy(settings.proxy_url)}
-                  >
+                  <Button variant="default" onClick={() => void ipc.setProxy(settings.proxy_url)}>
                     Áp dụng Proxy
                   </Button>
                 </div>
                 <div className="flex gap-1.5">
                   <Input
                     value={settings.multi_profile_name}
-                    onChange={(e) =>
-                      updateSettings({ multi_profile_name: e.target.value })
-                    }
+                    onChange={(e) => updateSettings({ multi_profile_name: e.target.value })}
                     placeholder="Tên profile phụ (vd. acc2)"
                   />
                   <Button
                     variant="outline"
                     onClick={() =>
-                      void ipc.spawnMultiProfile(
-                        settings.multi_profile_name,
-                        settings.proxy_url,
-                      )
+                      void ipc.spawnMultiProfile(settings.multi_profile_name, settings.proxy_url)
                     }
                   >
                     Mở cửa sổ Profile mới
@@ -680,18 +619,14 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                     className="flex items-center justify-between border-t border-border pt-2 text-xs"
                   >
                     <span>
-                      <code className="rounded bg-muted px-1.5 py-0.5">
-                        {rule.keyword}
-                      </code>{" "}
-                      → {rule.reply_text}
+                      <code className="rounded bg-muted px-1.5 py-0.5">{rule.keyword}</code> →{" "}
+                      {rule.reply_text}
                     </span>
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={async () => {
-                        const next = autoReplyRules.filter(
-                          (r) => r.id !== rule.id,
-                        );
+                        const next = autoReplyRules.filter((r) => r.id !== rule.id);
                         setAutoReplyRules(next);
                         await ipc.saveAutoreplyRules(next);
                       }}
@@ -784,9 +719,7 @@ export function SettingsModal({ state, dispatch }: SettingsModalProps) {
                 </Button>
               ) : null}
               {state.updateDownloadMessage ? (
-                <div className="text-xs text-muted-foreground">
-                  {state.updateDownloadMessage}
-                </div>
+                <div className="text-xs text-muted-foreground">{state.updateDownloadMessage}</div>
               ) : null}
             </div>
           ) : null}

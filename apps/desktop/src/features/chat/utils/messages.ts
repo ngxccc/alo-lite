@@ -4,19 +4,14 @@ export function stickerCacheKey(stickerId: number, cateId = 0): string {
   return `stk_${cateId}_${stickerId}`;
 }
 
-export function stickerThumbnailUrl(
-  item: Pick<StickerItem, "sticker_id" | "cate_id">,
-): string {
+export function stickerThumbnailUrl(item: Pick<StickerItem, "sticker_id" | "cate_id">): string {
   if (item.cate_id === 0 && item.sticker_id >= 1 && item.sticker_id <= 30) {
     return `https://stc-chat.zdn.vn/images/stickers/default/thumb/${item.sticker_id}.png`;
   }
   return `https://api.zaloapp.com/api/emoticon/sticker/webpc?eid=${item.sticker_id}&size=130`;
 }
 
-export function uniqueReferenceIndex(
-  messages: ChatMessage[],
-  reference: string,
-): number | null {
+export function uniqueReferenceIndex(messages: ChatMessage[], reference: string): number | null {
   const ref = reference.trim();
   if (!ref) return null;
   const byId = messages.reduce<number[]>((acc, m, idx) => {
@@ -90,8 +85,7 @@ export function isVideoUrl(url?: string | null): boolean {
 export function isVideoMessage(msg: ChatMessage): boolean {
   if (msg.sticker_id) return false;
   if (msg.kind === "video") return true;
-  if (msg.link_src === "Video Zalo" || msg.text.trim() === "[Video]")
-    return true;
+  if (msg.link_src === "Video Zalo" || msg.text.trim() === "[Video]") return true;
   return isVideoUrl(msg.link_url);
 }
 
@@ -139,10 +133,7 @@ export function shouldHideMediaCaption(msg: ChatMessage): boolean {
   ) {
     return true;
   }
-  if (
-    t.startsWith("[Tập tin]") &&
-    (isPhotoMessage(msg) || isVideoMessage(msg))
-  ) {
+  if (t.startsWith("[Tập tin]") && (isPhotoMessage(msg) || isVideoMessage(msg))) {
     return true;
   }
   return false;

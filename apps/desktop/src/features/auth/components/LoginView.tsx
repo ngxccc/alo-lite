@@ -3,12 +3,7 @@ import { KeyRound, QrCode, RefreshCw, Shield } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../shared/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 
 interface LoginViewProps {
@@ -91,28 +86,19 @@ export function LoginView({ state, dispatch }: LoginViewProps) {
                   className="h-full w-full [image-rendering:pixelated]"
                 />
               ) : (
-                <span className="text-center text-xs text-slate-600">
-                  Đang tạo mã QR…
-                </span>
+                <span className="text-center text-xs text-slate-600">Đang tạo mã QR…</span>
               )}
             </div>
 
             {state.qrScannedName ? (
               <div className="w-full rounded-md bg-online/15 px-3 py-2 text-center text-xs font-semibold text-online">
-                Đã quét bởi {state.qrScannedName} — Hãy bấm Xác nhận trên điện
-                thoại
+                Đã quét bởi {state.qrScannedName} — Hãy bấm Xác nhận trên điện thoại
               </div>
             ) : (
-              <div className="text-center text-xs text-muted-foreground">
-                {state.qrStatus}
-              </div>
+              <div className="text-center text-xs text-muted-foreground">{state.qrStatus}</div>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void ipc.requestQr()}
-            >
+            <Button variant="outline" size="sm" onClick={() => void ipc.requestQr()}>
               <RefreshCw className="h-3.5 w-3.5" /> Tạo mã QR mới
             </Button>
           </TabsContent>
@@ -120,9 +106,7 @@ export function LoginView({ state, dispatch }: LoginViewProps) {
           <TabsContent value="password">
             <form onSubmit={submitPassword} className="flex flex-col gap-3">
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Số điện thoại
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Số điện thoại</span>
                 <Input
                   type="text"
                   value={phone}
@@ -132,9 +116,7 @@ export function LoginView({ state, dispatch }: LoginViewProps) {
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Mật khẩu
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Mật khẩu</span>
                 <Input
                   type="password"
                   value={pass}
@@ -170,9 +152,7 @@ export function LoginView({ state, dispatch }: LoginViewProps) {
             <span className="inline-flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5" /> Cấu hình Proxy HTTP / SOCKS5
             </span>
-            <span className="text-[11px] text-muted-foreground">
-              {showProxy ? "Ẩn" : "Mở"}
-            </span>
+            <span className="text-[11px] text-muted-foreground">{showProxy ? "Ẩn" : "Mở"}</span>
           </Button>
           {showProxy ? (
             <div className="mt-2 flex gap-1.5">
@@ -202,9 +182,7 @@ export function LoginView({ state, dispatch }: LoginViewProps) {
                 onClick={() => void ipc.switchAccount(acc.uin)}
               >
                 <span className="truncate font-medium">{acc.display_name}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  UIN: {acc.uin}
-                </span>
+                <span className="text-[11px] text-muted-foreground">UIN: {acc.uin}</span>
               </Button>
             ))}
           </div>

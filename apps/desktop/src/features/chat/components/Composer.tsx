@@ -11,11 +11,7 @@ import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
 import type { StickerItem, Thread } from "../../../shared/types/ipc";
 import { Button } from "../../../shared/ui/button";
 import { Input } from "../../../shared/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../../../shared/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../shared/ui/popover";
 import { cn } from "../../../shared/utils/cn";
 import { extractFirstUrl } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
@@ -29,13 +25,7 @@ interface ComposerProps {
 
 type StickerTabId = "popular" | "onion" | "search" | "store" | number;
 
-function StickerThumb({
-  item,
-  onPick,
-}: {
-  item: StickerItem;
-  onPick: () => void;
-}) {
+function StickerThumb({ item, onPick }: { item: StickerItem; onPick: () => void }) {
   return (
     <button
       type="button"
@@ -69,13 +59,10 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
 
   const firstUrl = extractFirstUrl(text);
   const linkPreview =
-    firstUrl && firstUrl !== dismissedLinkFor
-      ? state.linkMetadataCache[firstUrl]
-      : undefined;
+    firstUrl && firstUrl !== dismissedLinkFor ? state.linkMetadataCache[firstUrl] : undefined;
 
   useEffect(() => {
-    if (!firstUrl || state.linkMetadataCache[firstUrl] || !isTauriRuntime())
-      return;
+    if (!firstUrl || state.linkMetadataCache[firstUrl] || !isTauriRuntime()) return;
     const t = window.setTimeout(() => {
       void ipc.parseLinkPreview(firstUrl);
     }, 220);
@@ -83,11 +70,9 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
   }, [firstUrl, state.linkMetadataCache]);
 
   useEffect(() => {
-    if (!state.settings?.suggest_stickers_while_typing || !isTauriRuntime())
-      return;
+    if (!state.settings?.suggest_stickers_while_typing || !isTauriRuntime()) return;
     const trimmed = text.trim();
-    if (trimmed.length < 2 || trimmed.length > 24 || trimmed.includes("http"))
-      return;
+    if (trimmed.length < 2 || trimmed.length > 24 || trimmed.includes("http")) return;
     const t = window.setTimeout(() => {
       void ipc.suggestComposerStickers(trimmed);
     }, 260);
@@ -95,11 +80,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
   }, [text, state.settings?.suggest_stickers_while_typing]);
 
   useEffect(() => {
-    if (
-      stickerTab === "store" &&
-      state.stickerStorePacks.length === 0 &&
-      isTauriRuntime()
-    ) {
+    if (stickerTab === "store" && state.stickerStorePacks.length === 0 && isTauriRuntime()) {
       dispatch({ type: "SET_STICKER_STORE_LOADING", loading: true });
       void ipc.fetchStickerStore();
     }
@@ -109,13 +90,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
     if (pendingUpload) {
       const { fileName, bytes } = pendingUpload;
       setPendingUpload(null);
-      await ipc.sendAttachmentBytes(
-        thread.id,
-        thread.is_group,
-        fileName,
-        bytes,
-        text.trim(),
-      );
+      await ipc.sendAttachmentBytes(thread.id, thread.is_group, fileName, bytes, text.trim());
       setText("");
       return;
     }
@@ -146,11 +121,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
 
   const handleTextChange = (val: string) => {
     setText(val);
-    if (
-      state.settings?.show_typing_indicator &&
-      !state.settings.block_typing &&
-      isTauriRuntime()
-    ) {
+    if (state.settings?.show_typing_indicator && !state.settings.block_typing && isTauriRuntime()) {
       const now = Date.now();
       if (now - lastTypingAt.current > 3500 && val.trim().length > 0) {
         lastTypingAt.current = now;
@@ -186,9 +157,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
     setPendingUpload({
       fileName: file.name || `drop_${Date.now()}`,
       bytes: Array.from(buf),
-      previewUrl: file.type.startsWith("image/")
-        ? URL.createObjectURL(file)
-        : "",
+      previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : "",
     });
   };
 
@@ -198,12 +167,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
       title: imagesOnly ? "Chọn hình ảnh để gửi" : "Chọn tập tin để gửi",
     });
     if (picked) {
-      await ipc.sendAttachmentFile(
-        thread.id,
-        thread.is_group,
-        picked,
-        text.trim(),
-      );
+      await ipc.sendAttachmentFile(thread.id, thread.is_group, picked, text.trim());
       setText("");
     }
   };
@@ -225,14 +189,10 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
       onDrop={(e) => void handleDrop(e)}
       className="relative flex flex-col gap-1.5 border-t border-border bg-sidebar px-3.5 py-2.5"
     >
-      {state.composerStickerSuggestions.length > 0 &&
-      text.trim().length >= 2 ? (
+      {state.composerStickerSuggestions.length > 0 && text.trim().length >= 2 ? (
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {state.composerStickerSuggestions.slice(0, 8).map((item) => (
-            <div
-              key={`sug_${item.cate_id}_${item.sticker_id}`}
-              className="w-16 shrink-0"
-            >
+            <div key={`sug_${item.cate_id}_${item.sticker_id}`} className="w-16 shrink-0">
               <StickerThumb
                 item={item}
                 onPick={() => {
@@ -261,11 +221,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
               {linkPreview?.desc ?? firstUrl}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setDismissedLinkFor(firstUrl)}
-          >
+          <Button variant="ghost" size="icon-sm" onClick={() => setDismissedLinkFor(firstUrl)}>
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -276,12 +232,8 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
           <div className="flex min-w-0 items-center gap-2">
             <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-primary" />
             <div className="min-w-0">
-              <div className="font-bold text-foreground">
-                Trả lời {state.replyingTo.sender}
-              </div>
-              <div className="truncate text-muted-foreground">
-                {state.replyingTo.text}
-              </div>
+              <div className="font-bold text-foreground">Trả lời {state.replyingTo.sender}</div>
+              <div className="truncate text-muted-foreground">{state.replyingTo.text}</div>
             </div>
           </div>
           <Button
@@ -304,15 +256,9 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
                 className="h-10 w-10 rounded-md object-cover"
               />
             ) : null}
-            <span className="text-xs font-semibold text-foreground">
-              {pendingUpload.fileName}
-            </span>
+            <span className="text-xs font-semibold text-foreground">{pendingUpload.fileName}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setPendingUpload(null)}
-          >
+          <Button variant="ghost" size="icon-sm" onClick={() => setPendingUpload(null)}>
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -321,11 +267,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
       <div className="flex items-center gap-1">
         <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
           <PopoverTrigger asChild>
-            <Button
-              variant={stickerOpen ? "accent" : "ghost"}
-              size="icon-sm"
-              title="Gửi nhãn dán"
-            >
+            <Button variant={stickerOpen ? "accent" : "ghost"} size="icon-sm" title="Gửi nhãn dán">
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>

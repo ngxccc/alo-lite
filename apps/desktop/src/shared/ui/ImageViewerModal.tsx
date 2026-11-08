@@ -28,10 +28,7 @@ export function ImageViewerModal({
   if (!viewer) return null;
 
   const hdKey = `hd_${viewer.texKey}`;
-  const src =
-    mediaCache[hdKey] ??
-    mediaCache[viewer.texKey] ??
-    jxlToJpgUrl(viewer.fullUrl);
+  const src = mediaCache[hdKey] ?? mediaCache[viewer.texKey] ?? jxlToJpgUrl(viewer.fullUrl);
 
   return (
     <Dialog open={Boolean(viewer)} onOpenChange={(open) => !open && onClose()}>
@@ -41,9 +38,7 @@ export function ImageViewerModal({
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-sidebar px-4">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">
-              {viewer.title || "Hình ảnh"}
-            </div>
+            <div className="truncate text-sm font-semibold">{viewer.title || "Hình ảnh"}</div>
             <div className="truncate text-xs text-muted-foreground">
               {viewer.sender} · {viewer.time}
             </div>
@@ -54,9 +49,7 @@ export function ImageViewerModal({
               variant="outline"
               size="icon-sm"
               title="Thu nhỏ"
-              onClick={() =>
-                setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))))
-              }
+              onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.25).toFixed(2))))}
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
@@ -67,18 +60,11 @@ export function ImageViewerModal({
               variant="outline"
               size="icon-sm"
               title="Phóng to"
-              onClick={() =>
-                setZoom((z) => Math.min(4, Number((z + 0.25).toFixed(2))))
-              }
+              onClick={() => setZoom((z) => Math.min(4, Number((z + 0.25).toFixed(2))))}
             >
               <ZoomIn className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              title="Đặt lại"
-              onClick={() => setZoom(1)}
-            >
+            <Button variant="outline" size="icon-sm" title="Đặt lại" onClick={() => setZoom(1)}>
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
             {viewer.fullUrl ? (
@@ -96,12 +82,7 @@ export function ImageViewerModal({
                 <Download className="h-3.5 w-3.5" /> Tải xuống
               </Button>
             ) : null}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onClose}
-              title="Đóng (Esc)"
-            >
+            <Button variant="ghost" size="icon-sm" onClick={onClose} title="Đóng (Esc)">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -116,9 +97,7 @@ export function ImageViewerModal({
               className="max-h-full max-w-full origin-center rounded-md object-contain transition-transform duration-150"
             />
           ) : (
-            <span className="text-xs text-muted-foreground">
-              Đang tải ảnh độ phân giải cao…
-            </span>
+            <span className="text-xs text-muted-foreground">Đang tải ảnh độ phân giải cao…</span>
           )}
         </div>
       </DialogContent>

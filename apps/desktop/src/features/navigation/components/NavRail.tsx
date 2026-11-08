@@ -1,20 +1,7 @@
-import {
-  Bug,
-  Cloud,
-  MessageSquare,
-  Moon,
-  Settings,
-  Smartphone,
-  Sun,
-  Users,
-} from "lucide-react";
+import { Bug, Cloud, MessageSquare, Moon, Settings, Smartphone, Sun, Users } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../../shared/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../shared/ui/tooltip";
 import { cn } from "../../../shared/utils/cn";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { threadUnreadCount } from "../../threads/utils/threads";
@@ -75,9 +62,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
   };
 
   const openCloudThread = () => {
-    const cloud = state.threads.find(
-      (t) => !t.is_group && t.name.includes("Cloud của tôi"),
-    );
+    const cloud = state.threads.find((t) => !t.is_group && t.name.includes("Cloud của tôi"));
     if (cloud) {
       dispatch({ type: "SELECT_THREAD", threadId: cloud.id });
     } else {
@@ -98,9 +83,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
           <TooltipTrigger asChild>
             <button
               type="button"
-              onClick={() =>
-                dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })
-              }
+              onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })}
               className="relative mb-1 cursor-pointer rounded-full ring-2 ring-white/25 transition hover:ring-white/60"
             >
               <Avatar
@@ -134,9 +117,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
         <RailButton
           active={state.activeSection === "contacts"}
           label="Danh bạ"
-          onClick={() =>
-            dispatch({ type: "SET_NAV_SECTION", section: "contacts" })
-          }
+          onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "contacts" })}
         >
           <Users className="h-5 w-5" />
         </RailButton>
@@ -155,16 +136,10 @@ export function NavRail({ state, dispatch }: NavRailProps) {
 
       <div className="flex flex-col items-center gap-2">
         <RailButton
-          label={
-            isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"
-          }
+          label={isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"}
           onClick={toggleTheme}
         >
-          {isDark ? (
-            <Sun className="h-[19px] w-[19px]" />
-          ) : (
-            <Moon className="h-[19px] w-[19px]" />
-          )}
+          {isDark ? <Sun className="h-[19px] w-[19px]" /> : <Moon className="h-[19px] w-[19px]" />}
         </RailButton>
 
         <RailButton
@@ -176,9 +151,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
 
         <RailButton
           label="Cài đặt (Ctrl+Shift+P mở Quyền riêng tư)"
-          onClick={() =>
-            dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })
-          }
+          onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })}
         >
           <Settings className="h-5 w-5" />
         </RailButton>
