@@ -15,10 +15,9 @@ pub mod threads;
 pub use importer::*;
 pub use models::*;
 pub use sync_ingest::{
-    commit_conv_archives_to_store, extract_conv_archives_from_entries,
-    import_mobile_backup_container, import_mobile_backup_container_with_uid,
-    import_sync_v2_messages, import_sync_v2_meta, sync_phone_messages, sync_phone_messages_opts,
-    sync_thread, ConvArchive, RawArchiveRow,
+    commit_conv_archives_to_store, commit_mobile_backup_to_store, commit_phone_sync_to_store,
+    commit_sync_v2_messages_to_store, extract_conv_archives_from_entries, oldest_message_id,
+    persist_resolved_thread_names, persist_thread_snapshot, ConvArchive, RawArchiveRow,
 };
 pub use thread_cache::{load_threads_cache, save_threads_cache};
 pub use threads::{load_history_into_threads, persist_threads};

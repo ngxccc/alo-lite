@@ -45,14 +45,14 @@ Operating guide for AI agents and humans working in this repository.
 |`auth/{mod,login,qr,trust/*}.rs`|Password/session info auth, QR1/QR2 flow, pure-Rust Curve25519/XEdDSA Trusted Device protocol|
 |`social/{mod,friends,groups}.rs`|Friend roster/phone lookup/friendship requests, group profiles/history/name resolution|
 |`messaging/{mod,model,threads,send,polling,attachments,links,stickers,reactions,unread}.rs`|`ChatMessage`/`Thread` entities, `MessageIdentityIndex`, merge/dedup, text/RTF/quote/forward/recall, chunked file upload, OpenGraph link preview, stickers, `lp_chat` & `get-last-msgs` polling, reactions, seen/unread/mute|
-|`sync/{mod,controls,zdb4,bin_net,v2_proto}.rs`|Pure sync HTTP/WS controls, `/api/znoise`, RSA-2048 + `ZDB4.0` container crypto, `BinNet` TLV, Sync V2 Protobuf (zero `rusqlite`)|
+|`sync/{mod,controls,zdb4,bin_net,v2_proto,history,phone,container}.rs`|Pure sync HTTP/WS controls, `/api/znoise`, RSA-2048 + `ZDB4.0` container crypto, `BinNet` TLV, Sync V2 Protobuf, cloud history & phone sync fetchers (zero `rusqlite`)|
 
 ## Non-Negotiables
 
 - **Never commit secrets.** `session.json`, `*.db`, cookies, `zpw_sek`, `zpw_enk`, IMEI and capture dumps stay out of Git (`.gitignore`, `SESSION_SECURITY.md`).
 - **No blocking work on the UI thread.** Network, disk, SQLite, and image decoding live inside `CoreEngine` (`crates/alolite-core/src/core/`); `apps/desktop` only invokes Tauri commands and renders `CoreEventDto`s.
 - **All hosts live in `crates/alolite-core/src/protocol/endpoints.rs`.** Never hardcode a host elsewhere; declare HTTP command IDs in `crates/alolite-core/src/protocol/registry/` and invoke via `Session::api_get` / `Session::api_post`.
-- **Single responsibility & pure protocol boundary.** Keep `rusqlite`, `MessageStore`, and `threads_cache.json` persistence in `crates/alolite-core/src/storage/` (`sync_ingest`, `thread_cache`) — never import `rusqlite` into `protocol/`. Reuse `wire.rs` helpers instead of duplicating JSON coercion, `group_` stripping, or control-envelope parsing.
+- **Single responsibility & pure protocol boundary.** Keep `rusqlite`, `MessageStore`, and `threads_cache.json` persistence in `crates/alolite-core/src/storage/` (`sync_ingest`, `thread_cache`) — never import `rusqlite` into `protocol/` and never import `Session`/HTTP into `storage/`. Reuse `wire.rs` helpers instead of duplicating JSON coercion, `group_` stripping, or control-envelope parsing.
 - **Every outbound request goes through the standard path:** params → `ParamCipher v2` → `signkey` → session cookie attachment.
 - **Comments in English, user-facing strings in Vietnamese.** See `docs/standards/code-comment-taxonomy.md`.
 - **Do not silently change protocol behaviour.** Any change to params, signing, frame IDs or cipher flow requires evidence (capture, note in `re-notes/`) and a test or documented manual verification.

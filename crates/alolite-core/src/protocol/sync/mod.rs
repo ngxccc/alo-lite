@@ -5,8 +5,11 @@
 //! - [`zdb4`]: Ephemeral RSA-2048 sync keypair and `ZDB4.0` AES-256-CBC + XZ/LZMA container unpacker.
 //! - [`bin_net`]: `ChatContent.BinNet` binary TLV decoder for attachments, quotes, and mentions.
 //! - [`v2_proto`]: Sync V2 Ed25519/Curve25519 keys and `proto.Sync2` Protobuf chunk parser.
+//! - [`history`]: Pure thread cloud history fetch loop and pagination seam.
+//! - [`phone`]: Pure phone message sync, long-polling drain, and conversation preview fetching.
+//! - [`container`]: Mobile backup container (`.db.crypt`) and Sync V2 HTTP download and decryption.
 //!
-//! SQLite archive persistence and store-backed sync orchestration live in `crate::storage::sync_ingest`.
+//! Pure SQLite archive persistence lives in `crate::storage::sync_ingest`, composed by `CoreEngine`.
 
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
@@ -14,19 +17,26 @@ use std::sync::Mutex;
 use crate::protocol::messaging::Thread;
 
 pub mod bin_net;
+pub mod container;
 pub mod controls;
+pub mod history;
+pub mod phone;
 pub mod v2_proto;
 pub mod zdb4;
-
 pub use bin_net::{
     build_synced_message_content, is_excluded_archive_msg_type, parse_bin_net_tlv, BinNetAttach,
     BinNetData, BinNetMention, BinNetQuote,
+};
+pub use container::{
+    fetch_mobile_backup_container, fetch_sync_v2_messages, fetch_sync_v2_meta, DownloadedBackup,
 };
 pub use controls::{
     cancel_phone_sync, clean_sync, extract_mobile_sync_controls, request_phone_sync,
     request_phone_sync_v2, request_phone_sync_with_temp_key, request_sync_v2_message_chunks,
     resolve_znoise_ids, MobileSyncControlEvent,
 };
+pub use history::{fetch_thread_history, MAX_PAGES, PAGE, PAUSE};
+pub use phone::{fetch_phone_messages, format_phone_sync_final_message, PhoneFetchOutcome};
 pub use v2_proto::{
     generate_sync_v2_ed25519_public_key, generate_sync_v2_keys, parse_sync_chunk, ParsedProtoMsg,
     ParsedProtoPartition, SyncV2Keys,

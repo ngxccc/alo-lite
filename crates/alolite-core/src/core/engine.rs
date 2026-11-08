@@ -47,6 +47,9 @@ use crate::protocol::social::friends::{
 };
 use crate::protocol::social::groups::{get_groups, resolve_thread_names};
 use crate::protocol::sync::{
+    clean_sync, clear_sync_keys, fetch_mobile_backup_container, fetch_phone_messages,
+    fetch_sync_v2_messages, fetch_sync_v2_meta, fetch_thread_history,
+    format_phone_sync_final_message, get_sync_public_key, resolve_znoise_ids,
     set_last_mobile_sync_status, set_latest_mobile_temp_key, MobileSyncControlEvent,
     PHONE_SYNC_CANCEL, PHONE_SYNC_RUNNING,
 };
@@ -55,11 +58,96 @@ use crate::services::account_manager::{save_current_account_snapshot, switch_to_
 use crate::services::native_notifications::{request_if_user_action, status as notif_status};
 use crate::services::updater::{apply_github_release_update, fetch_github_latest_release};
 use crate::storage::{
-    db_path_for_account, import_mobile_backup_container_with_uid, import_sync_v2_messages,
-    import_sync_v2_meta, jxl_to_jpg_url, load_history_into_threads, load_threads_cache,
-    persist_threads, save_threads_cache, sync_phone_messages_opts, sync_thread, MessageStore,
-    StoredMessage,
+    commit_mobile_backup_to_store, commit_phone_sync_to_store, commit_sync_v2_messages_to_store,
+    db_path_for_account, extract_conv_archives_from_entries, jxl_to_jpg_url,
+    load_history_into_threads, load_threads_cache, oldest_message_id,
+    persist_resolved_thread_names, persist_thread_snapshot, persist_threads, save_threads_cache,
+    MessageStore, StoredMessage,
 };
+
+async fn compose_import_mobile_backup(
+    s: &Session,
+    url: &str,
+    encrypted_key: &str,
+    raw_uid: Option<i64>,
+) -> Result<usize> {
+    let downloaded = fetch_mobile_backup_container(s, url, encrypted_key).await?;
+    let (conv_archives, all_fids, all_gids) = tokio::task::spawn_blocking(move || {
+        extract_conv_archives_from_entries(downloaded.entries, raw_uid)
+    })
+    .await??;
+    let (fid_map, gid_map) = resolve_znoise_ids(s, &all_fids, &all_gids)
+        .await
+        .unwrap_or_default();
+    let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+    let my_name = s
+        .login
+        .as_ref()
+        .map(|l| l.display_name.clone())
+        .unwrap_or_else(|| "Tôi".into());
+    let db_path = db_path_for_account(&uin);
+    let my_uid = uin.clone();
+    let (total_imported, mut hydrated_threads) = tokio::task::spawn_blocking(move || {
+        commit_mobile_backup_to_store(
+            &db_path,
+            &my_uid,
+            &my_name,
+            conv_archives,
+            &fid_map,
+            &gid_map,
+            raw_uid,
+        )
+    })
+    .await??;
+    resolve_thread_names(s, &mut hydrated_threads).await;
+    let db_path_names = db_path_for_account(&uin);
+    let resolved_snapshot = hydrated_threads;
+    let _ = tokio::task::spawn_blocking(move || {
+        persist_resolved_thread_names(&db_path_names, &resolved_snapshot)
+    })
+    .await;
+    let _ = clean_sync(s, &downloaded.pub_key_b64).await;
+    clear_sync_keys();
+    Ok(total_imported)
+}
+
+async fn compose_import_sync_v2_messages(s: &Session, url: &str) -> Result<usize> {
+    let partitions = fetch_sync_v2_messages(s, url).await?;
+    let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+    let my_name = s
+        .login
+        .as_ref()
+        .map(|l| l.display_name.clone())
+        .unwrap_or_else(|| "Tôi".into());
+    let db_path = db_path_for_account(&uin);
+    let count = tokio::task::spawn_blocking(move || {
+        commit_sync_v2_messages_to_store(&db_path, &uin, &my_name, partitions)
+    })
+    .await??;
+    if let Some(pub_k) = get_sync_public_key() {
+        let _ = clean_sync(s, &pub_k).await;
+    }
+    Ok(count)
+}
+
+async fn compose_sync_thread(s: &Session, t: &mut Thread) -> Result<usize> {
+    let id = t.id.clone();
+    let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+    let db_path = db_path_for_account(&uin);
+    let db_path_init = db_path.clone();
+    let cursor = tokio::task::spawn_blocking(move || oldest_message_id(&db_path_init, &id))
+        .await?
+        .unwrap_or_default();
+    let db_path_page = db_path.clone();
+    fetch_thread_history(s, t, &cursor, move |snapshot| {
+        let db_path_p = db_path_page.clone();
+        let snap = snapshot.clone();
+        async move {
+            tokio::task::spawn_blocking(move || persist_thread_snapshot(&db_path_p, &snap)).await?
+        }
+    })
+    .await
+}
 
 /// Summary returned by [`CoreEngine::status`].
 #[derive(Debug, Clone, Serialize)]
@@ -347,13 +435,7 @@ impl CoreEngine {
                     set_last_mobile_sync_status(Some(status_dl.clone()));
                     engine.emit(CoreEvent::StatusUpdate(status_dl));
 
-                    match import_mobile_backup_container_with_uid(
-                        &s_sync,
-                        &url,
-                        &encrypted_key,
-                        raw_uid,
-                    )
-                    .await
+                    match compose_import_mobile_backup(&s_sync, &url, &encrypted_key, raw_uid).await
                     {
                         Ok(count) => {
                             let note = format!(
@@ -386,13 +468,13 @@ impl CoreEngine {
                             "Đang giải mã thông tin phiên đồng bộ từ điện thoại…".to_string();
                         set_last_mobile_sync_status(Some(note.clone()));
                         engine.emit(CoreEvent::StatusUpdate(note));
-                        let _ = import_sync_v2_meta(&s_sync, &url).await;
+                        let _ = fetch_sync_v2_meta(&s_sync, &url).await;
                     } else if batch_type == 1 {
                         let note = "Đang tải và giải mã gói tin nhắn từ điện thoại…".to_string();
                         set_last_mobile_sync_status(Some(note.clone()));
                         engine.emit(CoreEvent::StatusUpdate(note));
 
-                        match import_sync_v2_messages(&s_sync, &url).await {
+                        match compose_import_sync_v2_messages(&s_sync, &url).await {
                             Ok(count) => {
                                 let fin = format!(
                                     "Đã giải mã & đồng bộ thành công {count} tin nhắn từ điện thoại vào ứng dụng!"
@@ -1451,7 +1533,7 @@ impl CoreEngine {
                 is_group,
                 ..Default::default()
             };
-            match sync_thread(&s, &mut t).await {
+            match compose_sync_thread(&s, &mut t).await {
                 Ok(n) => added += n,
                 Err(e) => errors.push(format!("{}: {e}", t.name)),
             }
@@ -1586,16 +1668,47 @@ impl CoreEngine {
         PHONE_SYNC_CANCEL.store(false, Ordering::Relaxed);
         let s = self.session.lock().await.clone();
         let sink = Arc::clone(&self.sink);
-        let res = sync_phone_messages_opts(
+        let sink_progress = Arc::clone(&sink);
+        let fetch_res = fetch_phone_messages(
             &s,
             &self.poll_state,
             &mut threads,
             send_phone_prompt,
             move |progress, status| {
-                sink.emit(CoreEvent::PhoneSyncProgress { progress, status });
+                sink_progress.emit(CoreEvent::PhoneSyncProgress { progress, status });
             },
         )
         .await;
+
+        let res = match fetch_res {
+            Ok(outcome) if outcome.cancelled => Ok((0, 0)),
+            Ok(outcome) => {
+                let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+                let db_path = db_path_for_account(&uin);
+                let snapshot = threads.clone();
+                let db_added = tokio::task::spawn_blocking(move || {
+                    commit_phone_sync_to_store(&db_path, &snapshot)
+                })
+                .await;
+                match db_added {
+                    Ok(Ok(n)) => {
+                        let after_total: usize = threads.iter().map(|t| t.messages.len()).sum();
+                        let added = n.max(after_total.saturating_sub(outcome.before_total));
+                        let active_threads =
+                            threads.iter().filter(|t| !t.messages.is_empty()).count();
+                        let final_msg = format_phone_sync_final_message(added, active_threads);
+                        sink.emit(CoreEvent::PhoneSyncProgress {
+                            progress: 1.0,
+                            status: final_msg,
+                        });
+                        Ok((added, active_threads))
+                    }
+                    Ok(Err(e)) => Err(e),
+                    Err(e) => Err(anyhow::anyhow!("JoinError: {e}")),
+                }
+            }
+            Err(e) => Err(e),
+        };
         let cancelled = PHONE_SYNC_CANCEL.load(Ordering::Relaxed);
         match res {
             Ok((added, active_threads)) => {
