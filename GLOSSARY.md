@@ -38,9 +38,9 @@ Ubiquitous language for `alolite`. Use these terms verbatim in issues, ADRs, tes
 
 | Term | Definition | Avoid |
 | :--- | :--- | :--- |
-| **CoreEngine** | UI-independent Tokio runtime (`src/core/`) owning `Session`, WebSocket/polling, SQLite, and MCP/REST; GUI (`src/gui/worker/`) acts as a thin event/command adapter. | "backend", "service" |
-| **UI thread** | The GUI event loop (`egui` today, Tauri WebView in `ui/tauri`); must never block on I/O. | "frontend" |
-| **Store** | Local SQLite database managed by `MessageStore` (`src/storage/`), plus fast-startup JSON snapshot in `storage::thread_cache`. | "cache" (cache is non-authoritative) |
+| **CoreEngine** | UI-independent Tokio runtime (`crates/alolite-core/src/core/`) owning `Session`, WebSocket/polling, SQLite, and MCP/REST; `apps/desktop/src-tauri` and `alolite-cli` act as thin adapters. | "backend", "service" |
+| **UI thread** | The Tauri WebView event loop (`apps/desktop/src/`); must never block on I/O. | "frontend" |
+| **Store** | Local SQLite database managed by `MessageStore` (`crates/alolite-core/src/storage/`), plus fast-startup JSON snapshot in `storage::thread_cache`. | "cache" (cache is non-authoritative) |
 
 ## Invariants
 
@@ -50,4 +50,4 @@ Domain invariants are tagged `INV-N` here and referenced verbatim from code and 
 - **INV-2** — `session.json` is never logged, committed or transmitted outside Zalo endpoints.
 - **INV-3** — The UI thread never performs blocking I/O; all such work runs in the worker (SQLite & `ZDB4.0` unpacking execute on `spawn_blocking`).
 - **INV-4** — A message row is idempotent by `msg_id`; re-delivery never duplicates history.
-- **INV-5** — `src/protocol/` remains pure protocol, crypto, and wire parsing; SQLite (`rusqlite`) and `threads_cache.json` persistence live strictly under `src/storage/`.
+- **INV-5** — `crates/alolite-core/src/protocol/` remains pure protocol, crypto, and wire parsing; SQLite (`rusqlite`) and `threads_cache.json` persistence live strictly under `crates/alolite-core/src/storage/`.

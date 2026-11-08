@@ -1,0 +1,18 @@
+[package]
+name = "alolite-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "Headless CLI, MCP stdio/HTTP server, and desktop launcher for AloLite"
+
+[[bin]]
+name = "alolite"
+path = "src/main.rs"
+
+[dependencies]
+alolite-core = { path = "../alolite-core" }
+anyhow = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -35,3 +35,14 @@ jobs:
 
       - name: Run Unit & Integration Tests
         run: cargo test --locked
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Desktop Frontend Check & Tests
+        working-directory: apps/desktop
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun test
+          bun run build
