@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Alolite
+Name=AloLite
 GenericName=Instant Messaging Client
-Comment=Lightweight native instant messaging client written in Rust (Zero Node.js, Zero Electron)
-Exec=alolite --gui
+Comment=Lightweight native instant messaging client in Rust + Tauri
+Exec=alolite-desktop
 Icon=alolite
 Terminal=false
-Categories=Network;InstantMessaging;Chat;VideoConference;
-Keywords=zalo;chat;messenger;voip;rust;alolite;
-StartupWMClass=alolite
+Categories=Network;InstantMessaging;Chat;
+Keywords=zalo;chat;messenger;rust;tauri;alolite;
+StartupWMClass=alolite-desktop

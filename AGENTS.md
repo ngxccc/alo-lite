@@ -4,7 +4,7 @@ Operating guide for AI agents and humans working in this repository.
 
 ## Project
 
-`alolite` is a lightweight native desktop messaging client written in Rust: a UI-independent `CoreEngine` (protocol + Tokio sync/WebSocket + SQLite + MCP/REST server), an `egui` GUI adapter (with future Tauri WebView frontend path), and zero Node.js/Electron/Chromium.
+`alolite` is a lightweight native desktop messaging client organized as a clean Cargo workspace (`alolite-core` + `alolite-cli` + `apps/desktop` Tauri v2 + TypeScript), zero Node.js runtime, zero Electron/Chromium.
 
 - Repository: <https://github.com/ngxccc/alolite>
 - Rust 1.75+ / edition 2021
@@ -14,33 +14,27 @@ Operating guide for AI agents and humans working in this repository.
 
 |Task|Command|
 |:---|:---|
-|Build (debug)|`cargo build`|
-|Build (release binary)|`cargo build --release --bin alolite`|
-|Test|`cargo test`|
+|Build CLI & core|`cargo build`|
+|Build Desktop app|`(cd apps/desktop && bun run build) && cargo build --bin alolite-desktop`|
+|Build Release binaries|`cargo build --release --bin alolite --bin alolite-desktop`|
+|Test Rust core & CLI|`cargo test --locked`|
+|Test Desktop UI|`(cd apps/desktop && bun run typecheck && bun test && bun run build)`|
 |Format|`cargo fmt --all`|
-|Lint|`cargo clippy --all-targets -- -D warnings`|
-|Run GUI (egui)|`cargo run -- --gui`|
-|Run MCP (stdio)|`cargo run -- --mcp`|
-|Run headless REST + MCP HTTP|`cargo run -- --api-port 18128 --api-only`|
-|Check Tauri frontend (`ui/tauri/`)|`bun run typecheck && bun test && bun run build`|
-|Build Tauri host|`cargo build --manifest-path ui/tauri/src-tauri/Cargo.toml`|
-
+|Lint|`cargo clippy --workspace --all-targets -- -D warnings`|
+|Run Desktop|`cargo run --bin alolite-desktop`|
+|Run MCP (stdio)|`cargo run --bin alolite -- --mcp`|
+|Run headless REST + MCP HTTP|`cargo run --bin alolite -- --api-port 18128 --api-only`|
 ## Architecture Map
 
 |Path|Responsibility|
 |:---|:---|
-|`src/main.rs`|CLI & Linux desktop entrypoint|
-|`src/lib.rs`|Library surface & core/protocol/storage/mcp/services exports|
-|`src/core/`|UI-independent `CoreEngine`, `CoreEventDto`, `CoreBootstrapSnapshot`, `AppSettings`, `CoreImageData` shared by GUI, MCP, and Tauri UI|
-|`src/protocol/`|Pure network protocol (`client`, `auth/{login,qr,trust}`, `social/{friends,groups}`, `messaging/{model,threads,send,polling,attachments,links,stickers,reactions,unread}`, `session/`, `registry/`, `sync/`, `socket`, `crypto`, `param_cipher`, `endpoints`, `wire`)|
-|`src/storage/`|SQLite persistence (`messages`, `threads`, `models`, `importer/`, `sync_ingest`, `thread_cache`)|
-|`src/mcp/`|Model Context Protocol JSON-RPC 2.0 (`--mcp`), local HTTP REST API (`--api-port`), and auto-reply rules|
-|`src/services/`|Host support services (`account_manager`, `media_resources`, `native_notifications`, `updater`)|
-|`src/gui/`|Native egui GUI app shell (`worker/` adapter over `CoreEngine`, messages, workspace, modals)|
-|`ui/tauri/`|Feature-based TypeScript (`app/`, `shared/`, `features/`) + Tauri v2 Rust host (`src-tauri/`) over `CoreEngine`|
-|`src/common/`|Shared utilities (`clock`, `data_dir`, `logger`, `ui`)|
+|`crates/alolite-core/`|UI-independent `CoreEngine`, `protocol/`, `storage/`, `mcp/`, `services/`, `common/`, and `assets/`|
+|`crates/alolite-cli/`|`alolite` binary (`--mcp`, `--api-only`, `--qr`, `--phone`, desktop launcher)|
+|`apps/desktop/`|Feature-based TypeScript (`src/{app,shared,features}/`) + Tauri v2 host (`src-tauri/` → `alolite-desktop`) over `alolite-core`|
+|`docs/`|Engineering standards, ADRs (`docs/adr/`), `book.toml`, `DESIGN.md`, `ROADMAP.md`, `LEGAL.md`|
+|`packaging/`|Linux `.deb`, `.rpm`, `.AppImage`, `.tar.gz` packaging scripts|
 
-### Protocol Submodule Map (`src/protocol/`)
+### Protocol Submodule Map (`crates/alolite-core/src/protocol/`)
 
 |Module|Single Responsibility|
 |:---|:---|
@@ -55,14 +49,14 @@ Operating guide for AI agents and humans working in this repository.
 ## Non-Negotiables
 
 - **Never commit secrets.** `session.json`, `*.db`, cookies, `zpw_sek`, `zpw_enk`, IMEI and capture dumps stay out of Git (`.gitignore`, `SESSION_SECURITY.md`).
-- **No blocking work on the UI thread.** Network, disk, SQLite, and image decoding live inside `CoreEngine` (`src/core/`); UI adapters (`src/gui/worker/`) only send commands and render `CoreEvent`s.
-- **All hosts live in `src/protocol/endpoints.rs`.** Never hardcode a host elsewhere; declare HTTP command IDs in `src/protocol/registry/` and invoke via `Session::api_get` / `Session::api_post`.
-- **Single responsibility & pure protocol boundary.** Keep `rusqlite`, `MessageStore`, and `threads_cache.json` persistence in `src/storage/` (`sync_ingest`, `thread_cache`) — never import `rusqlite` into `src/protocol/`. Reuse `src/protocol/wire.rs` helpers instead of duplicating JSON coercion, `group_` stripping, or control-envelope parsing.
+- **No blocking work on the UI thread.** Network, disk, SQLite, and image decoding live inside `CoreEngine` (`crates/alolite-core/src/core/`); `apps/desktop` only invokes Tauri commands and renders `CoreEventDto`s.
+- **All hosts live in `crates/alolite-core/src/protocol/endpoints.rs`.** Never hardcode a host elsewhere; declare HTTP command IDs in `crates/alolite-core/src/protocol/registry/` and invoke via `Session::api_get` / `Session::api_post`.
+- **Single responsibility & pure protocol boundary.** Keep `rusqlite`, `MessageStore`, and `threads_cache.json` persistence in `crates/alolite-core/src/storage/` (`sync_ingest`, `thread_cache`) — never import `rusqlite` into `protocol/`. Reuse `wire.rs` helpers instead of duplicating JSON coercion, `group_` stripping, or control-envelope parsing.
 - **Every outbound request goes through the standard path:** params → `ParamCipher v2` → `signkey` → session cookie attachment.
 - **Comments in English, user-facing strings in Vietnamese.** See `docs/standards/code-comment-taxonomy.md`.
 - **Do not silently change protocol behaviour.** Any change to params, signing, frame IDs or cipher flow requires evidence (capture, note in `re-notes/`) and a test or documented manual verification.
 - **Missing or inaccurate RE documentation:** If reverse-engineering documentation (`re-notes/`, `docs/`) lacks information or deviates from live server behavior, engineers MUST use the `reverse-engineer-anything` skill and REA MCP tools to re-verify against actual application packages/endpoints rather than speculating.
-- **UI Icon Standard:** Always use embedded vector icon constants (`lucide::...` from `src/assets/fonts/lucide.ttf`). NEVER use raw keyboard emojis (such as `⚠️`, `✅`, `❌`) in UI code, preventing missing-glyph tofu boxes (`□`) caused by fonts lacking Unicode variation selectors.
+- **UI Icon Standard:** Always use embedded SVG/PNG icons (`lucide-react` vector icons and embedded PNG reaction/logo assets). NEVER use raw keyboard emojis (`⚠️`, `✅`, `❌`) in UI code.
 
 ## Engineering Standards
 

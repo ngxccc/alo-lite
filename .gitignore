@@ -44,7 +44,7 @@ book/
 
 # Node / Vite frontend & Tauri generated schemas
 node_modules/
-ui/tauri/src-tauri/gen/
+apps/desktop/src-tauri/gen/
 # Logs & temporary files
 *.tmp
 *.bak

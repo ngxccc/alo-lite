@@ -13,16 +13,13 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      - "book.toml"
       - "scripts/**"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/**"
-      - "book.toml"
       - "scripts/**"
       - ".github/workflows/docs.yml"
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -45,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: mdbook build
+        run: mdbook build docs
 
       - name: Upload site
         uses: actions/upload-artifact@v7

@@ -23,5 +23,5 @@ if ! command -v mdbook >/dev/null 2>&1; then
   exit 1
 fi
 
-mdbook build
+mdbook build docs
 echo "✓ Docs: $(pwd)/book/index.html"
