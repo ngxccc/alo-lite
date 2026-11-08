@@ -2,9 +2,7 @@ import { useState, type SyntheticEvent } from "react";
 import { MessageSquare, Search, UserPlus } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import { Avatar } from "@/shared/ui/Avatar";
-import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
 import type { AppAction, AppState } from "@/app/store/appReducer";
 
 interface PhoneLookupModalProps {
@@ -30,34 +28,46 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
       open={state.phoneModalOpen}
       onOpenChange={(open) => !open && dispatch({ type: "SET_PHONE_MODAL", open: false })}
     >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            <UserPlus className="h-4 w-4 text-primary" /> Thêm bạn & Tra cứu SĐT
+      {/* Zalo-style: rounded-lg (8px), dark overlay, bg-card body */}
+      <DialogContent className="max-w-[460px] rounded-lg border border-border bg-card p-0 shadow-2xl">
+        {/* Dialog header: bg-background, 52px */}
+        <DialogHeader className="flex h-[52px] flex-row items-center gap-2 border-b border-border bg-background px-4 rounded-t-lg">
+          <UserPlus className="h-5 w-5 text-muted-foreground" />
+          <DialogTitle className="text-[18px] font-medium text-foreground">
+            Thêm bạn
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3 p-4">
-          <form onSubmit={submit} className="flex gap-2">
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Nhập số điện thoại (ví dụ 0912345678)…"
-              autoFocus
-            />
-            <Button type="submit" variant="default" disabled={state.phoneLookupLoading}>
-              <Search className="h-3.5 w-3.5" /> {state.phoneLookupLoading ? "Đang tìm…" : "Tìm"}
-            </Button>
+        {/* Body */}
+        <div className="flex flex-col gap-4 p-5">
+          {/* Phone input row with (+84) prefix */}
+          <form id="phone-lookup-form" onSubmit={submit} className="flex gap-2">
+            {/* Country prefix badge */}
+            <div className="flex h-10 items-center justify-center rounded-[6px] bg-canvas px-3 text-[14px] text-foreground">
+              (+84)
+            </div>
+            {/* Phone number input */}
+            <div className="flex h-10 flex-1 items-center rounded-[6px] bg-canvas px-3">
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Số điện thoại"
+                autoFocus
+                className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
           </form>
 
+          {/* Error message */}
           {state.phoneLookupError ? (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
               {state.phoneLookupError}
             </div>
           ) : null}
 
+          {/* Lookup result card */}
           {p ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-background p-3">
               <div className="flex items-center gap-3">
                 <Avatar
                   id={p.user_id}
@@ -67,38 +77,63 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
                   mediaCache={state.mediaCache}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold text-foreground">
+                  <div className="truncate text-[15px] font-medium text-foreground">
                     {p.display_name || p.zalo_name}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[13px] text-muted-foreground">
                     {p.phone} · UID: {p.user_id}
                   </div>
                   {p.status ? (
-                    <div className="truncate text-[11px] text-muted-foreground">{p.status}</div>
+                    <div className="truncate text-[12px] text-muted-foreground">{p.status}</div>
                   ) : null}
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => {
                     dispatch({ type: "SELECT_THREAD", threadId: p.user_id });
                     dispatch({ type: "SET_PHONE_MODAL", open: false });
                   }}
+                  className="flex h-8 items-center gap-1.5 rounded-[6px] bg-secondary px-4 text-[14px] font-medium text-foreground transition-colors hover:bg-secondary/80"
                 >
                   <MessageSquare className="h-3.5 w-3.5" /> Nhắn tin
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   onClick={() => void ipc.addFriend(p.user_id, p.display_name || p.zalo_name)}
+                  className="flex h-8 items-center gap-1.5 rounded-[6px] bg-primary px-4 text-[14px] font-medium text-white transition-colors hover:bg-primary/90"
                 >
                   <UserPlus className="h-3.5 w-3.5" /> Kết bạn
-                </Button>
+                </button>
               </div>
             </div>
           ) : null}
+
+          {/* Footer buttons */}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: false })}
+              className="flex h-9 items-center rounded-[6px] bg-secondary px-6 text-[14px] font-medium text-foreground transition-colors hover:bg-secondary/80"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              form="phone-lookup-form"
+              onClick={() => {
+                if (!phone.trim()) return;
+                dispatch({ type: "START_PHONE_LOOKUP" });
+                void ipc.lookupPhone(phone.trim());
+              }}
+              disabled={state.phoneLookupLoading}
+              className="flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-6 text-[14px] font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+            >
+              <Search className="h-3.5 w-3.5" />
+              {state.phoneLookupLoading ? "Đang tìm…" : "Tìm kiếm"}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
