@@ -672,6 +672,29 @@ impl CoreEngine {
         let s = self.session.lock().await.clone();
         match send_reaction(&s, &to_id, is_group, &msg, &reaction).await {
             Ok(ack) if ack.is_ok() => {
+                let db_path = self.active_db_path().await;
+                let msg_id = msg.id.clone();
+                let react_val = reaction.clone();
+                let tid = to_id.clone();
+                let _ = tokio::task::spawn_blocking(move || {
+                    if let Ok(mut store) = MessageStore::open(&db_path) {
+                        if let Ok(msgs) = store.messages_for(&tid, 200) {
+                            for mut m in msgs {
+                                if m.msg_id == msg_id {
+                                    let mut raw: serde_json::Value =
+                                        serde_json::from_str(&m.raw_json)
+                                            .unwrap_or_else(|_| serde_json::json!({}));
+                                    raw["reactions"] = serde_json::json!([react_val]);
+                                    m.raw_json = raw.to_string();
+                                    let _ = store.upsert_message(&m);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                })
+                .await;
+
                 self.emit(CoreEvent::Reacted {
                     thread_id: to_id,
                     msg_id: msg.id,

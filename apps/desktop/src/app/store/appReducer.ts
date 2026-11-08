@@ -470,19 +470,23 @@ function handleCoreEvent(state: AppState, event: CoreEventDto): AppState {
       };
     }
 
-    case "Reacted":
+    case "Reacted": {
+      const { thread_id, msg_id, ts, reaction } = event.payload;
       return {
         ...state,
-        threads: updateThreadMessage(state.threads, event.payload.thread_id, (t) => ({
+        threads: updateThreadMessage(state.threads, thread_id, (t) => ({
           ...t,
-          messages: t.messages.map((m) =>
-            (m.id && m.id === event.payload.msg_id) || (!m.id && m.ts === event.payload.ts)
-              ? { ...m, reactions: [event.payload.reaction] }
-              : m,
-          ),
+          messages: t.messages.map((m) => {
+            const matches = (msg_id && m.id === msg_id) || (!msg_id && m.ts === ts);
+            if (!matches) return m;
+            const current = m.reactions ?? [];
+            const nextReactions = current.includes(reaction) ? current : [...current, reaction];
+            return { ...m, reactions: nextReactions };
+          }),
         })),
         statusMessage: "Đã thả cảm xúc",
       };
+    }
 
     case "MessageDeleted":
       return {

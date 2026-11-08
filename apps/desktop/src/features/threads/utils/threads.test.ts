@@ -115,8 +115,7 @@ describe("threads domain utils", () => {
       ts: 1005,
     });
     expect(reconciled.messages).toHaveLength(1);
-    expect(reconciled.messages[0].id).toBe("srv_1");
-
+    expect(reconciled.messages[0]?.id).toBe("srv_1");
     const merged = mergeThreadInto(reconciled, {
       ...thread("a", 2000),
       messages: [

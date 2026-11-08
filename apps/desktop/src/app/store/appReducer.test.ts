@@ -172,7 +172,7 @@ describe("appReducer + feature domain invariants", () => {
 
     expect(state.selectedThreadId).toBe("u_200");
     expect(state.unreadCounts.u_100).toBe(1);
-    expect(state.threads[0].id).toBe("u_100");
+    expect(state.threads[0]?.id).toBe("u_100");
   });
 
   it("reconciles MessageSent, Reacted, MessageRecalled, and MessageDeleted cleanly", () => {
@@ -220,8 +220,8 @@ describe("appReducer + feature domain invariants", () => {
         },
       },
     });
-    expect(state.threads[0].messages).toHaveLength(1);
-    expect(state.threads[0].messages[0].id).toBe("srv_1");
+    expect(state.threads[0]?.messages).toHaveLength(1);
+    expect(state.threads[0]?.messages[0]?.id).toBe("srv_1");
 
     state = appReducer(state, {
       type: "CORE_EVENT",
@@ -230,8 +230,7 @@ describe("appReducer + feature domain invariants", () => {
         payload: { thread_id: "u_1", msg_id: "srv_1", ts: 0, reaction: "👍" },
       },
     });
-    expect(state.threads[0].messages[0].reactions).toEqual(["👍"]);
-
+    expect(state.threads[0]?.messages[0]?.reactions).toEqual(["👍"]);
     state = appReducer(state, {
       type: "CORE_EVENT",
       event: {
@@ -239,7 +238,7 @@ describe("appReducer + feature domain invariants", () => {
         payload: { thread_id: "u_1", msg_id: "srv_1", ts: 0 },
       },
     });
-    expect(state.threads[0].messages[0].text).toBe("[Tin nhắn đã thu hồi]");
+    expect(state.threads[0]?.messages[0]?.text).toBe("[Tin nhắn đã thu hồi]");
 
     state = appReducer(state, {
       type: "CORE_EVENT",
@@ -248,7 +247,7 @@ describe("appReducer + feature domain invariants", () => {
         payload: { thread_id: "u_1", msg_id: "srv_1", ts: 0 },
       },
     });
-    expect(state.threads[0].messages).toHaveLength(0);
+    expect(state.threads[0]?.messages).toHaveLength(0);
   });
 
   it("refuses ambiguous quote-jump text references just like Rust unique_reference_index", () => {
