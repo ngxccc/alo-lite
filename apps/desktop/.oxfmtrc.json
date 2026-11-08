@@ -1,0 +1,14 @@
+{
+  "arrowParens": "always",
+  "tabWidth": 2,
+  "useTabs": false,
+  "printWidth": 80,
+  "semi": true,
+  "endOfLine": "lf",
+  "sortPackageJson": false,
+  "sortTailwindcss": {
+    "stylesheet": "src/app/styles/globals.css",
+    "functions": ["cn", "clsx", "cva"]
+  },
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/build/**", ".*/**"]
+}

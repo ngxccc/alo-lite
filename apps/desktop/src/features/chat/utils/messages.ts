@@ -4,14 +4,19 @@ export function stickerCacheKey(stickerId: number, cateId = 0): string {
   return `stk_${cateId}_${stickerId}`;
 }
 
-export function stickerThumbnailUrl(item: Pick<StickerItem, "sticker_id" | "cate_id">): string {
+export function stickerThumbnailUrl(
+  item: Pick<StickerItem, "sticker_id" | "cate_id">,
+): string {
   if (item.cate_id === 0 && item.sticker_id >= 1 && item.sticker_id <= 30) {
     return `https://stc-chat.zdn.vn/images/stickers/default/thumb/${item.sticker_id}.png`;
   }
   return `https://api.zaloapp.com/api/emoticon/sticker/webpc?eid=${item.sticker_id}&size=130`;
 }
 
-export function uniqueReferenceIndex(messages: ChatMessage[], reference: string): number | null {
+export function uniqueReferenceIndex(
+  messages: ChatMessage[],
+  reference: string,
+): number | null {
   const ref = reference.trim();
   if (!ref) return null;
   const byId = messages.reduce<number[]>((acc, m, idx) => {
@@ -64,7 +69,7 @@ export function isPhotoMessage(msg: ChatMessage): boolean {
 
 export function isFileMessage(msg: ChatMessage): boolean {
   if (msg.kind === "file") return true;
-  return Boolean(msg.link_url && msg.link_src && msg.link_src.includes("Tập tin"));
+  return Boolean(msg.link_url && msg.link_src?.includes("Tập tin"));
 }
 
 export function isVideoMessage(msg: ChatMessage): boolean {

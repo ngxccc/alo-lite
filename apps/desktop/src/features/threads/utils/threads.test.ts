@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import type { AppSettings, Thread } from "../../../shared/types/ipc";
-import { isThreadMuted, mergeThreadInto, reconcileSentMessage, sortThreads } from "./threads";
+import {
+  isThreadMuted,
+  mergeThreadInto,
+  reconcileSentMessage,
+  sortThreads,
+} from "./threads";
 
 const baseSettings: AppSettings = {
   show_all_contacts: false,
@@ -58,7 +63,12 @@ function thread(id: string, ts: number): Thread {
     avatar: null,
     is_group: false,
     messages: [],
-    unread: { last_seen_id: null, unread_ids: [], muted: false, marked_unread: false },
+    unread: {
+      last_seen_id: null,
+      unread_ids: [],
+      muted: false,
+      marked_unread: false,
+    },
     presentation: {
       members: [],
       member_count: null,
@@ -76,7 +86,10 @@ function thread(id: string, ts: number): Thread {
 
 describe("threads domain utils", () => {
   it("orders pinned threads above newer unpinned threads", () => {
-    const sorted = sortThreads([thread("a", 5000), thread("b", 1000)], baseSettings);
+    const sorted = sortThreads(
+      [thread("a", 5000), thread("b", 1000)],
+      baseSettings,
+    );
     expect(sorted.map((t) => t.id)).toEqual(["b", "a"]);
   });
 
@@ -89,7 +102,15 @@ describe("threads domain utils", () => {
     const t1: Thread = {
       ...thread("a", 1000),
       messages: [
-        { id: "out_1", client_message_id: "1", sender: "Tôi", text: "Hi", time: "10:00", is_outgoing: true, ts: 1000 },
+        {
+          id: "out_1",
+          client_message_id: "1",
+          sender: "Tôi",
+          text: "Hi",
+          time: "10:00",
+          is_outgoing: true,
+          ts: 1000,
+        },
       ],
     };
     const reconciled = reconcileSentMessage(t1, {
@@ -107,7 +128,14 @@ describe("threads domain utils", () => {
     const merged = mergeThreadInto(reconciled, {
       ...thread("a", 2000),
       messages: [
-        { id: "srv_2", sender: "A", text: "Yo", time: "10:01", is_outgoing: false, ts: 2000 },
+        {
+          id: "srv_2",
+          sender: "A",
+          text: "Yo",
+          time: "10:01",
+          is_outgoing: false,
+          ts: 2000,
+        },
       ],
     });
     expect(merged.messages.map((m) => m.id)).toEqual(["srv_1", "srv_2"]);

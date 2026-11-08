@@ -9,7 +9,7 @@ interface AvatarProps {
   avatarUrl?: string | null;
   isGroup?: boolean;
   size?: number;
-  mediaCache?: Record<string, string>;
+  mediaCache?: Record<string, string | undefined>;
   className?: string;
 }
 
@@ -24,7 +24,8 @@ export function Avatar({
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
   const cachedDataUrl = mediaCache?.[`ava_${id}`];
-  const src = cachedDataUrl || (avatarUrl && !failed ? jxlToJpgUrl(avatarUrl) : "");
+  const src =
+    cachedDataUrl || (avatarUrl && !failed ? jxlToJpgUrl(avatarUrl) : "");
 
   if (src) {
     return (
@@ -36,7 +37,7 @@ export function Avatar({
         onError={() => setFailed(true)}
         style={{ width: size, height: size }}
         className={cn(
-          "rounded-full shrink-0 object-cover border border-border select-none",
+          "shrink-0 rounded-full border border-border object-cover select-none",
           className,
         )}
       />
@@ -53,11 +54,15 @@ export function Avatar({
       }}
       aria-label={name}
       className={cn(
-        "rounded-full shrink-0 inline-flex items-center justify-center font-bold text-white select-none",
+        "inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white select-none",
         className,
       )}
     >
-      {isGroup ? <Users size={Math.round(size * 0.5)} /> : initialsOf(name || "Z")}
+      {isGroup ? (
+        <Users size={Math.round(size * 0.5)} />
+      ) : (
+        initialsOf(name || "Z")
+      )}
     </div>
   );
 }

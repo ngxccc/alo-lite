@@ -21,7 +21,9 @@ export function WipeConfirmModal({ state, dispatch }: WipeConfirmModalProps) {
   return (
     <Dialog
       open={state.wipeConfirmOpen}
-      onOpenChange={(open) => !open && dispatch({ type: "SET_WIPE_CONFIRM", open: false })}
+      onOpenChange={(open) =>
+        !open && dispatch({ type: "SET_WIPE_CONFIRM", open: false })
+      }
     >
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -31,11 +33,19 @@ export function WipeConfirmModal({ state, dispatch }: WipeConfirmModalProps) {
         </DialogHeader>
 
         <div className="p-4 text-xs leading-relaxed text-muted-foreground">
-          Xóa <code className="rounded bg-muted px-1 py-0.5 text-foreground">zalo_history.db</code>{" "}
-          và <code className="rounded bg-muted px-1 py-0.5 text-foreground">threads_cache.json</code>{" "}
+          Xóa{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+            zalo_history.db
+          </code>{" "}
+          và{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+            threads_cache.json
+          </code>{" "}
           trên máy này. Không thể hoàn tác, nhưng phiên đăng nhập{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-foreground">session.json</code> vẫn
-          được giữ nguyên.
+          <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+            session.json
+          </code>{" "}
+          vẫn được giữ nguyên.
         </div>
 
         <DialogFooter>
