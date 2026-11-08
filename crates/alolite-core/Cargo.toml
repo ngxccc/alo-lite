@@ -16,7 +16,7 @@ cipher = "0.4"
 md-5 = "0.10"
 sha2 = "0.10"
 base64 = "0.22"
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 rsa = "0.9.10"
 generic-array = "0.14"
 
