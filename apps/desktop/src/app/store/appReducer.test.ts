@@ -131,14 +131,6 @@ describe("appReducer + feature domain invariants", () => {
       popular_stickers: [],
       onion_stickers: [],
       pinned_packs: [],
-      reaction_assets: {
-        like: "",
-        heart: "",
-        smile: "",
-        surprised: "",
-        cry: "",
-        rage: "",
-      },
       app_logo_data_url: "",
       active_db_path: "test.db",
       sync_running: false,
@@ -193,14 +185,6 @@ describe("appReducer + feature domain invariants", () => {
         popular_stickers: [],
         onion_stickers: [],
         pinned_packs: [],
-        reaction_assets: {
-          like: "",
-          heart: "",
-          smile: "",
-          surprised: "",
-          cry: "",
-          rage: "",
-        },
         app_logo_data_url: "",
         active_db_path: "test.db",
         sync_running: false,
@@ -227,10 +211,10 @@ describe("appReducer + feature domain invariants", () => {
       type: "CORE_EVENT",
       event: {
         type: "Reacted",
-        payload: { thread_id: "u_1", msg_id: "srv_1", ts: 0, reaction: "👍" },
+        payload: { thread_id: "u_1", msg_id: "srv_1", ts: 0, reaction: "\u{1F44D}" },
       },
     });
-    expect(state.threads[0]?.messages[0]?.reactions).toEqual(["👍"]);
+    expect(state.threads[0]?.messages[0]?.reactions).toEqual(["\u{1F44D}"]);
     state = appReducer(state, {
       type: "CORE_EVENT",
       event: {

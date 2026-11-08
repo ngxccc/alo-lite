@@ -2068,7 +2068,6 @@ impl CoreEngine {
             popular_stickers,
             onion_stickers,
             pinned_packs,
-            reaction_assets: super::ipc::embedded_reaction_assets(),
             app_logo_data_url: super::ipc::embedded_app_logo_data_url(),
             active_db_path: db_path,
             sync_running: crate::protocol::sync::RUNNING.load(Ordering::Relaxed),

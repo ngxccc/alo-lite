@@ -24,6 +24,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../../shared/ui/popo
 import { cn } from "../../../shared/utils/cn";
 import { dayKey, formatDayDivider, jxlToJpgUrl, matchesVnQuery } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
+import likeIcon from "../../../assets/reactions/like.png";
+import heartIcon from "../../../assets/reactions/heart.png";
+import smileIcon from "../../../assets/reactions/smile.png";
+import surprisedIcon from "../../../assets/reactions/surprised.png";
+import cryIcon from "../../../assets/reactions/cry.png";
+import rageIcon from "../../../assets/reactions/rage.png";
 import {
   isFileMessage,
   isGifUrl,
@@ -34,6 +40,15 @@ import {
   stickerThumbnailUrl,
   uniqueReferenceIndex,
 } from "../utils/messages";
+
+const REACTION_ICONS = {
+  like: likeIcon,
+  heart: heartIcon,
+  smile: smileIcon,
+  surprised: surprisedIcon,
+  cry: cryIcon,
+  rage: rageIcon,
+} as const;
 import { Composer } from "./Composer";
 
 interface ChatAreaProps {
@@ -312,49 +327,65 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
     window.setTimeout(() => dispatch({ type: "SET_QUOTE_HIGHLIGHT", msgId: null }), 2200);
   };
 
-  const resolveReactionKey = (
-    emoji: string,
-  ): "like" | "heart" | "smile" | "surprised" | "cry" | "rage" | null => {
-    const clean = emoji.trim();
-    if (clean === "👍" || clean === "/-strong" || clean === "like" || clean === "3") return "like";
+  const resolveReactionKey = (raw: string): keyof typeof REACTION_ICONS | null => {
+    const clean = raw.trim();
+    if (clean === "\u{1F44D}" || clean === "/-strong" || clean === "like" || clean === "3") {
+      return "like";
+    }
     if (
-      clean === "❤️" ||
-      clean === "❤" ||
+      clean === "\u{2764}\u{FE0F}" ||
+      clean === "\u{2764}" ||
       clean === "/-heart" ||
       clean === "heart" ||
       clean === "5"
-    )
+    ) {
       return "heart";
-    if (clean === "😆" || clean === ":>" || clean === "smile" || clean === "haha" || clean === "0")
-      return "smile";
+    }
     if (
-      clean === "😮" ||
+      clean === "\u{1F606}" ||
+      clean === ":>" ||
+      clean === "smile" ||
+      clean === "haha" ||
+      clean === "0"
+    ) {
+      return "smile";
+    }
+    if (
+      clean === "\u{1F62E}" ||
       clean === ":o" ||
       clean === "surprised" ||
       clean === "wow" ||
       clean === "32"
-    )
+    ) {
       return "surprised";
-    if (clean === "😢" || clean === ":-((" || clean === "cry" || clean === "buồn" || clean === "2")
-      return "cry";
+    }
     if (
-      clean === "😠" ||
+      clean === "\u{1F622}" ||
+      clean === ":-((" ||
+      clean === "cry" ||
+      clean === "buồn" ||
+      clean === "2"
+    ) {
+      return "cry";
+    }
+    if (
+      clean === "\u{1F620}" ||
       clean === ":-h" ||
       clean === "rage" ||
       clean === "phẫn nộ" ||
       clean === "20"
-    )
+    ) {
       return "rage";
+    }
     return null;
   };
 
   const renderReactionBadge = (raw: string) => {
     const key = resolveReactionKey(raw);
-    const asset = key ? state.reactionAssets[key] : "";
-    if (asset) {
-      return <img src={asset} alt={raw} className="h-4.5 w-4.5 object-contain" />;
+    if (key) {
+      return <img src={REACTION_ICONS[key]} alt={key} className="h-4.5 w-4.5 object-contain" />;
     }
-    const found = REACTION_LIST.find((r) => r.emoji === raw || r.key === key);
+    const found = REACTION_LIST.find((r) => r.emoji === raw);
     return <span className="text-sm leading-none">{found?.emoji ?? raw}</span>;
   };
 
