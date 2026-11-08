@@ -1,5 +1,13 @@
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
+import { Button } from "../../../shared/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../shared/ui/dialog";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 
 interface WipeConfirmModalProps {
@@ -11,50 +19,43 @@ export function WipeConfirmModal({ state, dispatch }: WipeConfirmModalProps) {
   if (!state.wipeConfirmOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: false })}>
-      <div
-        className="modal-card"
-        style={{ width: 400, padding: 18, gap: 12 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="settings-row">
-          <div style={{ fontWeight: 700, color: "var(--danger)", display: "flex", alignItems: "center", gap: 6 }}>
-            <Trash2 size={16} /> Xóa dữ liệu tin nhắn cục bộ
-          </div>
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: false })}
-          >
-            <X size={16} />
-          </button>
+    <Dialog
+      open={state.wipeConfirmOpen}
+      onOpenChange={(open) => !open && dispatch({ type: "SET_WIPE_CONFIRM", open: false })}
+    >
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-destructive">
+            <Trash2 className="h-4 w-4" /> Xóa dữ liệu tin nhắn cục bộ
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="p-4 text-xs leading-relaxed text-muted-foreground">
+          Xóa <code className="rounded bg-muted px-1 py-0.5 text-foreground">zalo_history.db</code>{" "}
+          và <code className="rounded bg-muted px-1 py-0.5 text-foreground">threads_cache.json</code>{" "}
+          trên máy này. Không thể hoàn tác, nhưng phiên đăng nhập{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-foreground">session.json</code> vẫn
+          được giữ nguyên.
         </div>
 
-        <div style={{ fontSize: 12.6, color: "var(--text-secondary)" }}>
-          Xóa <code>zalo_history.db</code> và <code>threads_cache.json</code> trên máy này. Không thể hoàn tác,
-          nhưng phiên đăng nhập <code>session.json</code> vẫn được giữ nguyên.
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button
-            type="button"
-            className="btn"
+        <DialogFooter>
+          <Button
+            variant="outline"
             onClick={() => dispatch({ type: "SET_WIPE_CONFIRM", open: false })}
           >
             Hủy
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
+          </Button>
+          <Button
+            variant="destructive"
             onClick={() => {
               dispatch({ type: "SET_WIPE_CONFIRM", open: false });
               void ipc.wipeLocalData();
             }}
           >
             Xóa dữ liệu
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

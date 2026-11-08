@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { MessageSquare, Search, UserPlus, X } from "lucide-react";
+import { MessageSquare, Search, UserPlus } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
+import { Button } from "../../../shared/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui/dialog";
+import { Input } from "../../../shared/ui/input";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 
 interface PhoneLookupModalProps {
@@ -23,84 +26,81 @@ export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
   const p = state.phoneLookupResult;
 
   return (
-    <div className="modal-backdrop" onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: false })}>
-      <div
-        className="modal-card"
-        style={{ width: 420, padding: 18, gap: 12 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="settings-row">
-          <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-            <UserPlus size={16} color="var(--primary)" /> Thêm bạn & Tra cứu SĐT
-          </div>
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: false })}
-          >
-            <X size={16} />
-          </button>
-        </div>
+    <Dialog
+      open={state.phoneModalOpen}
+      onOpenChange={(open) => !open && dispatch({ type: "SET_PHONE_MODAL", open: false })}
+    >
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            <UserPlus className="h-4 w-4 text-primary" /> Thêm bạn & Tra cứu SĐT
+          </DialogTitle>
+        </DialogHeader>
 
-        <form onSubmit={submit} style={{ display: "flex", gap: 8 }}>
-          <input
-            className="field-input"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Nhập số điện thoại (ví dụ 0912345678)…"
-            autoFocus
-          />
-          <button type="submit" className="btn btn-primary" disabled={state.phoneLookupLoading}>
-            <Search size={14} /> {state.phoneLookupLoading ? "Đang tìm…" : "Tìm"}
-          </button>
-        </form>
+        <div className="flex flex-col gap-3 p-4">
+          <form onSubmit={submit} className="flex gap-2">
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Nhập số điện thoại (ví dụ 0912345678)…"
+              autoFocus
+            />
+            <Button type="submit" variant="default" disabled={state.phoneLookupLoading}>
+              <Search className="h-3.5 w-3.5" /> {state.phoneLookupLoading ? "Đang tìm…" : "Tìm"}
+            </Button>
+          </form>
 
-        {state.phoneLookupError ? (
-          <div style={{ color: "var(--danger)", fontSize: 12.5 }}>{state.phoneLookupError}</div>
-        ) : null}
+          {state.phoneLookupError ? (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {state.phoneLookupError}
+            </div>
+          ) : null}
 
-        {p ? (
-          <div className="settings-box">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar
-                id={p.user_id}
-                name={p.display_name || p.zalo_name}
-                avatarUrl={p.avatar}
-                size={46}
-                mediaCache={state.mediaCache}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700 }}>{p.display_name || p.zalo_name}</div>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                  {p.phone} · UID: {p.user_id}
+          {p ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  id={p.user_id}
+                  name={p.display_name || p.zalo_name}
+                  avatarUrl={p.avatar}
+                  size={46}
+                  mediaCache={state.mediaCache}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold text-foreground">
+                    {p.display_name || p.zalo_name}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {p.phone} · UID: {p.user_id}
+                  </div>
+                  {p.status ? (
+                    <div className="truncate text-[11px] text-muted-foreground">{p.status}</div>
+                  ) : null}
                 </div>
-                {p.status ? (
-                  <div style={{ fontSize: 11.8, color: "var(--text-muted)" }}>{p.status}</div>
-                ) : null}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    dispatch({ type: "SELECT_THREAD", threadId: p.user_id });
+                    dispatch({ type: "SET_PHONE_MODAL", open: false });
+                  }}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" /> Nhắn tin
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => void ipc.addFriend(p.user_id, p.display_name || p.zalo_name)}
+                >
+                  <UserPlus className="h-3.5 w-3.5" /> Kết bạn
+                </Button>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  dispatch({ type: "SELECT_THREAD", threadId: p.user_id });
-                  dispatch({ type: "SET_PHONE_MODAL", open: false });
-                }}
-              >
-                <MessageSquare size={14} /> Nhắn tin
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void ipc.addFriend(p.user_id, p.display_name || p.zalo_name)}
-              >
-                <UserPlus size={14} /> Kết bạn
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </div>
-    </div>
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

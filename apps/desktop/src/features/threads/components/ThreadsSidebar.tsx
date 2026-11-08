@@ -1,4 +1,5 @@
-import { useState, type MouseEvent } from "react";
+import { useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   BellOff,
   EyeOff,
@@ -15,6 +16,17 @@ import {
 import { ipc } from "../../../shared/api/ipc";
 import type { Thread } from "../../../shared/types/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
+import { Badge } from "../../../shared/ui/badge";
+import { Button } from "../../../shared/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "../../../shared/ui/context-menu";
+import { Tabs, TabsList, TabsTrigger } from "../../../shared/ui/tabs";
+import { cn } from "../../../shared/utils/cn";
 import { matchesVnQuery } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { isThreadMuted, threadUnreadCount } from "../utils/threads";
@@ -24,14 +36,8 @@ interface ThreadsSidebarProps {
   dispatch: (action: AppAction) => void;
 }
 
-interface ContextState {
-  x: number;
-  y: number;
-  thread: Thread;
-}
-
 export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
-  const [ctxMenu, setCtxMenu] = useState<ContextState | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const settings = state.settings;
 
   const hiddenSet = new Set(settings?.hidden_threads ?? []);
@@ -49,6 +55,13 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
     );
   });
 
+  const virtualizer = useVirtualizer({
+    count: visibleThreads.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 62,
+    overscan: 8,
+  });
+
   const handleSearchKeyDown = (key: string) => {
     if (key !== "Enter") return;
     const digits = state.searchQuery.replace(/\D/g, "");
@@ -57,11 +70,6 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
       dispatch({ type: "START_PHONE_LOOKUP" });
       void ipc.lookupPhone(state.searchQuery.trim());
     }
-  };
-
-  const openContextMenu = (e: MouseEvent, thread: Thread) => {
-    e.preventDefault();
-    setCtxMenu({ x: e.clientX, y: e.clientY, thread });
   };
 
   const togglePin = (thread: Thread) => {
@@ -74,7 +82,6 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
     dispatch({ type: "UPDATE_SETTINGS_LOCAL", settings: nextSettings });
     void ipc.saveSettings(nextSettings);
     void ipc.pinThread(thread.id, thread.is_group, !isPinned);
-    setCtxMenu(null);
   };
 
   const toggleMute = (thread: Thread, durationSec: number, mute: boolean) => {
@@ -89,7 +96,6 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
     dispatch({ type: "UPDATE_SETTINGS_LOCAL", settings: nextSettings });
     void ipc.saveSettings(nextSettings);
     void ipc.muteThread(thread.id, thread.is_group, durationSec, mute);
-    setCtxMenu(null);
   };
 
   const toggleHide = (thread: Thread) => {
@@ -99,209 +105,216 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
     dispatch({ type: "UPDATE_SETTINGS_LOCAL", settings: nextSettings });
     void ipc.saveSettings(nextSettings);
     void ipc.hideThread(thread.id, thread.is_group, true);
-    setCtxMenu(null);
   };
 
   return (
-    <section className="sidebar" onClick={() => setCtxMenu(null)}>
-      <div className="sidebar-top">
-        <div className="search-row">
-          <div className="search-box">
-            <Search size={14} color="var(--text-muted)" />
+    <section className="flex h-full w-[310px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
+      <div className="flex flex-col gap-2 border-b border-border p-2.5">
+        <div className="flex items-center gap-1.5">
+          <div className="flex h-8 flex-1 items-center gap-1.5 rounded-md border border-border bg-muted/60 px-2.5 focus-within:border-ring focus-within:bg-background">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               type="text"
               value={state.searchQuery}
               onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
               onKeyDown={(e) => handleSearchKeyDown(e.key)}
               placeholder="Tìm hội thoại, tin nhắn, SĐT…"
+              className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {state.searchQuery ? (
               <button
                 type="button"
-                className="icon-btn"
-                style={{ width: 20, height: 20 }}
                 onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
                 title="Xóa tìm kiếm"
+                className="inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <X size={12} />
+                <X className="h-3 w-3" />
               </button>
             ) : null}
           </div>
-          <button
-            type="button"
-            className="icon-btn"
+          <Button
+            variant="ghost"
+            size="icon"
             title="Tra cứu SĐT & Kết bạn"
             onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
           >
-            <UserPlus size={16} />
-          </button>
+            <UserPlus className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="filter-tabs">
-          {[
-            { id: "all" as const, label: "Tất cả" },
-            { id: "direct" as const, label: "Cá nhân" },
-            { id: "groups" as const, label: "Nhóm" },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`filter-tab ${state.threadFilter === item.id ? "active" : ""}`}
-              onClick={() => dispatch({ type: "SET_THREAD_FILTER", filter: item.id })}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          value={state.threadFilter}
+          onValueChange={(v) =>
+            dispatch({ type: "SET_THREAD_FILTER", filter: v as "all" | "direct" | "groups" })
+          }
+        >
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="all">Tất cả</TabsTrigger>
+            <TabsTrigger value="direct">Cá nhân</TabsTrigger>
+            <TabsTrigger value="groups">Nhóm</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      <div className="thread-list">
+      <div ref={listRef} className="flex-1 overflow-y-auto px-1.5 py-1">
         {visibleThreads.length === 0 ? (
-          <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12.5 }}>
+          <div className="p-6 text-center text-xs text-muted-foreground">
             Không có hội thoại phù hợp
           </div>
         ) : (
-          visibleThreads.map((t) => {
-            const selected = t.id === state.selectedThreadId;
-            const muted = settings ? isThreadMuted(t, settings) : false;
-            const pinned = t.presentation.pinned || pinnedSet.has(t.id);
-            const unread = threadUnreadCount(t, state.unreadCounts);
-            const hasDot = unread > 0 || t.unread.marked_unread;
+          <div
+            style={{ height: virtualizer.getTotalSize() }}
+            className="relative w-full"
+          >
+            {virtualizer.getVirtualItems().map((vRow) => {
+              const t = visibleThreads[vRow.index];
+              if (!t) return null;
+              const selected = t.id === state.selectedThreadId;
+              const muted = settings ? isThreadMuted(t, settings) : false;
+              const pinned = t.presentation.pinned || pinnedSet.has(t.id);
+              const unread = threadUnreadCount(t, state.unreadCounts);
+              const hasDot = unread > 0 || t.unread.marked_unread;
 
-            return (
-              <div
-                key={t.id}
-                className={`thread-row ${selected ? "selected" : ""}`}
-                onClick={() => {
-                  dispatch({ type: "SELECT_THREAD", threadId: t.id });
-                  const last = t.messages[t.messages.length - 1];
-                  if (last && !last.is_outgoing && last.id) {
-                    void ipc.sendSeen(t.id, t.is_group, last.id);
-                  }
-                }}
-                onContextMenu={(e) => openContextMenu(e, t)}
-              >
-                <Avatar
-                  id={t.id}
-                  name={t.name}
-                  avatarUrl={t.avatar}
-                  isGroup={t.is_group}
-                  size={40}
-                  mediaCache={state.mediaCache}
-                />
-                <div className="thread-meta">
-                  <div className="thread-title-line">
-                    <span
-                      className="thread-name"
-                      style={{ fontWeight: hasDot ? 700 : 600 }}
+              return (
+                <ContextMenu key={t.id}>
+                  <ContextMenuTrigger asChild>
+                    <div
+                      style={{
+                        height: vRow.size,
+                        transform: `translateY(${vRow.start}px)`,
+                      }}
+                      onClick={() => {
+                        dispatch({ type: "SELECT_THREAD", threadId: t.id });
+                        const last = t.messages[t.messages.length - 1];
+                        if (last && !last.is_outgoing && last.id) {
+                          void ipc.sendSeen(t.id, t.is_group, last.id);
+                        }
+                      }}
+                      className={cn(
+                        "absolute top-0 left-0 right-0 flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors",
+                        selected ? "bg-accent text-accent-foreground" : "hover:bg-muted/70",
+                      )}
                     >
-                      {t.name || t.id}
-                    </span>
-                    <span className="thread-time">{t.time}</span>
-                  </div>
-                  <div className="thread-preview-line">
-                    <span className="thread-preview">{t.preview || "Chưa có tin nhắn"}</span>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                      {pinned ? <Pin size={11} color="var(--primary)" /> : null}
-                      {muted ? <BellOff size={11} color="var(--text-muted)" /> : null}
-                      {unread > 0 ? (
-                        <span className="unread-pill">{unread > 99 ? "99+" : unread}</span>
-                      ) : t.unread.marked_unread ? (
-                        <span className="unread-pill" style={{ minWidth: 10, height: 10, padding: 0 }} />
-                      ) : null}
+                      <Avatar
+                        id={t.id}
+                        name={t.name}
+                        avatarUrl={t.avatar}
+                        isGroup={t.is_group}
+                        size={40}
+                        mediaCache={state.mediaCache}
+                      />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span
+                            className={cn(
+                              "truncate text-[13.2px] text-foreground",
+                              hasDot ? "font-bold" : "font-semibold",
+                            )}
+                          >
+                            {t.name || t.id}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {t.time}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="truncate text-xs text-muted-foreground">
+                            {t.preview || "Chưa có tin nhắn"}
+                          </span>
+                          <div className="inline-flex shrink-0 items-center gap-1">
+                            {pinned ? <Pin className="h-3 w-3 text-primary" /> : null}
+                            {muted ? <BellOff className="h-3 w-3 text-muted-foreground" /> : null}
+                            {unread > 0 ? (
+                              <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
+                                {unread > 99 ? "99+" : unread}
+                              </Badge>
+                            ) : t.unread.marked_unread ? (
+                              <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                  </ContextMenuTrigger>
+
+                  <ContextMenuContent>
+                    <ContextMenuItem onSelect={() => togglePin(t)}>
+                      {pinned ? (
+                        <>
+                          <PinOff className="h-3.5 w-3.5" /> Bỏ ghim hội thoại
+                        </>
+                      ) : (
+                        <>
+                          <Pin className="h-3.5 w-3.5" /> Ghim hội thoại
+                        </>
+                      )}
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onSelect={() => {
+                        const markUnread = !t.unread.marked_unread;
+                        void ipc.markThreadUnread(t.id, t.is_group, markUnread);
+                      }}
+                    >
+                      {t.unread.marked_unread ? (
+                        <>
+                          <MailOpen className="h-3.5 w-3.5" /> Đánh dấu đã đọc
+                        </>
+                      ) : (
+                        <>
+                          <MailCheck className="h-3.5 w-3.5" /> Đánh dấu chưa đọc
+                        </>
+                      )}
+                    </ContextMenuItem>
+                    {muted ? (
+                      <ContextMenuItem onSelect={() => toggleMute(t, 0, false)}>
+                        <BellOff className="h-3.5 w-3.5" /> Bật lại thông báo
+                      </ContextMenuItem>
+                    ) : (
+                      <>
+                        <ContextMenuItem onSelect={() => toggleMute(t, 3600, true)}>
+                          <BellOff className="h-3.5 w-3.5" /> Tắt thông báo 1 giờ
+                        </ContextMenuItem>
+                        <ContextMenuItem onSelect={() => toggleMute(t, -1, true)}>
+                          <BellOff className="h-3.5 w-3.5" /> Tắt đến khi bật lại
+                        </ContextMenuItem>
+                      </>
+                    )}
+                    <ContextMenuItem onSelect={() => toggleHide(t)}>
+                      <EyeOff className="h-3.5 w-3.5" /> Ẩn trò chuyện
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      destructive
+                      onSelect={() => {
+                        const last = t.messages[t.messages.length - 1];
+                        void ipc.deleteThread(
+                          t.id,
+                          t.is_group,
+                          last?.client_message_id || last?.id || "",
+                        );
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Xóa hội thoại
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      <div className="sidebar-footer">
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {state.statusMessage}
-        </span>
-        <button
-          type="button"
-          className="icon-btn"
-          style={{ width: 24, height: 24 }}
+      <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
+        <span className="truncate">{state.statusMessage}</span>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           title="Làm mới"
           onClick={() => void ipc.refreshThreads(true)}
         >
-          <RefreshCw size={12} />
-        </button>
+          <RefreshCw className="h-3 w-3" />
+        </Button>
       </div>
-
-      {ctxMenu ? (
-        <div
-          className="context-menu"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button type="button" onClick={() => togglePin(ctxMenu.thread)}>
-            {ctxMenu.thread.presentation.pinned || pinnedSet.has(ctxMenu.thread.id) ? (
-              <>
-                <PinOff size={14} /> Bỏ ghim hội thoại
-              </>
-            ) : (
-              <>
-                <Pin size={14} /> Ghim hội thoại
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const markUnread = !ctxMenu.thread.unread.marked_unread;
-              void ipc.markThreadUnread(ctxMenu.thread.id, ctxMenu.thread.is_group, markUnread);
-              setCtxMenu(null);
-            }}
-          >
-            {ctxMenu.thread.unread.marked_unread ? (
-              <>
-                <MailOpen size={14} /> Đánh dấu đã đọc
-              </>
-            ) : (
-              <>
-                <MailCheck size={14} /> Đánh dấu chưa đọc
-              </>
-            )}
-          </button>
-          {settings && isThreadMuted(ctxMenu.thread, settings) ? (
-            <button type="button" onClick={() => toggleMute(ctxMenu.thread, 0, false)}>
-              <BellOff size={14} /> Bật lại thông báo
-            </button>
-          ) : (
-            <>
-              <button type="button" onClick={() => toggleMute(ctxMenu.thread, 3600, true)}>
-                <BellOff size={14} /> Tắt thông báo 1 giờ
-              </button>
-              <button type="button" onClick={() => toggleMute(ctxMenu.thread, -1, true)}>
-                <BellOff size={14} /> Tắt đến khi bật lại
-              </button>
-            </>
-          )}
-          <button type="button" onClick={() => toggleHide(ctxMenu.thread)}>
-            <EyeOff size={14} /> Ẩn trò chuyện
-          </button>
-          <button
-            type="button"
-            style={{ color: "var(--danger)" }}
-            onClick={() => {
-              const last = ctxMenu.thread.messages[ctxMenu.thread.messages.length - 1];
-              void ipc.deleteThread(
-                ctxMenu.thread.id,
-                ctxMenu.thread.is_group,
-                last?.client_message_id || last?.id || "",
-              );
-              setCtxMenu(null);
-            }}
-          >
-            <Trash2 size={14} /> Xóa hội thoại
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

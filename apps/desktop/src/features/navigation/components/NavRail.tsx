@@ -11,12 +11,47 @@ import {
 } from "lucide-react";
 import { ipc } from "../../../shared/api/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../shared/ui/tooltip";
+import { cn } from "../../../shared/utils/cn";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import { threadUnreadCount } from "../../threads/utils/threads";
 
 interface NavRailProps {
   state: AppState;
   dispatch: (action: AppAction) => void;
+}
+
+function RailButton({
+  active = false,
+  label,
+  onClick,
+  children,
+}: {
+  active?: boolean;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={label}
+          className={cn(
+            "relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors cursor-pointer select-none",
+            active
+              ? "bg-rail-muted text-white shadow-xs"
+              : "text-rail-foreground/80 hover:bg-rail-muted hover:text-white",
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function NavRail({ state, dispatch }: NavRailProps) {
@@ -43,99 +78,94 @@ export function NavRail({ state, dispatch }: NavRailProps) {
   };
 
   return (
-    <aside className="nav-rail" aria-label="Thanh điều hướng chính">
-      <div className="nav-group">
-        <button
-          type="button"
-          className="nav-btn"
-          title={`${state.displayName || "Tài khoản"} — Cài đặt tài khoản`}
-          onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })}
-        >
-          <Avatar
-            id={state.uin || "self"}
-            name={state.displayName || "Me"}
-            avatarUrl={state.avatar}
-            size={36}
-            mediaCache={state.mediaCache}
-          />
-        </button>
+    <aside
+      aria-label="Thanh điều hướng chính"
+      className="flex h-full w-14 shrink-0 flex-col items-center justify-between border-r border-border bg-rail py-3 text-rail-foreground"
+    >
+      <div className="flex flex-col items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "account" })}
+              className="relative mb-1 rounded-full ring-2 ring-white/25 transition hover:ring-white/60 cursor-pointer"
+            >
+              <Avatar
+                id={state.uin || "self"}
+                name={state.displayName || "Me"}
+                avatarUrl={state.avatar}
+                size={36}
+                mediaCache={state.mediaCache}
+              />
+              <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-rail bg-online" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {state.displayName || "Tài khoản"} — Cài đặt tài khoản
+          </TooltipContent>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={`nav-btn ${state.activeSection === "chat" ? "active" : ""}`}
-          title="Tin nhắn"
+        <RailButton
+          active={state.activeSection === "chat"}
+          label="Tin nhắn"
           onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "chat" })}
         >
-          <MessageSquare size={20} />
+          <MessageSquare className="h-5 w-5" />
           {totalUnread > 0 ? (
-            <span className="nav-badge">{totalUnread > 99 ? "99+" : totalUnread}</span>
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+              {totalUnread > 99 ? "99+" : totalUnread}
+            </span>
           ) : null}
-        </button>
+        </RailButton>
 
-        <button
-          type="button"
-          className={`nav-btn ${state.activeSection === "contacts" ? "active" : ""}`}
-          title="Danh bạ"
+        <RailButton
+          active={state.activeSection === "contacts"}
+          label="Danh bạ"
           onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "contacts" })}
         >
-          <Users size={20} />
-        </button>
+          <Users className="h-5 w-5" />
+        </RailButton>
 
-        <button
-          type="button"
-          className="nav-btn"
-          title="Cloud của tôi"
-          onClick={openCloudThread}
-        >
-          <Cloud size={20} />
-        </button>
+        <RailButton label="Cloud của tôi" onClick={openCloudThread}>
+          <Cloud className="h-5 w-5" />
+        </RailButton>
 
-        <button
-          type="button"
-          className="nav-btn"
-          title="Đồng bộ tin nhắn từ điện thoại"
+        <RailButton
+          label="Đồng bộ tin nhắn từ điện thoại"
           onClick={() => dispatch({ type: "SET_PHONE_SYNC_MODAL", open: true })}
         >
-          <Smartphone size={20} />
-        </button>
+          <Smartphone className="h-5 w-5" />
+        </RailButton>
       </div>
 
-      <div className="nav-group">
-        <button
-          type="button"
-          className="nav-btn"
-          title="Làm mới hội thoại từ máy chủ"
+      <div className="flex flex-col items-center gap-2">
+        <RailButton
+          label="Làm mới hội thoại từ máy chủ"
           onClick={() => void ipc.refreshThreads(true)}
         >
-          <RefreshCw size={18} />
-        </button>
+          <RefreshCw className="h-[18px] w-[18px]" />
+        </RailButton>
 
-        <button
-          type="button"
-          className="nav-btn"
-          title={isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"}
+        <RailButton
+          label={isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"}
           onClick={toggleTheme}
         >
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
+          {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+        </RailButton>
 
-        <button
-          type="button"
-          className="nav-btn"
-          title="Kiểm tra nhật ký & giao thức (DevTools)"
+        <RailButton
+          label="Kiểm tra nhật ký & giao thức (DevTools)"
           onClick={() => dispatch({ type: "SET_DEV_MODAL", open: true })}
         >
-          <Bug size={18} />
-        </button>
+          <Bug className="h-[18px] w-[18px]" />
+        </RailButton>
 
-        <button
-          type="button"
-          className="nav-btn"
-          title="Cài đặt (Ctrl+Shift+P mở Quyền riêng tư)"
+        <RailButton
+          label="Cài đặt (Ctrl+Shift+P mở Quyền riêng tư)"
           onClick={() => dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })}
         >
-          <Settings size={19} />
-        </button>
+          <Settings className="h-[19px] w-[19px]" />
+        </RailButton>
       </div>
     </aside>
   );
