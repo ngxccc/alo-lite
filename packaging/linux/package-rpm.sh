@@ -27,7 +27,7 @@ URL:            https://github.com/ngxccc/alolite
 BuildArch:      x86_64
 AutoReqProv:    no
 Requires:       gtk3, webkit2gtk4.1, libsoup3
-Recommends:     gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-libav
+Recommends:     gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, gstreamer1-libav
 %description
 Lightweight native desktop messaging client written in Rust + Tauri.
 

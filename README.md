@@ -57,11 +57,11 @@ WebKitGTK plays `<video>` through GStreamer. Alolite checks for the `qtdemux` (M
 
 | Distribution | Command |
 |:---|:---|
-| Debian / Ubuntu / Linux Mint / Pop!_OS | `sudo apt install gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav` |
-| Fedora / RHEL / Rocky | `sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-libav` |
-| Arch / Manjaro / EndeavourOS | `sudo pacman -S gst-plugins-base gst-plugins-good gst-libav` |
+| Debian / Ubuntu / Linux Mint / Pop!_OS | `sudo apt install gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav` |
+| Fedora / RHEL / Rocky | `sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-libav` |
+| Arch / Manjaro / EndeavourOS | `sudo pacman -S gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav` |
 
-- `gst-plugins-base` provides core elements, `gst-plugins-good` provides the MP4 demuxer and audio output auto-detection, and `gst-libav` provides the H.264/AAC decoders used by most chat videos.
+- `gst-plugins-base` provides core pipeline elements, `gst-plugins-good` and `gst-plugins-bad` provide MP4/WebM demuxers, stream parsers, and audio sinks, and `gst-libav` provides H.264/AAC decoders used by chat media.
 - On Fedora the stock `gstreamer1-libav` may lack H.264 for patent reasons; if videos still do not play, enable [RPM Fusion](https://rpmfusion.org/) and install its `ffmpeg`/`gstreamer1-plugin-libav` packages.
 - Verify the installation:
 
