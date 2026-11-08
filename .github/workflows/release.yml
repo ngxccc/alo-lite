@@ -46,11 +46,11 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name || inputs.tag_name }}
-          name: Alolite ${{ github.ref_name || inputs.tag_name }} (Linux)
+          name: AloLite Release ${{ github.ref_name || inputs.tag_name }}
           files: release_assets/*
           generate_release_notes: true
           body: |
-            ### Alolite Linux Release (${{ github.ref_name || inputs.tag_name }})
+            ### AloLite Release (${{ github.ref_name || inputs.tag_name }})
 
             Lightweight, native messaging desktop client for Linux written in Rust (Zero Node.js, Zero Electron).
 
