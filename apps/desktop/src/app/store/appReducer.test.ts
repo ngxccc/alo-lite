@@ -135,6 +135,8 @@ describe("appReducer + feature domain invariants", () => {
       active_db_path: "test.db",
       sync_running: false,
       phone_sync_running: false,
+      inline_video_supported: true,
+      inline_video_reason: null,
     };
 
     let state = appReducer(initialAppState, { type: "BOOTSTRAP", snapshot });
@@ -189,6 +191,8 @@ describe("appReducer + feature domain invariants", () => {
         active_db_path: "test.db",
         sync_running: false,
         phone_sync_running: false,
+        inline_video_supported: true,
+        inline_video_reason: null,
       },
     });
 

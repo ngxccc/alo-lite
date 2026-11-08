@@ -2055,6 +2055,11 @@ impl CoreEngine {
             }
         }
 
+        let (inline_video_supported, inline_video_reason) =
+            tokio::task::spawn_blocking(super::ipc::detect_inline_video_support)
+                .await
+                .unwrap_or((true, None));
+
         super::CoreBootstrapSnapshot {
             app_version: env!("CARGO_PKG_VERSION"),
             dev_mode: crate::logger::is_dev_mode(),
@@ -2072,6 +2077,8 @@ impl CoreEngine {
             active_db_path: db_path,
             sync_running: crate::protocol::sync::RUNNING.load(Ordering::Relaxed),
             phone_sync_running: PHONE_SYNC_RUNNING.load(Ordering::Relaxed),
+            inline_video_supported,
+            inline_video_reason,
         }
     }
 

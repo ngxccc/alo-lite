@@ -119,9 +119,22 @@ function PhotoMessageMedia({
   );
 }
 
-function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir: string }) {
+function VideoMessageMedia({
+  msg,
+  downloadDir,
+  inlineVideoSupported,
+  inlineVideoReason,
+  onNotify,
+}: {
+  msg: ChatMessage;
+  downloadDir: string;
+  inlineVideoSupported: boolean;
+  inlineVideoReason: string | null;
+  onNotify: (message: string) => void;
+}) {
   const [playing, setPlaying] = useState(false);
   const [playbackError, setPlaybackError] = useState(false);
+  const [blockedClick, setBlockedClick] = useState(false);
   const videoUrl = msg.link_url ?? "";
   const posterUrl = msg.link_thumb ? jxlToJpgUrl(msg.link_thumb) : undefined;
   const fileName =
@@ -134,25 +147,40 @@ function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir
   useEffect(() => {
     setPlaying(false);
     setPlaybackError(false);
+    setBlockedClick(false);
   }, [videoUrl]);
+
+  const unsupportedMessage =
+    inlineVideoReason ??
+    "Thiếu GStreamer (gst-plugins-good / gst-libav) nên không thể phát video trực tiếp.";
 
   return (
     <div className="flex flex-col gap-1.5">
-      {videoUrl && playing && !playbackError ? (
+      {videoUrl && inlineVideoSupported && playing && !playbackError ? (
         <video
           src={videoUrl}
           poster={posterUrl}
           controls
           autoPlay
           preload="auto"
-          onError={() => setPlaybackError(true)}
+          onError={() => {
+            setPlaybackError(true);
+            onNotify("Không thể phát trực tiếp video này — hãy thử mở ngoài hoặc tải về.");
+          }}
           className="max-h-[300px] max-w-[340px] rounded-lg bg-black/90 object-contain"
         />
       ) : videoUrl ? (
         <button
           type="button"
           onClick={() => {
-            if (playbackError) {
+            if (!inlineVideoSupported) {
+              if (blockedClick) {
+                void ipc.openExternalUrl(videoUrl);
+              } else {
+                setBlockedClick(true);
+                onNotify(unsupportedMessage);
+              }
+            } else if (playbackError) {
               void ipc.openExternalUrl(videoUrl);
             } else {
               setPlaying(true);
@@ -173,9 +201,17 @@ function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 ring-1 ring-white/40 transition group-hover/vid:scale-105 group-hover/vid:bg-primary">
               <Play className="ml-0.5 h-5 w-5 fill-current" />
             </div>
-            {playbackError ? (
-              <span className="rounded bg-black/75 px-2 py-0.5 text-[11px] text-amber-200">
-                Thiếu GStreamer (gst-plugins-good) · Bấm để mở ngoài
+            {!inlineVideoSupported && blockedClick ? (
+              <span className="rounded bg-black/80 px-2.5 py-1 text-center text-[11.5px] leading-snug text-amber-200">
+                {unsupportedMessage} (Bấm lần nữa để mở ngoài)
+              </span>
+            ) : playbackError ? (
+              <span className="rounded bg-black/80 px-2.5 py-1 text-[11.5px] text-amber-200">
+                Không thể phát trực tiếp · Bấm để mở ngoài
+              </span>
+            ) : !inlineVideoSupported ? (
+              <span className="rounded bg-black/65 px-2 py-0.5 text-[11px] text-white/90">
+                Thiếu codec GStreamer · Bấm để xem chi tiết
               </span>
             ) : null}
           </div>
@@ -187,13 +223,24 @@ function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir
           {!shouldHideMediaCaption(msg) ? msg.text : "Video"}
         </span>
         {videoUrl ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void ipc.downloadFile(videoUrl, fileName, downloadDir)}
-          >
-            <Download className="h-3.5 w-3.5" /> Tải về
-          </Button>
+          <div className="flex items-center gap-1.5">
+            {!inlineVideoSupported || playbackError ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void ipc.openExternalUrl(videoUrl)}
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Mở ngoài
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void ipc.downloadFile(videoUrl, fileName, downloadDir)}
+            >
+              <Download className="h-3.5 w-3.5" /> Tải về
+            </Button>
+          </div>
         ) : null}
       </div>
     </div>
@@ -671,6 +718,9 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                         <VideoMessageMedia
                           msg={msg}
                           downloadDir={state.settings?.download_dir ?? ""}
+                          inlineVideoSupported={state.inlineVideoSupported}
+                          inlineVideoReason={state.inlineVideoReason}
+                          onNotify={(message) => dispatch({ type: "SHOW_TOAST", message })}
                         />
                       ) : isPhotoMessage(msg) &&
                         Boolean(msg.link_thumb ?? msg.link_url ?? isGifUrl(msg.text)) ? (

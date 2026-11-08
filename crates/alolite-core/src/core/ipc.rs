@@ -68,6 +68,8 @@ pub struct CoreBootstrapSnapshot {
     pub active_db_path: String,
     pub sync_running: bool,
     pub phone_sync_running: bool,
+    pub inline_video_supported: bool,
+    pub inline_video_reason: Option<String>,
 }
 
 fn encode_png_asset(bytes: &[u8]) -> String {
@@ -79,6 +81,43 @@ pub fn embedded_app_logo_data_url() -> String {
     encode_png_asset(include_bytes!("../../assets/app_icon.png"))
 }
 
+/// Probe whether the host WebView has the runtime codecs/sinks needed for inline `<video>`
+/// without blocking or crashing `WebKitWebProcess` on missing GStreamer elements.
+pub fn detect_inline_video_support() -> (bool, Option<String>) {
+    #[cfg(target_os = "linux")]
+    {
+        let has_element = |name: &str| -> Option<bool> {
+            std::process::Command::new("gst-inspect-1.0")
+                .args(["--exists", name])
+                .status()
+                .ok()
+                .map(|st| st.success())
+        };
+        let has_so = |file: &str| -> bool {
+            [
+                "/usr/lib/gstreamer-1.0",
+                "/usr/lib/x86_64-linux-gnu/gstreamer-1.0",
+                "/usr/lib/aarch64-linux-gnu/gstreamer-1.0",
+                "/usr/lib64/gstreamer-1.0",
+            ]
+            .iter()
+            .any(|dir| std::path::Path::new(dir).join(file).exists())
+        };
+        let has_auto =
+            has_element("autoaudiosink").unwrap_or_else(|| has_so("libgstautodetect.so"));
+        let has_mp4 = has_element("qtdemux").unwrap_or_else(|| has_so("libgstisomp4.so"));
+        if !has_auto || !has_mp4 {
+            return (
+                false,
+                Some(
+                    "Thiếu GStreamer (gst-plugins-base, gst-plugins-good, gst-libav) — hãy cài để phát video trực tiếp hoặc mở bằng trình phát ngoài."
+                        .to_string(),
+                ),
+            );
+        }
+    }
+    (true, None)
+}
 /// JSON-serializable projection of [`CoreEvent`] for Tauri WebView IPC.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "payload")]

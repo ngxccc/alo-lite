@@ -282,6 +282,8 @@ export interface CoreBootstrapSnapshot {
   active_db_path: string;
   sync_running: boolean;
   phone_sync_running: boolean;
+  inline_video_supported: boolean;
+  inline_video_reason?: string | null;
 }
 
 export type CoreEventDto =
