@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "src/**"
+      - "crates/**"
+      - "apps/desktop/**"
       - "packaging/**"
       - "Cargo.*"
-      - "build.rs"
       - ".github/workflows/build.yml"
       - ".github/setup-rust/**"
   workflow_call:
@@ -30,6 +30,9 @@ jobs:
         uses: ./.github/setup-rust
         with:
           packaging-tools: "true"
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Build binary and all Linux packages
         run: ./packaging/linux/package-all.sh

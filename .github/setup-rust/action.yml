@@ -42,4 +42,6 @@ runs:
       shell: bash
       run: |
         sudo apt-get install -y --no-install-recommends \
-          rpm file desktop-file-utils libfuse2 jq
+          rpm file desktop-file-utils libfuse2 jq patchelf \
+          libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev \
+          libayatana-appindicator3-dev libxdo-dev

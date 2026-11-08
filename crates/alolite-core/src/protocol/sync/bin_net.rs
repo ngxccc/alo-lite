@@ -176,10 +176,9 @@ fn decode_tlv_str(bytes: &[u8]) -> Option<String> {
         }
     }
     if bytes.len() >= 2 && bytes.len().is_multiple_of(2) {
-        let units: Vec<u16> = bytes
-            .chunks_exact(2)
-            .map(|c| u16::from_le_bytes([c[0], c[1]]))
-            .collect();
+        // Even length is guaranteed above, so `as_chunks` leaves no remainder.
+        let (pairs, _) = bytes.as_chunks::<2>();
+        let units: Vec<u16> = pairs.iter().map(|c| u16::from_le_bytes(*c)).collect();
         if let Ok(utf16) = String::from_utf16(&units) {
             let trimmed = utf16.trim_matches('\0').trim();
             if !trimmed.is_empty()
