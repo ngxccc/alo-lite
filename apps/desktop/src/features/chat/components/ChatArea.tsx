@@ -8,6 +8,7 @@ import {
   Forward,
   Info,
   Phone,
+  Play,
   RotateCcw,
   Search,
   SmilePlus,
@@ -119,6 +120,8 @@ function PhotoMessageMedia({
 }
 
 function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
   const videoUrl = msg.link_url ?? "";
   const posterUrl = msg.link_thumb ? jxlToJpgUrl(msg.link_thumb) : undefined;
   const fileName =
@@ -128,16 +131,55 @@ function VideoMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downloadDir
         : `${msg.link_title}.mp4`
       : "video.mp4";
 
+  useEffect(() => {
+    setPlaying(false);
+    setPlaybackError(false);
+  }, [videoUrl]);
+
   return (
     <div className="flex flex-col gap-1.5">
-      {videoUrl ? (
+      {videoUrl && playing && !playbackError ? (
         <video
           src={videoUrl}
           poster={posterUrl}
           controls
-          preload="metadata"
+          autoPlay
+          preload="auto"
+          onError={() => setPlaybackError(true)}
           className="max-h-[300px] max-w-[340px] rounded-lg bg-black/90 object-contain"
         />
+      ) : videoUrl ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (playbackError) {
+              void ipc.openExternalUrl(videoUrl);
+            } else {
+              setPlaying(true);
+            }
+          }}
+          className="group/vid relative flex min-h-[150px] max-w-[320px] min-w-[220px] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-border bg-black/80"
+        >
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={fileName}
+              loading="lazy"
+              decoding="async"
+              className="max-h-[260px] w-full object-cover opacity-85 transition group-hover/vid:opacity-100"
+            />
+          ) : null}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/30 p-3 text-white">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 ring-1 ring-white/40 transition group-hover/vid:scale-105 group-hover/vid:bg-primary">
+              <Play className="ml-0.5 h-5 w-5 fill-current" />
+            </div>
+            {playbackError ? (
+              <span className="rounded bg-black/75 px-2 py-0.5 text-[11px] text-amber-200">
+                Thiếu GStreamer (gst-plugins-good) · Bấm để mở ngoài
+              </span>
+            ) : null}
+          </div>
+        </button>
       ) : null}
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
