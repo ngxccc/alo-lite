@@ -19,14 +19,13 @@ import {
 import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
 import { REACTION_LIST, type ChatMessage, type Thread } from "../../../shared/types/ipc";
 import { Avatar } from "../../../shared/ui/Avatar";
-import { dayKey, formatDayDivider, matchesVnQuery } from "../../../shared/utils/text";
+import { dayKey, formatDayDivider, jxlToJpgUrl, matchesVnQuery } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
 import {
   isFileMessage,
   isPhotoMessage,
   isVideoMessage,
   parseCallCard,
-  stickerCacheKey,
   stickerThumbnailUrl,
   uniqueReferenceIndex,
 } from "../utils/messages";
@@ -37,58 +36,40 @@ interface ChatAreaProps {
   dispatch: (action: AppAction) => void;
 }
 
-function StickerMessageMedia({
-  msg,
-  mediaCache,
-}: {
-  msg: ChatMessage;
-  mediaCache: Record<string, string>;
-}) {
+function StickerMessageMedia({ msg }: { msg: ChatMessage }) {
   const sid = msg.sticker_id ?? 0;
   const cid = msg.sticker_cate_id ?? 0;
-  const key = stickerCacheKey(sid, cid);
-  const dataUrl = mediaCache[key];
-
-  useEffect(() => {
-    if (!sid || dataUrl || !isTauriRuntime()) return;
-    void ipc.fetchMediaData(key, stickerThumbnailUrl({ sticker_id: sid, cate_id: cid }));
-  }, [sid, cid, key, dataUrl]);
-
-  if (dataUrl) {
-    return <img src={dataUrl} alt={msg.text} style={{ width: 112, height: 112, objectFit: "contain" }} />;
-  }
+  if (!sid) return null;
   return (
-    <div style={{ width: 100, height: 100, display: "grid", placeItems: "center", color: "var(--text-muted)", fontSize: 11.5 }}>
-      Đang tải nhãn dán…
-    </div>
+    <img
+      src={stickerThumbnailUrl({ sticker_id: sid, cate_id: cid })}
+      alt={msg.text}
+      loading="lazy"
+      decoding="async"
+      style={{ width: 112, height: 112, objectFit: "contain" }}
+    />
   );
 }
 
 function PhotoMessageMedia({
   msg,
-  mediaCache,
   onOpenViewer,
 }: {
   msg: ChatMessage;
-  mediaCache: Record<string, string>;
   onOpenViewer: (texKey: string, fullUrl: string) => void;
 }) {
-  const thumbUrl = msg.link_thumb || msg.link_url || "";
+  const thumbUrl = jxlToJpgUrl(msg.link_thumb || msg.link_url || "");
   const fullUrl = msg.link_url || thumbUrl;
   const key = `img_${msg.id || msg.ts}`;
-  const dataUrl = mediaCache[key];
-
-  useEffect(() => {
-    if (!thumbUrl || dataUrl || !isTauriRuntime()) return;
-    void ipc.fetchMediaData(key, thumbUrl);
-  }, [key, thumbUrl, dataUrl]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      {dataUrl ? (
+      {thumbUrl ? (
         <img
-          src={dataUrl}
+          src={thumbUrl}
           alt={msg.link_title || "Hình ảnh"}
+          loading="lazy"
+          decoding="async"
           onClick={() => onOpenViewer(key, fullUrl)}
           style={{
             maxWidth: 260,
@@ -344,7 +325,7 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                     {isRecalled ? (
                       <span>Tin nhắn đã được thu hồi</span>
                     ) : msg.sticker_id ? (
-                      <StickerMessageMedia msg={msg} mediaCache={state.mediaCache} />
+                      <StickerMessageMedia msg={msg} />
                     ) : callCard ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 190 }}>
                         <div
@@ -370,7 +351,6 @@ export function ChatArea({ state, dispatch }: ChatAreaProps) {
                     ) : isPhotoMessage(msg) && (msg.link_thumb || msg.link_url) ? (
                       <PhotoMessageMedia
                         msg={msg}
-                        mediaCache={state.mediaCache}
                         onOpenViewer={(texKey, fullUrl) =>
                           dispatch({
                             type: "SET_IMAGE_VIEWER",

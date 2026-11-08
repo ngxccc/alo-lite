@@ -4,7 +4,7 @@ import { ipc, isTauriRuntime } from "../../../shared/api/ipc";
 import type { StickerItem, Thread } from "../../../shared/types/ipc";
 import { extractFirstUrl } from "../../../shared/utils/text";
 import type { AppAction, AppState } from "../../../app/store/appReducer";
-import { stickerCacheKey, stickerThumbnailUrl } from "../utils/messages";
+import { stickerThumbnailUrl } from "../utils/messages";
 
 interface ComposerProps {
   state: AppState;
@@ -16,28 +16,20 @@ type StickerTabId = "popular" | "onion" | "search" | "store" | number;
 
 function StickerThumb({
   item,
-  mediaCache,
   onPick,
 }: {
   item: StickerItem;
-  mediaCache: Record<string, string>;
   onPick: () => void;
 }) {
-  const key = stickerCacheKey(item.sticker_id, item.cate_id);
-  const dataUrl = mediaCache[key];
-
-  useEffect(() => {
-    if (dataUrl || !isTauriRuntime()) return;
-    void ipc.fetchMediaData(key, stickerThumbnailUrl(item));
-  }, [key, item.sticker_id, item.cate_id, dataUrl]);
-
   return (
     <button type="button" className="sticker-cell" title={item.label} onClick={onPick}>
-      {dataUrl ? (
-        <img src={dataUrl} alt={item.label} style={{ width: 58, height: 58, objectFit: "contain" }} />
-      ) : (
-        <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>#{item.sticker_id}</span>
-      )}
+      <img
+        src={stickerThumbnailUrl(item)}
+        alt={item.label}
+        loading="lazy"
+        decoding="async"
+        style={{ width: 58, height: 58, objectFit: "contain" }}
+      />
     </button>
   );
 }
@@ -291,7 +283,6 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
                 <StickerThumb
                   key={`${item.cate_id}_${item.sticker_id}`}
                   item={item}
-                  mediaCache={state.mediaCache}
                   onPick={() => {
                     void ipc.sendSticker(thread.id, item.sticker_id, item.cate_id, item.sticker_type, thread.is_group);
                     setStickerOpen(false);
@@ -309,7 +300,6 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
             <div key={`sug_${item.cate_id}_${item.sticker_id}`} style={{ width: 64, flexShrink: 0 }}>
               <StickerThumb
                 item={item}
-                mediaCache={state.mediaCache}
                 onPick={() => {
                   void ipc.sendSticker(thread.id, item.sticker_id, item.cate_id, item.sticker_type, thread.is_group);
                   setText("");

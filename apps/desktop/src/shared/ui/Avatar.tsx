@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { Users } from "lucide-react";
-import { ipc, isTauriRuntime } from "../api/ipc";
-import { avatarColor, initialsOf } from "../utils/text";
+import { avatarColor, initialsOf, jxlToJpgUrl } from "../utils/text";
 
 interface AvatarProps {
   id: string;
@@ -9,7 +8,7 @@ interface AvatarProps {
   avatarUrl?: string | null;
   isGroup?: boolean;
   size?: number;
-  mediaCache: Record<string, string>;
+  mediaCache?: Record<string, string>;
 }
 
 export function Avatar({
@@ -20,13 +19,9 @@ export function Avatar({
   size = 38,
   mediaCache,
 }: AvatarProps) {
-  const key = `ava_${id}`;
-  const cachedDataUrl = mediaCache[key];
-
-  useEffect(() => {
-    if (!avatarUrl || cachedDataUrl || !isTauriRuntime()) return;
-    void ipc.fetchMediaData(key, avatarUrl);
-  }, [key, avatarUrl, cachedDataUrl]);
+  const [failed, setFailed] = useState(false);
+  const cachedDataUrl = mediaCache?.[`ava_${id}`];
+  const src = cachedDataUrl || (avatarUrl && !failed ? jxlToJpgUrl(avatarUrl) : "");
 
   const style = {
     width: `${size}px`,
@@ -35,16 +30,18 @@ export function Avatar({
     flexShrink: 0,
   };
 
-  if (cachedDataUrl) {
+  if (src) {
     return (
       <img
-        src={cachedDataUrl}
+        src={src}
         alt={name}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
         style={{ ...style, objectFit: "cover", border: "1px solid var(--border)" }}
       />
     );
   }
-
   return (
     <div
       style={{

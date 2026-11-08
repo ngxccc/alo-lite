@@ -38,7 +38,7 @@ use crate::protocol::messaging::threads::{
 use crate::protocol::messaging::unread::{
     extract_mute_controls, get_mute_snapshot, send_seen_v2, set_mute_conversation, set_unread_mark,
 };
-use crate::protocol::messaging::{ChatMessage, LinkMetadata, StickerItem, Thread};
+use crate::protocol::messaging::{ChatMessage, LinkMetadata, Thread};
 use crate::protocol::session::{Session, SessionStatus};
 use crate::protocol::social::friends::{
     accept_friend_request, check_friendship_status, find_user_by_phone, get_friends,
@@ -1825,10 +1825,7 @@ impl CoreEngine {
         let s = self.session.lock().await.clone();
         match search_stickers_by_keyword(&s, &keyword).await {
             Ok(items) => {
-                let missing = self.preload_disk_sticker_thumbnails(&items, 24);
                 self.emit(CoreEvent::StickerSearchResults { keyword, items });
-                self.prefetch_missing_sticker_thumbnails(&s.http, missing)
-                    .await;
             }
             Err(e) => {
                 crate::logger::log_error("core::search_stickers", &e.to_string());
@@ -1845,95 +1842,8 @@ impl CoreEngine {
         let items = search_stickers_by_keyword(&s, &keyword)
             .await
             .unwrap_or_default();
-        let missing = self.preload_disk_sticker_thumbnails(&items, 16);
         self.emit(CoreEvent::ComposerStickerSuggestions { keyword, items });
-        self.prefetch_missing_sticker_thumbnails(&s.http, missing)
-            .await;
     }
-
-    fn preload_disk_sticker_thumbnails(
-        &self,
-        items: &[StickerItem],
-        limit: usize,
-    ) -> Vec<(String, String, PathBuf)> {
-        let cache_dir = Path::new("stickers_cache");
-        let _ = std::fs::create_dir_all(cache_dir);
-        let mut missing = Vec::new();
-        for item in items.iter().take(limit) {
-            let key = format!("stk_{}_{}", item.cate_id, item.sticker_id);
-            let cache_path = cache_dir.join(format!("{key}.png"));
-            if let Ok(disk_bytes) = std::fs::read(&cache_path) {
-                if let Ok(dyn_img) = image::load_from_memory(&disk_bytes) {
-                    let rgba = dyn_img.to_rgba8();
-                    let width = rgba.width();
-                    let height = rgba.height();
-                    self.emit(CoreEvent::StickerImageReady {
-                        key,
-                        image: CoreImageData {
-                            width,
-                            height,
-                            rgba: rgba.into_raw(),
-                        },
-                    });
-                    continue;
-                } else {
-                    let _ = std::fs::remove_file(&cache_path);
-                }
-            }
-            let url = if item.cate_id == 0 && (1..=30).contains(&item.sticker_id) {
-                format!(
-                    "https://stc-chat.zdn.vn/images/stickers/default/thumb/{}.png",
-                    item.sticker_id
-                )
-            } else {
-                format!(
-                    "https://api.zaloapp.com/api/emoticon/sticker/webpc?eid={}&size=130",
-                    item.sticker_id
-                )
-            };
-            missing.push((key, url, cache_path));
-        }
-        missing
-    }
-
-    async fn prefetch_missing_sticker_thumbnails(
-        &self,
-        http: &reqwest::Client,
-        missing: Vec<(String, String, PathBuf)>,
-    ) {
-        if missing.is_empty() {
-            return;
-        }
-        let futs = missing.into_iter().map(|(key, url, cache_path)| {
-            let client = http.clone();
-            let sink = Arc::clone(&self.sink);
-            async move {
-                if let Ok(resp) = client.get(&url).send().await {
-                    if resp.status().is_success() {
-                        if let Ok(b) = resp.bytes().await {
-                            let vec = b.to_vec();
-                            if let Ok(dyn_img) = image::load_from_memory(&vec) {
-                                let _ = std::fs::write(&cache_path, &vec);
-                                let rgba = dyn_img.to_rgba8();
-                                let width = rgba.width();
-                                let height = rgba.height();
-                                sink.emit(CoreEvent::StickerImageReady {
-                                    key,
-                                    image: CoreImageData {
-                                        width,
-                                        height,
-                                        rgba: rgba.into_raw(),
-                                    },
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        futures_util::future::join_all(futs).await;
-    }
-
     pub async fn parse_link_preview(&self, url: &str) {
         let s = self.session.lock().await.clone();
         if let Ok(meta) = parse_link_metadata(&s, url).await {
