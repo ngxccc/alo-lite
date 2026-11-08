@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 export const MANIFESTS = [
+  "package.json",
   "Cargo.toml",
   "apps/desktop/package.json",
   "crates/alolite-desktop/tauri.conf.json",

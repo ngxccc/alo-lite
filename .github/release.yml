@@ -1,36 +1,44 @@
 changelog:
   exclude:
     labels:
-      - skip-changelog
-      - duplicate
-      - invalid
-      - wontfix
-    authors:
-      - dependabot
+      - dependencies
+      - github_actions
   categories:
-    - title: "Features"
+    - title: Features
       labels:
-        - feat
+        - type:feat
         - feature
         - enhancement
-    - title: "Fixes"
+    - title: Bug Fixes
       labels:
-        - fix
+        - type:fix
+        - type:bug
         - bug
-    - title: "Performance"
+    - title: Performance
       labels:
-        - perf
+        - type:perf
         - performance
-    - title: "Documentation"
+    - title: Refactors & Tech Debt
       labels:
-        - docs
+        - type:refactor
+        - refactor
+        - tech-debt
+    - title: Security
+      labels:
+        - security
+    - title: CI & Tooling
+      labels:
+        - type:ci
+        - type:chore
+        - CI
+    - title: Documentation
+      labels:
+        - type:docs
         - documentation
-    - title: "CI"
+    - title: Tests
       labels:
-        - ci
-        - build
-        - release
-        - chore
-    - title: "Other Changes"
+        - type:test
+        - test
+    - title: Other Changes
       labels:
         - "*"

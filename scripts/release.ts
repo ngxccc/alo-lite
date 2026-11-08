@@ -1,13 +1,22 @@
 #!/usr/bin/env bun
 /**
- * Automated release pipeline: bump -> changelog -> tag -> GitHub release.
- * Adapted from open-genset/scripts/release.ts for Alolite's Cargo + Tauri workspace.
+ * Cut a release in one command: bump → changelog → PR → merge → tag → publish.
+ * Adapted directly from open-genset/scripts/release.ts for Alolite.
+ *
+ * `main` is protected, so the bump cannot be pushed directly; it travels as a PR that
+ * contains only the version numbers and the new CHANGELOG.md section. The script waits for
+ * that PR's checks, squash-merges it, then creates the tag and the GitHub release.
+ *
+ * Notes come from GitHub's own release-notes generator (`generate-notes`, the same one behind
+ * `gh release create --generate-notes`), so `.github/release.yml` stays the only place that
+ * decides categories. We call it once and write the result into both CHANGELOG.md and the
+ * release page, which is why the two can never disagree.
  *
  * Usage:
- *   bun scripts/release.ts                     # infer bump level from merged PRs
- *   bun scripts/release.ts 0.1.1               # explicit target version
- *   bun scripts/release.ts patch|minor|major   # bump relative to current/tag
- *   bun scripts/release.ts --dry-run           # preview proposed plan without changes
+ *   bun run release                  # infer the level from merged pull requests
+ *   bun run release 1.2.3            # explicit version
+ *   bun run release minor            # patch | minor | major, from the latest tag
+ *   bun run release --dry-run        # validate and print the plan, change nothing
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import {
@@ -15,10 +24,14 @@ import {
   currentVersion,
   MANIFESTS,
   resolveTarget,
+  SEMVER,
   setVersion,
 } from "./version";
-
+export { resolveTarget } from "./version";
 export const CHANGELOG = "CHANGELOG.md";
+const CHECK_TIMEOUT_MS = 45 * 60 * 1000;
+const POLL_MS = 15_000;
+const NO_CHECKS_GRACE_MS = 5 * 60 * 1000;
 
 function fail(message: string): never {
   console.error(`\n✖ ${message}`);
@@ -69,72 +82,135 @@ export type Suggestion = { level: "major" | "minor" | "patch"; reason: string };
 export function isBreaking(pr: MergedPullRequest): boolean {
   return (
     /^\w+(?:\([^)]*\))?!:/.test(pr.title) ||
-    pr.labels.some((l) => l.name === "breaking-change" || l.name === "breaking")
+    pr.labels.some((label) => label.name === "breaking-change")
   );
 }
 
 export function isFeature(pr: MergedPullRequest): boolean {
   return (
     /^feat(?:\([^)]*\))?!?:/i.test(pr.title) ||
-    pr.labels.some((l) => l.name === "type:feat" || l.name === "feature")
+    pr.labels.some((label) => label.name === "type:feat")
   );
 }
 
+/**
+ * The level a set of merged pull requests justifies, derived from their titles
+ * and the `type:*` labels the notes group by.
+ */
 export function suggestBump(prs: MergedPullRequest[]): Suggestion | null {
   if (prs.length === 0) return null;
+
   const breaking = prs.find(isBreaking);
   if (breaking) {
-    return { level: "major", reason: `#${breaking.number} is a breaking change` };
+    return {
+      level: "major",
+      reason: `#${breaking.number} is a breaking change`,
+    };
   }
+
   const feature = prs.find(isFeature);
   if (feature) {
     return { level: "minor", reason: `#${feature.number} adds a feature` };
   }
+
   return { level: "patch", reason: "no feature, no breaking change" };
 }
 
-export function seedChangelog(path: string = CHANGELOG): void {
-  const header = [
-    "# Changelog",
-    "",
-    "All notable changes to Alolite are documented in this file.",
-    "Generated automatically from merged pull requests and conventional commits.",
-    "",
-  ].join("\n");
-
+/** Pull requests merged into `main` after the previous tag was cut. */
+export function mergedSince(tag: string | null): MergedPullRequest[] {
+  const since = tag
+    ? new Date(
+        run(["git", "log", "-1", "--format=%cI", tag], { capture: true }),
+      ).getTime()
+    : 0;
+  const raw = run(
+    [
+      "gh",
+      "pr",
+      "list",
+      "--state",
+      "merged",
+      "--base",
+      "main",
+      "--limit",
+      "500",
+      "--json",
+      "number,title,mergedAt,mergeCommit,labels",
+    ],
+    { capture: true },
+  );
+  let prs: MergedPullRequest[] = [];
   try {
-    writeFileSync(path, header, { flag: "wx" });
-  } catch (error) {
-    if ((error as { code?: string }).code !== "EEXIST") throw error;
+    prs = JSON.parse(raw) as MergedPullRequest[];
+  } catch {
+    prs = [];
   }
+
+  return prs.filter((pr) => {
+    if (new Date(pr.mergedAt).getTime() <= since) return false;
+
+    if (pr.mergeCommit?.oid && tag) {
+      const contained = Bun.spawnSync({
+        cmd: ["git", "merge-base", "--is-ancestor", pr.mergeCommit.oid, tag],
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      if (contained.exitCode === 0) return false;
+    }
+
+    return true;
+  });
 }
 
-export function prependChangelog(
-  target: string,
-  body: string,
-  path: string = CHANGELOG,
-): void {
-  seedChangelog(path);
-  const date = new Date().toISOString().slice(0, 10);
-  const heading = `## [${target}] - ${date}\n\n${body.trim()}\n`;
-  const existing = readFileSync(path, "utf8");
+function assertReady(target: string): void {
+  if (run(["git", "status", "--porcelain"], { capture: true }) !== "") {
+    fail("working tree is dirty — commit or stash before releasing");
+  }
 
-  const preambleEnd = existing.indexOf("\n## ");
-  const updated =
-    preambleEnd === -1
-      ? `${existing.trimEnd()}\n\n${heading}`
-      : `${existing.slice(0, preambleEnd).trimEnd()}\n\n${heading}\n${existing.slice(preambleEnd + 1)}`;
-  writeFileSync(path, updated, "utf8");
+  const branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], {
+    capture: true,
+  });
+  if (branch !== "main") {
+    fail(`release from main, not from ${branch}`);
+  }
+
+  run(["git", "fetch", "origin", "main", "--quiet"]);
+  const head = run(["git", "rev-parse", "HEAD"], { capture: true });
+  const remote = run(["git", "rev-parse", "origin/main"], { capture: true });
+  if (head !== remote) {
+    fail("local main is not origin/main — pull first");
+  }
+
+  const latest = latestTag()?.replace(/^v/, "");
+  const reference = latest ?? currentVersion();
+  if (reference && compareVersions(target, reference) <= 0) {
+    fail(`v${target} is not newer than v${reference}`);
+  }
+
+  if (run(["git", "tag", "--list", `v${target}`], { capture: true })) {
+    fail(`tag v${target} already exists`);
+  }
+  const existing = Bun.spawnSync({
+    cmd: ["gh", "release", "view", `v${target}`],
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+  if (existing.exitCode === 0) {
+    fail(`release v${target} already exists`);
+  }
 }
 
 function repoSlug(): string {
   return run(
     ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
-    { capture: true },
+    {
+      capture: true,
+    },
   );
 }
 
-function generateNotes(target: string, head: string): string {
+/** Notes for the release we are about to cut, from GitHub's generator. */
+export function generateNotes(target: string, head: string): string {
   const previous = latestTag();
   const fields = [
     "-f",
@@ -154,8 +230,112 @@ function generateNotes(target: string, head: string): string {
       "--jq",
       ".body",
     ],
+    { capture: true },
+  );
+}
+
+export function seedChangelog(path: string = CHANGELOG): void {
+  const header = [
+    "# Changelog",
+    "",
+    "Generated at release time from merged pull requests, by `bun run release`.",
+    "Do not edit by hand; the sections come from the same generator as the GitHub release.",
+    "",
+  ].join("\n");
+
+  const previous = latestTag();
+  if (!previous) {
+    createOnly(path, header);
+    return;
+  }
+
+  const body = run(
+    ["gh", "release", "view", previous, "--json", "body", "--jq", ".body"],
     { capture: true, allowFailure: true },
   );
+  const date = run(
+    ["git", "log", "-1", "--format=%ad", "--date=short", previous],
+    { capture: true, allowFailure: true },
+  );
+  createOnly(path, `${header}\n## ${previous.replace(/^v/, "")} - ${date}\n\n${body}\n`);
+}
+
+/** Create the file only if it does not exist, without a check-then-write race. */
+function createOnly(path: string, content: string): void {
+  try {
+    writeFileSync(path, content, { flag: "wx" });
+  } catch (error) {
+    if ((error as { code?: string }).code !== "EEXIST") throw error;
+  }
+}
+
+/** Put the newest version directly under the preamble. */
+export function prependChangelog(
+  target: string,
+  body: string,
+  path: string = CHANGELOG,
+): void {
+  seedChangelog(path);
+  const date = new Date().toISOString().slice(0, 10);
+  const heading = `## ${target} - ${date}\n\n${body}\n`;
+  const existing = readFileSync(path, "utf8");
+
+  const preambleEnd = existing.indexOf("\n## ");
+  const updated =
+    preambleEnd === -1
+      ? `${existing.trimEnd()}\n\n${heading}`
+      : `${existing.slice(0, preambleEnd).trimEnd()}\n\n${heading}${existing.slice(preambleEnd + 1)}`;
+  writeFileSync(path, updated);
+}
+
+type Check = { name: string; bucket: string };
+
+function waitForChecks(pr: number): void {
+  const startedAt = Date.now();
+  const deadline = startedAt + CHECK_TIMEOUT_MS;
+  let announced = false;
+
+  while (Date.now() < deadline) {
+    const raw = run(
+      ["gh", "pr", "checks", String(pr), "--json", "name,bucket"],
+      {
+        capture: true,
+        allowFailure: true,
+      },
+    );
+
+    let checks: Check[] = [];
+    try {
+      checks = JSON.parse(raw) as Check[];
+    } catch {
+      checks = [];
+    }
+
+    if (checks.length > 0) {
+      if (!announced) {
+        console.log(`  ${checks.length} checks reported; waiting…`);
+        announced = true;
+      }
+      const failed = checks.filter(
+        (check) => check.bucket === "fail" || check.bucket === "cancel",
+      );
+      if (failed.length > 0) {
+        fail(
+          `checks failed: ${failed.map((check) => check.name).join(", ")}\nbranch and PR left in place for inspection`,
+        );
+      }
+      const pending = checks.filter(
+        (check) => check.bucket !== "pass" && check.bucket !== "skipping",
+      );
+      if (pending.length === 0) return;
+    } else if (Date.now() - startedAt > NO_CHECKS_GRACE_MS) {
+      fail("no checks were reported on the PR after five minutes");
+    }
+
+    Bun.sleepSync(POLL_MS);
+  }
+
+  fail("timed out waiting for checks");
 }
 
 if (import.meta.main) {
@@ -168,43 +348,135 @@ if (import.meta.main) {
   if (input) {
     target = resolveTarget(input, latestTag()?.replace(/^v/, "") ?? currentVersion());
   } else {
-    target = resolveTarget("patch", latestTag()?.replace(/^v/, "") ?? currentVersion());
+    const previous = latestTag();
+    const merged = mergedSince(previous);
+    const suggestion = suggestBump(merged);
+    if (!suggestion) {
+      fail(
+        `nothing merged since ${previous ?? "the first release"} — nothing to release`,
+      );
+    }
+
+    target = resolveTarget(suggestion.level, previous?.replace(/^v/, "") ?? currentVersion());
+    const count = `${merged.length} pull request${merged.length === 1 ? "" : "s"}`;
+    step(
+      `No version given — ${count} merged since ${previous ?? "the beginning"}`,
+    );
+    for (const pr of merged.slice(0, 10)) {
+      console.log(`  #${pr.number}  ${pr.title}`);
+    }
+    if (merged.length > 10) console.log(`  … and ${merged.length - 10} more`);
+    console.log(`  → v${target} (${suggestion.level}: ${suggestion.reason})`);
+
+    if (!dryRun) {
+      if (!process.stdin.isTTY) {
+        fail(`no terminal to confirm on — rerun as: bun run release ${target}`);
+      }
+      const answer = prompt(`\nRelease v${target}? [y/N]`);
+      if (!/^y(es)?$/i.test((answer ?? "").trim())) {
+        console.log("\nAborted — nothing changed.");
+        process.exit(0);
+      }
+    }
   }
 
-  const current = currentVersion() ?? "0.0.0";
-  step(`Target release: v${target} (current: v${current})${dryRun ? " [DRY RUN]" : ""}`);
+  const branch = `chore/release-v${target}`;
+  const head = run(["git", "rev-parse", "HEAD"], { capture: true });
 
-  if (compareVersions(target, current) <= 0) {
-    fail(`v${target} must be greater than current v${current}`);
-  }
+  step(`Release v${target}${dryRun ? " (dry run)" : ""}`);
+  assertReady(target);
+  console.log(
+    `  from ${head.slice(0, 7)} on main, previous tag ${latestTag() ?? "none"}`,
+  );
 
   if (dryRun) {
     console.log(`
-Plan:
-  1. Synchronize version in manifests:
-     ${MANIFESTS.join("\n     ")}
-  2. Run cargo check to sync Cargo.lock
-  3. Prepend release notes to ${CHANGELOG}
-  4. Commit: chore(release): v${target}
-  5. Create annotated git tag: v${target}
-  6. Push commit and tag to origin
-  7. GitHub Actions release.yml triggers to build packages (.deb, .rpm, .AppImage, .tar.gz)
-`);
+  Plan:
+    1. branch ${branch}
+    2. generate notes, prepend ${CHANGELOG}
+    3. write ${target} into ${MANIFESTS.length} manifests
+    4. commit chore(release): v${target} and push
+    5. open PR against main, wait for checks
+    6. squash-merge, return to main
+    7. gh release create v${target} with the same notes
+  `);
     process.exit(0);
   }
 
-  step("Updating manifests & Cargo.lock");
-  setVersion(target, true);
+  step(`Branch ${branch}`);
+  run(["git", "switch", "-c", branch]);
 
-  step("Updating changelog");
-  const headSha = run(["git", "rev-parse", "HEAD"], { capture: true });
-  const notes = generateNotes(target, headSha) || `### Alolite v${target}\n\n- Release version ${target}.`;
+  step("Generate release notes");
+  const notes = generateNotes(target, head);
+  if (!notes.trim()) fail("release notes came back empty");
   prependChangelog(target, notes);
 
-  step("Staging and committing");
+  step(`Write ${target} into ${MANIFESTS.length} manifests`);
+  setVersion(target);
+
+  step(`Commit and push`);
   run(["git", "add", ...MANIFESTS, "Cargo.lock", CHANGELOG]);
   run(["git", "commit", "-m", `chore(release): v${target}`]);
-  run(["git", "tag", "-a", `v${target}`, "-m", `Alolite v${target}`]);
+  run(["git", "push", "-u", "origin", branch]);
 
-  console.log(`\n✔ Tagged v${target}. Push with: git push origin main --tags`);
+  step("Open pull request");
+  const url = run(
+    [
+      "gh",
+      "pr",
+      "create",
+      "--base",
+      "main",
+      "--head",
+      branch,
+      "--title",
+      `chore(release): v${target}`,
+      "--body",
+      `Version bump to v${target} plus the ${CHANGELOG} entry for it.\n\nNotes are generated from merged PRs, so this PR is bookkeeping only.`,
+    ],
+    { capture: true },
+  );
+  const prNumber = Number(url.match(/\/pull\/(\d+)/)?.[1]);
+  if (!prNumber) fail(`could not read PR number from: ${url}`);
+  console.log(`  ${url}`);
+
+  step("Wait for checks");
+  waitForChecks(prNumber);
+
+  step("Merge");
+  run(["gh", "pr", "merge", String(prNumber), "--squash"]);
+
+  step("Return to main");
+  run(["git", "switch", "main"]);
+  run(["git", "pull", "--ff-only", "--quiet"]);
+  run(["git", "push", "origin", "--delete", branch], { allowFailure: true });
+  run(["git", "branch", "-D", branch], { allowFailure: true });
+
+  const releaseSha = run(["git", "rev-parse", "HEAD"], { capture: true });
+  const shipped = JSON.parse(readFileSync(MANIFESTS[0], "utf8")).version;
+  if (shipped !== target) {
+    fail(
+      `main declares ${shipped}, expected ${target} — the merge did not land`,
+    );
+  }
+
+  step(`Publish v${target}`);
+  run(
+    [
+      "gh",
+      "release",
+      "create",
+      `v${target}`,
+      "--title",
+      `AloLite Release v${target}`,
+      "--notes-file",
+      "-",
+      "--target",
+      releaseSha,
+    ],
+    { input: notes },
+  );
+
+  console.log(`\n✔ v${target} released from ${releaseSha.slice(0, 7)}`);
+  console.log(`  https://github.com/${repoSlug()}/releases/tag/v${target}`);
 }

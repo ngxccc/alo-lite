@@ -96,7 +96,7 @@ describe("prependChangelog", () => {
     prependChangelog("0.1.1", "- Initial patch release", path);
     const text = readFileSync(path, "utf8");
     expect(text).toContain("# Changelog");
-    expect(text).toContain("## [0.1.1]");
+    expect(text).toContain("## 0.1.1 - ");
     expect(text).toContain("- Initial patch release");
   });
 });

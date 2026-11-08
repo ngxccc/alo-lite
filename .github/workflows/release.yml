@@ -43,14 +43,10 @@ jobs:
 
       - name: Generate SHA256SUMS.txt
         run: ./scripts/generate-checksums.sh release_assets
-
-      - name: Generate Automatic Release Notes
-        run: ./scripts/generate-release-notes.sh "${{ github.ref_name || inputs.tag_name }}" > release_notes.md
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name || inputs.tag_name }}
           name: AloLite Release ${{ github.ref_name || inputs.tag_name }}
           files: release_assets/*
-          body_path: release_notes.md
+          generate_release_notes: true
