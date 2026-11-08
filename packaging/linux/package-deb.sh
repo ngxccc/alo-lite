@@ -29,7 +29,7 @@ Section: net
 Priority: optional
 Architecture: amd64
 Depends: libc6 (>= 2.31), libgtk-3-0, libwebkit2gtk-4.1-0, libsoup-3.0-0
-Recommends: zenity, xclip, wl-clipboard, fonts-noto-core
+Recommends: zenity, xclip, wl-clipboard, fonts-noto-core, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav
 Maintainer: ngxc <ngoc.dev@gmail.com>
 Description: Lightweight native desktop messaging client written in Rust + Tauri
 EOF
