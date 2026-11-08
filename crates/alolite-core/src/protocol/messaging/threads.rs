@@ -31,6 +31,8 @@ pub struct ChatMessage {
     pub delivery: DeliveryState,
     pub id: String,
     pub sender: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender_id: Option<String>,
     pub text: String,
     pub time: String,
     pub is_outgoing: bool,

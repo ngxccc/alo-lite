@@ -1287,6 +1287,9 @@ impl CoreEngine {
             mute_snap.merge_into(&mut list);
             self.emit(CoreEvent::MuteSnapshotSynced(mute_snap.mutes));
         }
+        resolve_thread_names(&s, &mut list).await;
+        let cache_copy = list.clone();
+        let _ = tokio::task::spawn_blocking(move || save_threads_cache(&cache_copy)).await;
 
         let total_msgs: usize = list.iter().map(|t| t.messages.len()).sum();
         let n_threads = list.len();
@@ -1965,6 +1968,10 @@ impl CoreEngine {
         } else {
             preloaded_threads
         };
+        if logged_in && !threads.is_empty() {
+            let s_snap = self.session.lock().await.clone();
+            crate::protocol::social::groups::resolve_thread_names(&s_snap, &mut threads).await;
+        }
         if !send2me_id.is_empty() {
             for t in threads.iter_mut() {
                 if !t.is_group && t.name.contains("Cloud của tôi") {

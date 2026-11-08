@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' data: blob:; img-src 'self' data: blob: https://*.zdn.vn https://*.zaloapp.com https://*.zadn.vn; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self' data: blob:; img-src 'self' data: blob: https://*.zdn.vn https://*.zaloapp.com https://*.zadn.vn https://*.dlmd.me; media-src 'self' data: blob: https://*.dlmd.me https://*.zdn.vn https://*.zaloapp.com https://*.zadn.vn; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

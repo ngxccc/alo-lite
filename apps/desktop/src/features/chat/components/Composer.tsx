@@ -470,7 +470,7 @@ export function Composer({ state, dispatch, thread }: ComposerProps) {
           onKeyDown={handleKeyDown}
           onPaste={(e) => void handlePaste(e)}
           placeholder={`Nhập tin nhắn tới ${thread.name || thread.id}…`}
-          className="max-h-28 min-h-9 flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-[13.2px] text-foreground select-text placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+          className="max-h-28 min-h-10 flex-1 resize-none rounded-lg border border-input bg-background px-3.5 py-2 text-[14px] text-foreground select-text placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
         />
         <Button
           variant="default"

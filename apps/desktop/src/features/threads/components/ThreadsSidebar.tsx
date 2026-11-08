@@ -7,7 +7,6 @@ import {
   MailOpen,
   Pin,
   PinOff,
-  RefreshCw,
   Search,
   Trash2,
   UserPlus,
@@ -58,7 +57,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   const virtualizer = useVirtualizer({
     count: visibleThreads.length,
     getScrollElement: () => listRef.current,
-    estimateSize: () => 62,
+    estimateSize: () => 68,
     overscan: 8,
   });
 
@@ -109,11 +108,11 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   };
 
   return (
-    <section className="flex h-full w-[310px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
-      <div className="flex flex-col gap-2 border-b border-border p-2.5">
+    <section className="flex h-full w-[330px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
+      <div className="flex flex-col gap-2.5 border-b border-border p-3">
         <div className="flex items-center gap-1.5">
-          <div className="flex h-8 flex-1 items-center gap-1.5 rounded-md border border-border bg-muted/60 px-2.5 focus-within:border-ring focus-within:bg-background">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-border bg-muted/60 px-3 focus-within:border-ring focus-within:bg-background">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="text"
               value={state.searchQuery}
@@ -122,7 +121,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
               }
               onKeyDown={(e) => handleSearchKeyDown(e.key)}
               placeholder="Tìm hội thoại, tin nhắn, SĐT…"
-              className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="w-full bg-transparent text-[13.5px] text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {state.searchQuery ? (
               <button
@@ -131,9 +130,9 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                   dispatch({ type: "SET_SEARCH_QUERY", query: "" })
                 }
                 title="Xóa tìm kiếm"
-                className="inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                className="inline-flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             ) : null}
           </div>
@@ -143,7 +142,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             title="Tra cứu SĐT & Kết bạn"
             onClick={() => dispatch({ type: "SET_PHONE_MODAL", open: true })}
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4.5 w-4.5" />
           </Button>
         </div>
 
@@ -164,9 +163,9 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
         </Tabs>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto px-1.5 py-1">
+      <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-1.5">
         {visibleThreads.length === 0 ? (
-          <div className="p-6 text-center text-xs text-muted-foreground">
+          <div className="p-6 text-center text-[13.5px] text-muted-foreground">
             Không có hội thoại phù hợp
           </div>
         ) : (
@@ -199,7 +198,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         }
                       }}
                       className={cn(
-                        "absolute top-0 right-0 left-0 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
+                        "absolute top-0 right-0 left-0 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors",
                         selected
                           ? "bg-accent text-accent-foreground"
                           : "hover:bg-muted/70",
@@ -210,38 +209,38 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         name={t.name}
                         avatarUrl={t.avatar}
                         isGroup={t.is_group}
-                        size={40}
+                        size={44}
                         mediaCache={state.mediaCache}
                       />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center justify-between gap-2">
                           <span
                             className={cn(
-                              "truncate text-[13.2px] text-foreground",
+                              "truncate text-[14.5px] text-foreground",
                               hasDot ? "font-bold" : "font-semibold",
                             )}
                           >
                             {t.name || t.id}
                           </span>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                          <span className="shrink-0 text-xs text-muted-foreground">
                             {t.time}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-1.5">
-                          <span className="truncate text-xs text-muted-foreground">
+                          <span className="truncate text-[13px] text-muted-foreground">
                             {t.preview || "Chưa có tin nhắn"}
                           </span>
                           <div className="inline-flex shrink-0 items-center gap-1">
                             {pinned ? (
-                              <Pin className="h-3 w-3 text-primary" />
+                              <Pin className="h-3.5 w-3.5 text-primary" />
                             ) : null}
                             {muted ? (
-                              <BellOff className="h-3 w-3 text-muted-foreground" />
+                              <BellOff className="h-3.5 w-3.5 text-muted-foreground" />
                             ) : null}
                             {unread > 0 ? (
                               <Badge
                                 variant="destructive"
-                                className="h-4 min-w-4 px-1 text-[10px]"
+                                className="h-4.5 min-w-4.5 px-1.5 text-[11px]"
                               >
                                 {unread > 99 ? "99+" : unread}
                               </Badge>
@@ -258,11 +257,11 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                     <ContextMenuItem onSelect={() => togglePin(t)}>
                       {pinned ? (
                         <>
-                          <PinOff className="h-3.5 w-3.5" /> Bỏ ghim hội thoại
+                          <PinOff className="h-4 w-4" /> Bỏ ghim hội thoại
                         </>
                       ) : (
                         <>
-                          <Pin className="h-3.5 w-3.5" /> Ghim hội thoại
+                          <Pin className="h-4 w-4" /> Ghim hội thoại
                         </>
                       )}
                     </ContextMenuItem>
@@ -274,37 +273,34 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                     >
                       {t.unread.marked_unread ? (
                         <>
-                          <MailOpen className="h-3.5 w-3.5" /> Đánh dấu đã đọc
+                          <MailOpen className="h-4 w-4" /> Đánh dấu đã đọc
                         </>
                       ) : (
                         <>
-                          <MailCheck className="h-3.5 w-3.5" /> Đánh dấu chưa
-                          đọc
+                          <MailCheck className="h-4 w-4" /> Đánh dấu chưa đọc
                         </>
                       )}
                     </ContextMenuItem>
                     {muted ? (
                       <ContextMenuItem onSelect={() => toggleMute(t, 0, false)}>
-                        <BellOff className="h-3.5 w-3.5" /> Bật lại thông báo
+                        <BellOff className="h-4 w-4" /> Bật lại thông báo
                       </ContextMenuItem>
                     ) : (
                       <>
                         <ContextMenuItem
                           onSelect={() => toggleMute(t, 3600, true)}
                         >
-                          <BellOff className="h-3.5 w-3.5" /> Tắt thông báo 1
-                          giờ
+                          <BellOff className="h-4 w-4" /> Tắt thông báo 1 giờ
                         </ContextMenuItem>
                         <ContextMenuItem
                           onSelect={() => toggleMute(t, -1, true)}
                         >
-                          <BellOff className="h-3.5 w-3.5" /> Tắt đến khi bật
-                          lại
+                          <BellOff className="h-4 w-4" /> Tắt đến khi bật lại
                         </ContextMenuItem>
                       </>
                     )}
                     <ContextMenuItem onSelect={() => toggleHide(t)}>
-                      <EyeOff className="h-3.5 w-3.5" /> Ẩn trò chuyện
+                      <EyeOff className="h-4 w-4" /> Ẩn trò chuyện
                     </ContextMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem
@@ -318,7 +314,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         );
                       }}
                     >
-                      <Trash2 className="h-3.5 w-3.5" /> Xóa hội thoại
+                      <Trash2 className="h-4 w-4" /> Xóa hội thoại
                     </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
@@ -326,18 +322,6 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             })}
           </div>
         )}
-      </div>
-
-      <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
-        <span className="truncate">{state.statusMessage}</span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title="Làm mới"
-          onClick={() => void ipc.refreshThreads(true)}
-        >
-          <RefreshCw className="h-3 w-3" />
-        </Button>
       </div>
     </section>
   );

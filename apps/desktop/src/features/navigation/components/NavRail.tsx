@@ -3,7 +3,6 @@ import {
   Cloud,
   MessageSquare,
   Moon,
-  RefreshCw,
   Settings,
   Smartphone,
   Sun,
@@ -92,7 +91,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
   return (
     <aside
       aria-label="Thanh điều hướng chính"
-      className="flex h-full w-14 shrink-0 flex-col items-center justify-between border-r border-border bg-rail py-3 text-rail-foreground"
+      className="flex h-full w-15 shrink-0 flex-col items-center justify-between border-r border-border bg-rail py-3.5 text-rail-foreground"
     >
       <div className="flex flex-col items-center gap-2">
         <Tooltip>
@@ -108,7 +107,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
                 id={state.uin || "self"}
                 name={state.displayName || "Me"}
                 avatarUrl={state.avatar}
-                size={36}
+                size={38}
                 mediaCache={state.mediaCache}
               />
               <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-rail bg-online" />
@@ -126,7 +125,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
         >
           <MessageSquare className="h-5 w-5" />
           {totalUnread > 0 ? (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-destructive px-1 text-[10.5px] font-bold text-destructive-foreground">
               {totalUnread > 99 ? "99+" : totalUnread}
             </span>
           ) : null}
@@ -156,22 +155,15 @@ export function NavRail({ state, dispatch }: NavRailProps) {
 
       <div className="flex flex-col items-center gap-2">
         <RailButton
-          label="Làm mới hội thoại từ máy chủ"
-          onClick={() => void ipc.refreshThreads(true)}
-        >
-          <RefreshCw className="h-[18px] w-[18px]" />
-        </RailButton>
-
-        <RailButton
           label={
             isDark ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"
           }
           onClick={toggleTheme}
         >
           {isDark ? (
-            <Sun className="h-[18px] w-[18px]" />
+            <Sun className="h-[19px] w-[19px]" />
           ) : (
-            <Moon className="h-[18px] w-[18px]" />
+            <Moon className="h-[19px] w-[19px]" />
           )}
         </RailButton>
 
@@ -179,7 +171,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
           label="Kiểm tra nhật ký & giao thức (DevTools)"
           onClick={() => dispatch({ type: "SET_DEV_MODAL", open: true })}
         >
-          <Bug className="h-[18px] w-[18px]" />
+          <Bug className="h-[19px] w-[19px]" />
         </RailButton>
 
         <RailButton
@@ -188,7 +180,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
             dispatch({ type: "OPEN_SETTINGS", open: true, tab: "general" })
           }
         >
-          <Settings className="h-[19px] w-[19px]" />
+          <Settings className="h-5 w-5" />
         </RailButton>
       </div>
     </aside>
