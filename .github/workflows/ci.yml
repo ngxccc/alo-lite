@@ -3,42 +3,63 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+      - ".vscode/**"
+      - "assets/**"
+      - ".github/assets/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+      - ".vscode/**"
+      - "assets/**"
+      - ".github/assets/**"
   workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   test:
-    name: Test & Lint (Linux x86_64)
-    runs-on: ubuntu-22.04
+    name: Test & Lint
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Rust & dependencies
+      - name: Setup Rust
         uses: ./.github/setup-rust
         with:
           components: "rustfmt, clippy"
 
-      - name: Format Check
+      - name: Format
         run: cargo fmt --all -- --check
 
-      - name: Clippy Linter (Core & CLI)
+      - name: Clippy
         run: cargo clippy -p alolite-core -p alolite-cli --all-targets -- -D warnings
 
-      - name: Run Unit & Integration Tests
+      - name: Tests
         run: cargo test -p alolite-core -p alolite-cli --locked
-      - name: Install Bun
+
+      - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Cache Bun dependencies
+      - name: Cache Bun
         uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
@@ -46,13 +67,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
 
-      - name: Verify Manifest Versions
+      - name: Check Versions
         run: bun scripts/version.ts check
 
-      - name: Desktop Frontend Check & Tests
+      - name: Check Frontend
         working-directory: apps/desktop
         run: |
           bun install --frozen-lockfile
           bun run check
           bun test
           bun run build
+
+      - name: Release Check
+        run: cargo check --release --all-targets

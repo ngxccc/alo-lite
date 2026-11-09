@@ -34,16 +34,20 @@ State lives in the issue itself (`open`/`closed`), PR links (`Fixes #<id>`) and 
 
 | Label | Scope |
 | :--- | :--- |
-| `area:auth` | QR/password login, `session.json`, `zpw_sek` / `zpw_enk`. |
-| `area:net` | HTTP endpoints, WebSocket transport, `ParamCipher v2`, `signkey`. |
-| `area:chat` | Threads, messages, reactions, recall, forwarding. |
-| `area:media` | Attachments, images, stickers. |
-| `area:mcp` | MCP JSON-RPC, local HTTP REST API, auto-reply. |
-| `area:ui` | egui GUI, Tauri UI bridge, theme, fonts. |
-| `area:store` | SQLite schema, queries, local history. |
-| `area:ci` | GitHub Actions, packaging, release artifacts. |
-| `area:harness` | `AGENTS.md`, `docs/standards/`, skills, agent tooling. |
-
+| `area:core` | Core engine, background runtime, common utilities and services (`crates/alolite-core/src/{core,common,services}`). |
+| `area:protocol` | Zalo network protocol, wire codecs, cryptographic handshakes, and message sync (`crates/alolite-core/src/protocol/`). |
+| `area:auth` | QR/password login, `session.json`, `zpw_sek` / `zpw_enk`, and trusted device pairing. |
+| `area:net` | HTTP endpoints, candidate failover, WebSocket framing, `ParamCipher v2`, and `signkey`. |
+| `area:chat` | Threads, message identity, reactions, recall, forwarding, and history sync. |
+| `area:store` | SQLite schema, migrations, queries, and local offline cache (`crates/alolite-core/src/storage/`). |
+| `area:mcp` | MCP JSON-RPC protocol over stdio/HTTP, local REST daemon, and autoreply rules (`crates/alolite-core/src/mcp/`). |
+| `area:ui` | Native Tauri v2 host and React desktop frontend (`apps/desktop/`, `crates/alolite-desktop/`). |
+| `area:cli` | Command-line interface, terminal QR login, and desktop launcher (`crates/alolite-cli/`). |
+| `area:packaging` | Linux distribution packages (.deb, .rpm, .AppImage, .tar.gz) under `packaging/`. |
+| `area:assets` | Desktop icons, SVG branding assets, and reaction graphics under `assets/` and `.github/assets/`. |
+| `area:docs` | Documentation book (`docs/`), ADRs, standards, README, and user guides. |
+| `area:ci` | GitHub Actions workflows and CI/CD automation (`.github/workflows/`). |
+| `area:harness` | `AGENTS.md`, AI agent tooling, `.omp/`, helper scripts, and Makefile. |
 ### D. Priority
 
 | Label | Meaning |
