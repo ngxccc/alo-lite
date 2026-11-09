@@ -29,7 +29,7 @@ echo "Evaluating recent commit: $COMMIT_MSG"
 if [[ "$COMMIT_MSG" =~ chore\(release\):[[:space:]]*v?([0-9]+\.[0-9]+\.[0-9]+) ]]; then
   TAG="v${BASH_REMATCH[1]}"
   echo "Matched release commit for tag: $TAG"
-
+  git fetch --tags origin 2>/dev/null || true
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     echo "Tag $TAG already exists, skipping release."
     echo "should_release=false" >> "$OUTPUT_FILE"

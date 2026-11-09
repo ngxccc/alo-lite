@@ -84,14 +84,28 @@ async fn invoke(
     command: &str,
     deadline: Duration,
 ) -> Result<AuthorizationStatus, NotificationError> {
-    let mut child = tokio::process::Command::new(path)
+    let mut child = match tokio::process::Command::new(path)
         .arg(command)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|_| NotificationError::HelperUnavailable)?;
+    {
+        Ok(child) => child,
+        Err(err) if err.raw_os_error() == Some(26) => {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            tokio::process::Command::new(path)
+                .arg(command)
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .kill_on_drop(true)
+                .spawn()
+                .map_err(|_| NotificationError::HelperUnavailable)?
+        }
+        Err(_) => return Err(NotificationError::HelperUnavailable),
+    };
     let operation = async {
         let mut output = Vec::new();
         child
@@ -269,7 +283,12 @@ mod tests {
             ));
             std::fs::create_dir(&dir).unwrap();
             let path = dir.join("helper");
-            std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+            {
+                use std::io::Write;
+                let mut file = std::fs::File::create(&path).unwrap();
+                file.write_all(format!("#!/bin/sh\n{body}\n").as_bytes()).unwrap();
+                file.sync_all().unwrap();
+            }
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
             Self(dir)
         }
