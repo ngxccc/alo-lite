@@ -15,26 +15,30 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build-packages:
-    name: Package Linux (.deb / .rpm / .AppImage / .tar.gz)
+    name: Package Linux
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Rust & packaging tools
+      - name: Setup Rust
         uses: ./.github/setup-rust
         with:
           packaging-tools: "true"
 
-      - name: Install Bun
+      - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Cache Bun dependencies
+      - name: Cache Bun
         uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
@@ -42,10 +46,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
 
-      - name: Build binary and all Linux packages
+      - name: Package
         run: ./packaging/linux/package-all.sh
 
-      - name: Upload Linux package artifacts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: alolite-linux-packages

@@ -1,12 +1,5 @@
 name: "PR Type Label"
 
-# The release notes group pull requests by label, so the label has to say what
-# the change is, not which files it touched. File paths answer "where" (the
-# labeler's `area:*` labels); the conventional-commit prefix answers "what".
-#
-# `pull_request_target` because labeling needs a write token, and no pull
-# request code is checked out here.
-
 on:
   pull_request_target:
     types: [opened, edited, reopened, synchronize]
@@ -21,10 +14,10 @@ concurrency:
 
 jobs:
   label:
-    name: "Label from conventional commit prefix"
+    name: Type Labeler
     runs-on: ubuntu-latest
     steps:
-      - name: "Keep exactly one type label in sync with the title"
+      - name: Sync Type Label
         uses: actions/github-script@v9
         with:
           script: |
