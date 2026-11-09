@@ -106,28 +106,45 @@ Before opening a PR, determine its tier according to risk and scope:
 | **Tier 2: Standard** | Features, bug fixes, routine refactors | 5-section PR body, tests pass, zero clippy warnings |
 | **Tier 3: Enterprise** | Protocol, cipher, DB schema, or breaking changes | Atomic commits, ADR/RFC reference, protocol evidence, rollback plan |
 
-### 5-Section PR Body Template (Tier 2 & 3)
+### Pull Request Template (`.github/PULL_REQUEST_TEMPLATE.md`)
+
+Pull requests must follow the repository template schema:
 
 ```markdown
-## What
-- Concise description of changes made.
+## Summary
+<!-- Concise explanation of what this PR changes and the technical rationale -->
 
-## Why
-- Problem solved or motivation behind this PR.
+## Context
+- Resolves: # <!-- If closing an issue, e.g. Resolves: #123 -->
+- Relates to: # <!-- If referencing an issue without closing -->
+- None <!-- If standalone change -->
 
-## How
-- High-level architecture, module changes, or protocol updates.
+## Type
+- [ ] feat: New feature
+- [ ] fix: Bug fix
+- [ ] refactor: Code refactoring
+- [ ] perf: Performance improvement
+- [ ] test: Testing updates
+- [ ] docs: Documentation update
+- [ ] ci: CI/CD or workflow update
+- [ ] chore: Maintenance or dependencies
 
-## Verification
-- [ ] `cargo test --locked` passes.
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings` clean.
-- [ ] `(cd apps/desktop && bun run typecheck && bun test)` passes.
-- [ ] Manual verification flow executed and described.
+## Verification & Evidence
+- **Platform(s) Tested**:
+  - Architecture: [ ] x86_64  [ ] aarch64
+  - Display Server: [ ] Wayland  [ ] X11
+  - Distribution: <!-- e.g. Arch, Ubuntu 24.04, Fedora 40 -->
+- **Evidence**:
+  - Output / Screenshots / Test logs: <!-- Attach screenshots for UI changes, or paste cargo test output -->
 
-## Risk & Rollback
-- Risk evaluation (blast radius) and rollback strategy.
+## Checklist
+- [ ] `cargo test` passes locally.
+- [ ] No proprietary binaries, secrets, or generated files (`target/`, `dist/`, `session*.json`) are committed.
+- [ ] No RE code violates the Clean-Room & IP guidelines in `LEGAL.md` and `docs/standards/compliance-and-ip.md`.
+- [ ] Documentation updated if introducing new features, flags, or configuration options.
 ```
 
+Tier 3 PRs additionally require: an ADR link under `## Summary`, protocol capture evidence references (`re-notes/...`), and a rollback plan under `## Verification & Evidence`.
 ---
 
 ## 6. Code Style & Comment Taxonomy
