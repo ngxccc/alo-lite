@@ -1,4 +1,4 @@
-# ADR-0013: Unified Cargo Workspace (`alolite-core`, `alolite-cli`, `apps/desktop`)
+# ADR-0004: Unified Cargo Workspace (`alolite-core`, `alolite-cli`, `apps/desktop`)
 
 - **Status:** Accepted (Branch `ui/tauri`)
 - **Date:** 2026-11-08

@@ -1,6 +1,6 @@
-# ADR-0012: Tauri v2 Feature-Based TypeScript UI Architecture
+# ADR-0003: Tauri v2 Feature-Based TypeScript UI Architecture
 
-- **Status:** Accepted (Superseded in workspace layout by ADR-0013)
+- **Status:** Accepted (Superseded in workspace layout by ADR-0004)
 - **Date:** 2026-11-08
 - **Author:** ngxc
 - **Deciders:** Alolite Core Engineering

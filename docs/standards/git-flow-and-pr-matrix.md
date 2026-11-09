@@ -53,28 +53,45 @@ Rules:
 | **Tier 2 — Standard** | Feature, bugfix, refactor, test. | Conventional Commits, 5-section PR body, tests pass, no new clippy warnings. |
 | **Tier 3 — Enterprise** | Protocol/cipher/schema change, breaking change, release packaging. | Atomic commits, ADR/RFC link, protocol evidence, human audit, manual verification steps. |
 
-### 5-Section PR Body (Tier 2+)
+### Standard PR Body Schema (`.github/PULL_REQUEST_TEMPLATE.md`)
+
+Every PR opened against `main` must adhere to the 5-section schema defined in `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ```markdown
-## What
-- ...
+## Summary
+<!-- Concise explanation of what this PR changes and the technical rationale -->
 
-## Why
-- ...
+## Context
+- Resolves: # <!-- If closing an issue, e.g. Resolves: #123 -->
+- Relates to: # <!-- If referencing an issue without closing -->
+- None <!-- If standalone change -->
 
-## How
-- ...
+## Type
+- [ ] feat: New feature
+- [ ] fix: Bug fix
+- [ ] refactor: Code refactoring
+- [ ] perf: Performance improvement
+- [ ] test: Testing updates
+- [ ] docs: Documentation update
+- [ ] ci: CI/CD or workflow update
+- [ ] chore: Maintenance or dependencies
 
-## Verification
-- [ ] `cargo test --locked`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] Manual: <device / flow / observed error_code>
+## Verification & Evidence
+- **Platform(s) Tested**:
+  - Architecture: [ ] x86_64  [ ] aarch64
+  - Display Server: [ ] Wayland  [ ] X11
+  - Distribution: <!-- e.g. Arch, Ubuntu 24.04, Fedora 40 -->
+- **Evidence**:
+  - Output / Screenshots / Test logs: <!-- Attach screenshots for UI changes, or paste cargo test output -->
 
-## Risk & Rollback
-- ...
+## Checklist
+- [ ] `cargo test` passes locally.
+- [ ] No proprietary binaries, secrets, or generated files (`target/`, `dist/`, `session*.json`) are committed.
+- [ ] No RE code violates the Clean-Room & IP guidelines in `LEGAL.md` and `docs/standards/compliance-and-ip.md`.
+- [ ] Documentation updated if introducing new features, flags, or configuration options.
 ```
 
-Tier 3 additionally requires: ADR link, capture/evidence reference (`re-notes/...`), and a rollback note for schema or protocol changes.
+Tier 3 additionally requires: ADR link in `## Summary`, protocol capture/evidence reference (`re-notes/...`), and a rollback note for schema or protocol changes under `## Verification & Evidence`.
 
 ## 4. Human Audit & Verification Protocol
 

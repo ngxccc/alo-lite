@@ -1,4 +1,4 @@
-# ADR-0011: Single-Responsibility Protocol & Storage Module Boundaries
+# ADR-0002: Single-Responsibility Protocol & Storage Module Boundaries
 
 - **Status:** Accepted
 - **Date:** 2026-11-08
