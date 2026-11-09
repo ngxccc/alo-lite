@@ -27,40 +27,9 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Detect release commit
+      - name: Detect and tag release
         id: detect
-        run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "Direct tag push detected: ${{ github.ref_name }}"
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "tag_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "Workflow dispatch release: ${{ inputs.tag_name }}"
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "tag_name=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
-          else
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            echo "Recent commit message: $COMMIT_MSG"
-            if [[ "$COMMIT_MSG" =~ chore\(release\):[[:space:]]*v?([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-              TAG="v${BASH_REMATCH[1]}"
-              echo "Matched release commit for tag: $TAG"
-              if git rev-parse "$TAG" >/dev/null 2>&1; then
-                echo "Tag $TAG already exists, skipping."
-                echo "should_release=false" >> "$GITHUB_OUTPUT"
-              else
-                git config user.name "github-actions[bot]"
-                git config user.email "github-actions[bot]@users.noreply.github.com"
-                git tag -a "$TAG" -m "AloLite Release $TAG"
-                git push origin "$TAG"
-                echo "Created and pushed tag $TAG"
-                echo "should_release=true" >> "$GITHUB_OUTPUT"
-                echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
-              fi
-            else
-              echo "Not a release commit, skipping release workflow."
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-            fi
-          fi
+        run: ./scripts/detect-and-tag-release.sh "${{ github.ref_type }}" "${{ github.ref_name }}" "${{ github.event_name }}" "${{ inputs.tag_name }}"
 
   ci-gate:
     name: CI Gate
