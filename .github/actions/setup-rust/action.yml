@@ -34,13 +34,50 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # No cargo invocation allowed before this.
+    # In a pre-built container, RUSTC_WRAPPER=sccache is already set,
+    # so the very first `cargo` call (from rust-toolchain action or
+    # Swatinem/rust-cache) will start the sccache daemon. If the GHA
+    # cache URL isn't visible, the daemon fails and the job dies.
+    - name: Configure sccache
+      id: sccache-preconfig
+      shell: bash
+      run: |
+        if [ "${{ inputs.sccache }}" != "true" ]; then
+          # Container may have RUSTC_WRAPPER=sccache baked in — neutralize it
+          echo "RUSTC_WRAPPER=" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
+          echo "gha_available=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # sccache v0.19 reads ACTIONS_CACHE_URL, not ACTIONS_RESULTS_URL.
+        # Newer container jobs only inject the latter — map one to the other.
+        cache_url="${ACTIONS_CACHE_URL:-}"
+        if [ -z "$cache_url" ] && [ -n "${ACTIONS_RESULTS_URL:-}" ]; then
+          cache_url="${ACTIONS_RESULTS_URL}"
+          echo "ACTIONS_CACHE_URL=${cache_url}" >> "$GITHUB_ENV"
+          echo "Mapped ACTIONS_RESULTS_URL → ACTIONS_CACHE_URL"
+        fi
+
+        if [ -n "$cache_url" ]; then
+          echo "gha_available=true" >> "$GITHUB_OUTPUT"
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
+        else
+          echo "gha_available=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::sccache: no ACTIONS_CACHE_URL / ACTIONS_RESULTS_URL available — using local disk cache only"
+          echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
+        fi
+
+    # avoid `rustc --version` unguarded — if some wrapper path
+    # ever routes through sccache, we don't want the probe step to die.
     - name: Check pre-installed toolchain
       id: check-env
       shell: bash
       run: |
         if command -v cargo >/dev/null 2>&1 && command -v rustc >/dev/null 2>&1; then
           echo "has_rust=true" >> "$GITHUB_OUTPUT"
-          echo "Rust toolchain already installed ($(rustc --version))."
+          echo "Rust toolchain already installed ($(rustc --version 2>/dev/null || echo unknown))."
         else
           echo "has_rust=false" >> "$GITHUB_OUTPUT"
         fi
@@ -60,13 +97,17 @@ runs:
       if: inputs.sccache == 'true' && steps.check-env.outputs.has_sccache != 'true'
       uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
-    - name: Configure sccache environment
+    - name: Finalize sccache configuration
       if: inputs.sccache == 'true'
       shell: bash
       run: |
-        echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
         echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
         echo "CARGO_INCREMENTAL=0" >> "$GITHUB_ENV"
+        if [ "${{ steps.sccache-preconfig.outputs.gha_available }}" = "true" ]; then
+          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
+        else
+          echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
+        fi
 
     - name: High-performance Rust Cache
       if: inputs.cache == 'true'
