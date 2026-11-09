@@ -51,7 +51,7 @@ describe("writeManifest", () => {
   it("updates package.json version cleanly", () => {
     const d = makeDir();
     const jsonPath = join(d, "package.json");
-    writeFileSync(jsonPath, '{\n  "name": "alolite-ui",\n  "version": "0.1.0"\n}\n', "utf8");
+    writeFileSync(jsonPath, '{\n  "name": "alolite-desktop",\n  "version": "0.1.0"\n}\n', "utf8");
     writeManifest(jsonPath, "0.2.0");
     expect(readVersion(jsonPath)).toBe("0.2.0");
   });

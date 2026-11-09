@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "alolite-ui",
+      "name": "alolite-desktop",
       "dependencies": {
         "@radix-ui/react-context-menu": "^2.4.1",
         "@radix-ui/react-dialog": "^1.3.1",
