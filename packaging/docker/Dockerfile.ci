@@ -11,7 +11,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CARGO_INCREMENTAL=0 \
     RUSTC_WRAPPER=sccache \
     SCCACHE_GHA_ENABLED=true \
-    PATH="/root/.cargo/bin:/root/.bun/bin:${PATH}"
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH="/usr/local/cargo/bin:/usr/local/bin:${PATH}"
 
 # 1. Install base build tools, linkers (mold + clang), and system libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -25,6 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     jq \
     file \
+    unzip \
+    zip \
     ca-certificates \
     libssl-dev \
     libasound2-dev \
@@ -50,7 +54,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
     --default-toolchain stable \
     --profile minimal \
-    -c rustfmt clippy
+    -c rustfmt -c clippy && \
+    chmod -R a+rwX /usr/local/cargo /usr/local/rustup
 
 # 3. Install sccache for shared compilation caching
 RUN SCCACHE_VERSION="v0.19.0" && \
@@ -69,10 +74,10 @@ RUN curl -fsSL -o /usr/local/bin/appimagetool "https://github.com/AppImage/appim
 WORKDIR /workspace
 CMD ["/bin/bash"]
 
-# Fix DS-0002 & DS-0026
 RUN useradd -m -u 1001 -s /bin/bash runner && \
     echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    chown -R runner:runner /workspace /root/.cargo /root/.bun 2>/dev/null || true
+    chmod -R a+rwX /usr/local/cargo /usr/local/rustup && \
+    chown -R runner:runner /workspace 2>/dev/null || true
 
 # Turn off alert need HEALTHCHECK, DS-0026
 HEALTHCHECK NONE

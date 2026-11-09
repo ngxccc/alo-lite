@@ -19,13 +19,7 @@
  *   bun run release --dry-run        # validate and print the plan, change nothing
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import {
-  compareVersions,
-  currentVersion,
-  MANIFESTS,
-  resolveTarget,
-  setVersion,
-} from "./version";
+import { compareVersions, currentVersion, MANIFESTS, resolveTarget, setVersion } from "./version";
 export { resolveTarget } from "./version";
 export const CHANGELOG = "CHANGELOG.md";
 

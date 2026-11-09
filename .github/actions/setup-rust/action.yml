@@ -34,13 +34,30 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Check pre-installed toolchain
+      id: check-env
+      shell: bash
+      run: |
+        if command -v cargo >/dev/null 2>&1 && command -v rustc >/dev/null 2>&1; then
+          echo "has_rust=true" >> "$GITHUB_OUTPUT"
+          echo "Rust toolchain already installed ($(rustc --version))."
+        else
+          echo "has_rust=false" >> "$GITHUB_OUTPUT"
+        fi
+        if command -v sccache >/dev/null 2>&1; then
+          echo "has_sccache=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_sccache=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Setup Rust toolchain
+      if: steps.check-env.outputs.has_rust != 'true'
       uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       with:
         components: ${{ inputs.components }}
 
     - name: Setup sccache
-      if: inputs.sccache == 'true'
+      if: inputs.sccache == 'true' && steps.check-env.outputs.has_sccache != 'true'
       uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
     - name: Configure sccache environment
