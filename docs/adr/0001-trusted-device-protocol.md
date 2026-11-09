@@ -1,4 +1,4 @@
-# ADR-0010: Pure-Rust Trusted Device Protocol Implementation
+# ADR-0001: Pure-Rust Trusted Device Protocol Implementation
 
 - **Status:** Accepted
 - **Date:** 2026-11-07
