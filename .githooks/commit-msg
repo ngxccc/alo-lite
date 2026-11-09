@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg - Enforce Conventional Commits 1.0 (AloLite standard)
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+FIRST_LINE=$(head -n 1 "$COMMIT_MSG_FILE" | tr -d '\r')
+
+# Allow merge, revert, and fixup/squash commits
+if [[ "$FIRST_LINE" =~ ^(Merge|Revert|fixup!|squash!)[[:space:]] ]] || [[ "$FIRST_LINE" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+  exit 0
+fi
+
+HEADER_LEN=${#FIRST_LINE}
+if [ "$HEADER_LEN" -gt 72 ]; then
+  echo ""
+  echo "❌ [commit-msg] Commit header exceeds 72 characters (length: $HEADER_LEN):"
+  echo "   \"$FIRST_LINE\""
+  echo "   Standard: <type>(<scope>): <summary> with header <= 72 chars."
+  echo ""
+  exit 1
+fi
+
+if [[ "$FIRST_LINE" =~ \.$ ]]; then
+  echo ""
+  echo "❌ [commit-msg] Commit header must not end with a period (.):"
+  echo "   \"$FIRST_LINE\""
+  echo ""
+  exit 1
+fi
+
+# Regex: <type>(<optional-scope>)<!-optional-breaking>: <summary>
+PATTERN='^([a-z]+)(\([a-z0-9_\/-]+\))?(!)?:[[:space:]]+(.+)$'
+
+if [[ ! "$FIRST_LINE" =~ $PATTERN ]]; then
+  echo ""
+  echo "❌ [commit-msg] Invalid Conventional Commit format:"
+  echo "   \"$FIRST_LINE\""
+  echo ""
+  echo "   Expected format: <type>(<scope>): <summary>"
+  echo "   Examples:"
+  echo "     feat(chat): add quote-reply rendering"
+  echo "     fix(session): clear expired zpw_sek before QR re-login"
+  echo "     refactor(core): move schema bootstrap into versioned migrations"
+  echo "     ci(workflows): add precommit hook validation"
+  echo ""
+  echo "   Allowed types: feat, fix, refactor, perf, test, docs, chore, ci, style"
+  echo ""
+  exit 1
+fi
+
+TYPE="${BASH_REMATCH[1]}"
+case "$TYPE" in
+  feat|fix|refactor|perf|test|docs|chore|ci|style)
+    ;;
+  *)
+    echo ""
+    echo "❌ [commit-msg] Invalid commit type: \"$TYPE\""
+    echo "   Allowed types: feat, fix, refactor, perf, test, docs, chore, ci, style"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0

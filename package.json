@@ -7,6 +7,7 @@
     "release": "bun scripts/release.ts",
     "version:bump": "bun scripts/version.ts bump",
     "version:check": "bun scripts/version.ts check",
-    "test:scripts": "bun test scripts/"
+    "test:scripts": "bun test scripts/",
+    "prepare": "./scripts/setup-git-hooks.sh"
   }
 }
