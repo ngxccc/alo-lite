@@ -1,12 +1,5 @@
 name: "PR Type Label"
 
-# The release notes group pull requests by label, so the label has to say what
-# the change is, not which files it touched. File paths answer "where" (the
-# labeler's `area:*` labels); the conventional-commit prefix answers "what".
-#
-# `pull_request_target` because labeling needs a write token, and no pull
-# request code is checked out here.
-
 on:
   pull_request_target:
     types: [opened, edited, reopened, synchronize]
@@ -21,10 +14,10 @@ concurrency:
 
 jobs:
   label:
-    name: "Label from conventional commit prefix"
+    name: Type Labeler
     runs-on: ubuntu-latest
     steps:
-      - name: "Keep exactly one type label in sync with the title"
+      - name: Sync Type Label
         uses: actions/github-script@v9
         with:
           script: |
@@ -39,12 +32,73 @@ jobs:
               chore: "type:chore",
               build: "type:chore",
               style: "type:style",
+              core: "type:refactor",
+              security: "type:fix",
             };
             const MANAGED = new Set(Object.values(PREFIX_TO_LABEL));
+            const SPLIT_LABEL = "status:needs-split";
 
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
 
+            // 1. Scan all commits in the PR
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const commitTypes = new Set();
+            for (const item of commits) {
+              const title = item.commit.message.split("\n")[0].trim();
+              const match = /^(\w+)(?:\([^)]*\))?!?:/.exec(title);
+              if (match) {
+                const rawType = match[1].toLowerCase();
+                if (PREFIX_TO_LABEL[rawType]) {
+                  commitTypes.add(PREFIX_TO_LABEL[rawType]);
+                }
+              }
+            }
+
+            const current = pr.labels.map((label) => label.name);
+            const typeList = Array.from(commitTypes);
+
+            // 2. Warn if multiple types detected
+            if (typeList.length > 1) {
+              const warningMsg = `⚠️ Warning: PR #${pr.number} contains ${typeList.length} different commit types: [${typeList.join(", ")}]. A single PR should focus on a single conventional type. Consider splitting into focused, single-purpose PRs.`;
+              core.warning(warningMsg);
+
+              if (!current.includes(SPLIT_LABEL)) {
+                try {
+                  await github.rest.issues.addLabels({
+                    owner,
+                    repo,
+                    issue_number: pr.number,
+                    labels: [SPLIT_LABEL],
+                  });
+                  core.info(`Added ${SPLIT_LABEL}`);
+                } catch (err) {
+                  core.warning(`Failed to add ${SPLIT_LABEL}: ${err.message}`);
+                }
+              }
+            } else {
+              if (current.includes(SPLIT_LABEL)) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: pr.number,
+                    name: SPLIT_LABEL,
+                  });
+                  core.info(`Removed ${SPLIT_LABEL}`);
+                } catch (err) {
+                  if (err.status !== 404) core.warning(`Failed to remove ${SPLIT_LABEL}: ${err.message}`);
+                }
+              }
+            }
+
+            // 3. Keep exactly one primary type label in sync with PR title
             const match = /^(\w+)(?:\([^)]*\))?!?:/.exec(pr.title);
             const wanted = match && PREFIX_TO_LABEL[match[1].toLowerCase()];
 
@@ -52,8 +106,6 @@ jobs:
               core.info(`"${pr.title}" has no conventional prefix; leaving type labels alone.`);
               return;
             }
-
-            const current = pr.labels.map((label) => label.name);
 
             for (const name of current) {
               if (!MANAGED.has(name) || name === wanted) continue;

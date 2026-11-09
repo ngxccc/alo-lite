@@ -1,0 +1,80 @@
+# .github/labeler.yml - `area:*` labels from modified file paths (v5 schema).
+#
+# Only "where" lives here. "What" — `type:*` — comes from the pull request's
+# conventional-commit prefix, set by pr-type-label.yml. Both workflows write a
+# different label set, so they never fight over the same label.
+
+"area:protocol":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/protocol/**/*"
+
+"area:store":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/storage/**/*"
+
+"area:mcp":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/mcp/**/*"
+
+"area:core":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/**/*"
+          - "!crates/alolite-core/src/protocol/**/*"
+          - "!crates/alolite-core/src/storage/**/*"
+          - "!crates/alolite-core/src/mcp/**/*"
+          - "Cargo.toml"
+          - "Cargo.lock"
+
+"area:cli":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-cli/**/*"
+
+"area:ui":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/desktop/**/*"
+          - "crates/alolite-desktop/**/*"
+          - "package.json"
+          - "bun.lock"
+
+"area:packaging":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packaging/**/*"
+
+"area:assets":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "assets/**/*"
+          - ".github/assets/**/*"
+
+"area:docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**/*"
+          - "README.md"
+          - "CONTRIBUTING.md"
+          - "LICENSE"
+
+"area:ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**/*"
+          - "!.github/assets/**/*"
+          - ".cargo/**/*"
+
+"area:harness":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "AGENTS.md"
+          - ".omp/**/*"
+          - ".claude/**/*"
+          - ".vscode/**/*"
+          - ".gitignore"
+          - "scripts/**/*"
+          - "Makefile"
