@@ -56,26 +56,23 @@ runs:
         script: |
           const token = process.env.ACTIONS_RUNTIME_TOKEN || '';
           const resultsUrl = process.env.ACTIONS_RESULTS_URL || '';
-          const cacheUrl = process.env.ACTIONS_CACHE_URL || resultsUrl;
+
+          // Force GitHub Actions Cache Service V2 to use ACTIONS_RESULTS_URL
+          // (matching mozilla-actions/sccache-action) and avoid deprecated V1 artifactcache endpoint.
+          core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
 
           if (resultsUrl) {
             core.exportVariable('ACTIONS_RESULTS_URL', resultsUrl);
-          }
-          if (cacheUrl) {
-            core.exportVariable('ACTIONS_CACHE_URL', cacheUrl);
           }
           if (token) {
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', token);
           }
 
-          const hasCacheUrl = Boolean(cacheUrl || resultsUrl);
-          if (hasCacheUrl && token) {
+          if (resultsUrl && token) {
             core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
-            core.exportVariable('SCCACHE_GHA_CACHE_URL', cacheUrl || resultsUrl);
-            core.exportVariable('SCCACHE_GHA_RUNTIME_TOKEN', token);
             core.setOutput('gha_available', 'true');
           } else {
-            core.warning('sccache: no ACTIONS_CACHE_URL / ACTIONS_RESULTS_URL / ACTIONS_RUNTIME_TOKEN available — using local disk cache only');
+            core.warning('sccache: no ACTIONS_RESULTS_URL / ACTIONS_RUNTIME_TOKEN available — using local disk cache only');
             core.exportVariable('SCCACHE_GHA_ENABLED', 'false');
             core.setOutput('gha_available', 'false');
           }
@@ -118,6 +115,9 @@ runs:
           echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
         else
           echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
+        fi
+        if command -v sccache >/dev/null 2>&1; then
+          echo "SCCACHE_PATH=$(command -v sccache)" >> "$GITHUB_ENV"
         fi
 
     # Ensure non-root runner owns CARGO_HOME / RUSTUP_HOME inside container environments
