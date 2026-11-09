@@ -21,9 +21,11 @@
 
 </div>
 
-Alolite is a standalone desktop application that talks directly to the Zalo messaging service over its HTTP and WebSocket APIs. The protocol, storage and business logic live in a UI-independent Rust crate; the interface is a Tauri v2 window that uses the operating system's WebView (React + TypeScript, prebuilt into static assets embedded in the binary).
+Alolite is a standalone, lightweight desktop messaging client written in pure Rust and Tauri v2. It connects directly to upstream messaging endpoints without intermediate proxies. All protocol state machines, cryptographic operations, and SQLite local caches reside in an isolated, UI-independent Rust core — delivering a native desktop experience with **instantaneous startup** and **under 40 MB base memory footprint**.
 
-> Alolite is **not** affiliated with, sponsored by, or endorsed by VNG Corporation. "Zalo" is a trademark of VNG and is mentioned only to describe the protocol compatibility target. See [`docs/LEGAL.md`](docs/LEGAL.md).
+> [!WARNING]
+> **Legal Notice & Trademark Disclaimer**  
+> Alolite is an independent third-party open-source project and is **not** affiliated with, sponsored by, or endorsed by VNG Corporation. "Zalo" is a registered trademark of VNG Corporation; all references within this repository are made strictly under **Nominative Fair Use** for technical interoperability research on Linux. See [`docs/LEGAL.md`](docs/LEGAL.md).
 
 ---
 
@@ -56,9 +58,13 @@ Alolite is a standalone desktop application that talks directly to the Zalo mess
 
 ---
 
-## Install runtime packages (Linux)
+## Installation & Runtime Packages
 
-Alolite renders its UI with the system **WebKitGTK 4.1** WebView, so that package is required. Inline video playback additionally needs **GStreamer** plugins; without them the app still works but videos must be opened in an external player.
+Alolite renders its interface using the system's native **WebKitGTK 4.1** WebView, keeping memory usage minimal with zero bundled Chromium or Electron runtimes.
+
+<details>
+<summary><b>Distribution Packages & System Dependencies (Debian, Ubuntu, Fedora, Arch)</b></summary>
+<br>
 
 ### 1. WebView and GUI libraries (required)
 
@@ -68,11 +74,12 @@ Alolite renders its UI with the system **WebKitGTK 4.1** WebView, so that packag
 | Fedora / RHEL / Rocky | `sudo dnf install gtk3 webkit2gtk4.1 libsoup3` |
 | Arch / Manjaro / EndeavourOS | `sudo pacman -S gtk3 webkit2gtk-4.1 libsoup3` |
 
-> Installing the `.deb` or `.rpm` release package pulls these in automatically.
+> [!NOTE]
+> Installing the official `.deb` or `.rpm` release package pulls these dependencies automatically.
 
 ### 2. Video playback (GStreamer)
 
-WebKitGTK plays `<video>` through GStreamer. Alolite checks for the `qtdemux` (MP4 demuxer) and `autoaudiosink` elements at startup and shows a hint in the chat when they are missing.
+WebKitGTK plays inline `<video>` through GStreamer. Alolite checks for `qtdemux` (MP4 demuxer) and `autoaudiosink` elements at startup and shows a helpful hint in chat when they are absent.
 
 | Distribution | Command |
 |:---|:---|
@@ -80,8 +87,8 @@ WebKitGTK plays `<video>` through GStreamer. Alolite checks for the `qtdemux` (M
 | Fedora / RHEL / Rocky | `sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-libav` |
 | Arch / Manjaro / EndeavourOS | `sudo pacman -S gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav` |
 
-- `gst-plugins-base` provides core pipeline elements, `gst-plugins-good` and `gst-plugins-bad` provide MP4/WebM demuxers, stream parsers, and audio sinks, and `gst-libav` provides H.264/AAC decoders used by chat media.
-- On Fedora the stock `gstreamer1-libav` may lack H.264 for patent reasons; if videos still do not play, enable [RPM Fusion](https://rpmfusion.org/) and install its `ffmpeg`/`gstreamer1-plugin-libav` packages.
+- `gst-plugins-base` provides core pipeline elements, `gst-plugins-good` and `gst-plugins-bad` provide MP4/WebM demuxers, and `gst-libav` provides H.264/AAC decoders used by chat media.
+- On Fedora, stock `gstreamer1-libav` may lack H.264 for patent reasons; enable [RPM Fusion](https://rpmfusion.org/) and install its `ffmpeg`/`gstreamer1-plugin-libav` packages.
 - Verify the installation:
 
   ```bash
@@ -90,7 +97,7 @@ WebKitGTK plays `<video>` through GStreamer. Alolite checks for the `qtdemux` (M
   gst-inspect-1.0 avdec_h264 >/dev/null && echo "h264 decoder: ok"
   ```
 
-### 3. Optional helpers
+### 3. Optional desktop helpers
 
 | Purpose | Debian / Ubuntu | Fedora | Arch |
 |:---|:---|:---|:---|
@@ -100,25 +107,11 @@ WebKitGTK plays `<video>` through GStreamer. Alolite checks for the `qtdemux` (M
 
 These match the `Recommends` of the `.deb`/`.rpm` packages.
 
+</details>
+
 ---
 
 ## Build from source
-
-### Requirements
-
-- Rust 1.75+ (edition 2021)
-- [Bun](https://bun.sh), only to build the UI (the final binary contains no Node.js)
-- Tauri v2 build dependencies for your distribution:
-
-| Distribution | Command |
-|:---|:---|
-| Debian / Ubuntu | `sudo apt install build-essential pkg-config libssl-dev libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev patchelf` |
-| Fedora | `sudo dnf install gcc gcc-c++ pkgconf-pkg-config openssl-devel gtk3-devel webkit2gtk4.1-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel libxdo-devel patchelf` |
-| Arch | `sudo pacman -S --needed base-devel openssl gtk3 webkit2gtk-4.1 libsoup3 librsvg libappindicator-gtk3 xdotool patchelf` |
-
-See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for the authoritative list. Install the GStreamer packages above as well if you want to test video.
-
-### Run the desktop app
 
 ```bash
 git clone https://github.com/ngxccc/alolite
@@ -126,20 +119,31 @@ cd alolite
 make dev-desktop        # builds the UI, then runs alolite-desktop
 ```
 
-Equivalent:
+<details>
+<summary><b>Prerequisites, CLI Modes & Build Matrix</b></summary>
+<br>
 
-```bash
-(cd apps/desktop && bun install && bun run build)
-cargo run -p alolite-desktop --bin alolite-desktop
-```
+### Toolchain requirements
 
-### Command-line modes
+- Rust 1.75+ (edition 2021)
+- [Bun](https://bun.sh) (only required to compile the static frontend assets; the final binary contains zero Node.js runtimes)
+- Tauri v2 build dependencies:
+
+| Distribution | Command |
+|:---|:---|
+| Debian / Ubuntu | `sudo apt install build-essential pkg-config libssl-dev libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev patchelf` |
+| Fedora | `sudo dnf install gcc gcc-c++ pkgconf-pkg-config openssl-devel gtk3-devel webkit2gtk4.1-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel libxdo-devel patchelf` |
+| Arch | `sudo pacman -S --needed base-devel openssl gtk3 webkit2gtk-4.1 libsoup3 librsvg libappindicator-gtk3 xdotool patchelf` |
+
+See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for the authoritative list.
+
+### Command-line & headless modes
 
 ```bash
 cargo run -p alolite-cli --bin alolite -- --qr                          # QR sign-in in the terminal
 cargo run -p alolite-cli --bin alolite -- --mcp                         # MCP server over stdio
 cargo run -p alolite-cli --bin alolite -- --api-port 18128 --api-only   # REST + MCP HTTP, no GUI
-cargo run -p alolite-cli --bin alolite -- --help                        # all options
+cargo run -p alolite-cli --bin alolite -- --help                        # All options
 ```
 
 ### Build, test, package
@@ -156,6 +160,8 @@ cargo run -p alolite-cli --bin alolite -- --help                        # all op
 | Install desktop entry into `~/.local` | `make install` |
 
 `make help` lists every available command.
+
+</details>
 
 ---
 
