@@ -8,10 +8,10 @@
 
 # Quyết định kiến trúc (ADR)
 
-- [ADR 0010: Trusted Device Protocol](adr/0010-trusted-device-protocol.md)
-- [ADR 0011: Ranh giới Module Protocol](adr/0011-protocol-module-boundaries.md)
-- [ADR 0012: Kiến trúc UI Tauri v2](adr/0012-tauri-feature-ui-architecture.md)
-- [ADR 0013: Phân chia Workspace & Desktop](adr/0013-cargo-workspace-and-desktop-separation.md)
+- [ADR 0001: Trusted Device Protocol](adr/0001-trusted-device-protocol.md)
+- [ADR 0002: Ranh giới Module Protocol](adr/0002-protocol-module-boundaries.md)
+- [ADR 0003: Kiến trúc UI Tauri v2](adr/0003-tauri-feature-ui-architecture.md)
+- [ADR 0004: Phân chia Workspace & Desktop](adr/0004-cargo-workspace-and-desktop-separation.md)
 
 # Tiêu chuẩn kỹ thuật
 
