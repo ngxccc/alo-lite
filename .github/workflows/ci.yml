@@ -26,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,19 +36,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Test & Lint
-    runs-on: ubuntu-latest
+  core-cli:
+    name: Rust Core & CLI
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Rust
-        uses: ./.github/setup-rust
+        uses: ./.github/actions/setup-rust
         with:
           components: "rustfmt, clippy"
+          cache-targets: "false"
+          sccache: "true"
+          gui-dependencies: "false"
 
-      - name: Format
+      - name: Format Check
         run: cargo fmt --all -- --check
 
       - name: Clippy
@@ -56,27 +60,59 @@ jobs:
       - name: Tests
         run: cargo test -p alolite-core -p alolite-cli --locked
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+  frontend:
+    name: Frontend Desktop UI
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Cache Bun
-        uses: actions/cache@v6
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('apps/desktop/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Check Versions
         run: bun scripts/version.ts check
 
-      - name: Check Frontend
+      - name: Check & Build Frontend
         working-directory: apps/desktop
         run: |
           bun install --frozen-lockfile
           bun run check
           bun test
           bun run build
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: desktop-dist
+          path: apps/desktop/dist
+          retention-days: 1
+
+  desktop-check:
+    name: Desktop Tauri Check
+    needs: [frontend]
+    runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: desktop-dist
+          path: apps/desktop/dist
+
+      - name: Setup Rust & GUI Dependencies
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-targets: "false"
+          sccache: "true"
+          gui-dependencies: "true"
 
       - name: Release Check
         run: cargo check --release --all-targets

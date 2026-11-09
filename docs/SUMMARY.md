@@ -4,7 +4,6 @@
 
 - [Lộ trình phát triển](ROADMAP.md)
 - [Chính sách pháp lý](LEGAL.md)
-- [Vấn đề đã biết](DA_BIET.md)
 
 # Quyết định kiến trúc (ADR)
 

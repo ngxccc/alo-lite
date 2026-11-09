@@ -14,9 +14,6 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ "${SKIP_ISSUES:-0}" != "1" ]; then
-  ./scripts/gen-known-issues.sh || echo "! Bỏ qua bước sinh Đã biết" >&2
-fi
 
 if ! command -v mdbook >/dev/null 2>&1; then
   echo "! Chưa có mdbook. Cài bằng: cargo install mdbook --locked" >&2

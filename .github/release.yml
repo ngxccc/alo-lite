@@ -18,15 +18,14 @@ changelog:
       labels:
         - type:perf
         - performance
-    - title: Refactors & Tech Debt
+    - title: Refactors
       labels:
         - type:refactor
         - refactor
-        - tech-debt
     - title: Security
       labels:
         - security
-    - title: CI & Tooling
+    - title: CI
       labels:
         - type:ci
         - type:chore
