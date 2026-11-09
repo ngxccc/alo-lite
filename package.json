@@ -8,6 +8,13 @@
     "version:bump": "bun scripts/version.ts bump",
     "version:check": "bun scripts/version.ts check",
     "test:scripts": "bun test scripts/",
+    "lint:scripts": "./apps/desktop/node_modules/.bin/oxlint scripts/",
+    "format:scripts": "./apps/desktop/node_modules/.bin/oxfmt --config scripts/.oxfmtrc.json scripts/",
+    "format:scripts:check": "./apps/desktop/node_modules/.bin/oxfmt --config scripts/.oxfmtrc.json --check scripts/",
     "prepare": "./scripts/setup-git-hooks.sh"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6"
   }
 }

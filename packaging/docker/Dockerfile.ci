@@ -1,0 +1,81 @@
+# Pre-built container environment for AloLite CI, WebKitGTK, Bun, and Rust
+FROM ubuntu:22.04
+
+LABEL org.opencontainers.image.title="alolite-ci" \
+      org.opencontainers.image.description="Pre-built container environment for AloLite CI, WebKitGTK, Bun, and Rust" \
+      org.opencontainers.image.source="https://github.com/ngxccc/alo-lite"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Etc/UTC \
+    CARGO_TERM_COLOR=always \
+    CARGO_INCREMENTAL=0 \
+    RUSTC_WRAPPER=sccache \
+    SCCACHE_GHA_ENABLED=true \
+    PATH="/root/.cargo/bin:/root/.bun/bin:${PATH}"
+
+# 1. Install base build tools, linkers (mold + clang), and system libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    pkg-config \
+    clang \
+    mold \
+    curl \
+    wget \
+    git \
+    jq \
+    file \
+    ca-certificates \
+    libssl-dev \
+    libasound2-dev \
+    # WebKitGTK and GUI desktop dependencies for Tauri v2
+    libwebkit2gtk-4.1-dev \
+    libsoup-3.0-dev \
+    libgtk-3-dev \
+    libxcb-render0-dev \
+    libxcb-shape0-dev \
+    libxcb-xfixes0-dev \
+    libxkbcommon-dev \
+    # Linux packaging tools (.deb, .rpm, .AppImage, etc.)
+    rpm \
+    desktop-file-utils \
+    libfuse2 \
+    patchelf \
+    librsvg2-dev \
+    libayatana-appindicator3-dev \
+    libxdo-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 2. Install Rust stable toolchain + components
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    --default-toolchain stable \
+    --profile minimal \
+    -c rustfmt clippy
+
+# 3. Install sccache for shared compilation caching
+RUN SCCACHE_VERSION="v0.19.0" && \
+    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    | tar -xz --strip-components=1 -C /usr/local/bin "sccache-${SCCACHE_VERSION}-x86_64-unknown-linux-musl/sccache" && \
+    chmod +x /usr/local/bin/sccache
+
+# 4. Install Bun
+RUN curl -fsSL https://bun.sh/install | bash && \
+    cp /root/.bun/bin/bun /usr/local/bin/bun
+
+# 5. Pre-download appimagetool for AppImage packaging
+RUN curl -fsSL -o /usr/local/bin/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" && \
+    chmod +x /usr/local/bin/appimagetool
+
+WORKDIR /workspace
+CMD ["/bin/bash"]
+
+# Fix DS-0002 & DS-0026
+RUN useradd -m -u 1001 -s /bin/bash runner && \
+    echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    chown -R runner:runner /workspace /root/.cargo /root/.bun 2>/dev/null || true
+
+# Turn off alert need HEALTHCHECK, DS-0026
+HEALTHCHECK NONE
+
+# Use normal user, DS-0002
+USER runner

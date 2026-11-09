@@ -17,19 +17,22 @@ permissions:
 jobs:
   check-release:
     name: Detect & Tag Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       should_release: ${{ steps.detect.outputs.should_release }}
       tag_name: ${{ steps.detect.outputs.tag_name }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 2
 
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
       - name: Detect and tag release
         id: detect
-        run: ./scripts/detect-and-tag-release.sh "${{ github.ref_type }}" "${{ github.ref_name }}" "${{ github.event_name }}" "${{ inputs.tag_name }}"
+        run: bun scripts/detect-and-tag-release.ts "${{ github.ref_type }}" "${{ github.ref_name }}" "${{ github.event_name }}" "${{ inputs.tag_name }}"
 
   ci-gate:
     name: CI Gate
@@ -47,17 +50,17 @@ jobs:
     name: Publish Release
     needs: [check-release, build]
     if: needs.check-release.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: alolite-linux-packages
           path: release_assets
@@ -66,7 +69,7 @@ jobs:
         run: ./scripts/generate-checksums.sh release_assets
 
       - name: Publish
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: ${{ needs.check-release.outputs.tag_name }}
           name: AloLite Release ${{ needs.check-release.outputs.tag_name }}

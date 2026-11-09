@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compareVersions, readVersion, resolveTarget, writeManifest } from "./version";
-import { isBreaking, isFeature, prependChangelog, suggestBump } from "./release";
+import { prependChangelog, suggestBump } from "./release";
 
 describe("compareVersions", () => {
   it("compares semver strings accurately", () => {
@@ -51,11 +51,7 @@ describe("writeManifest", () => {
   it("updates package.json version cleanly", () => {
     const d = makeDir();
     const jsonPath = join(d, "package.json");
-    writeFileSync(
-      jsonPath,
-      '{\n  "name": "alolite-ui",\n  "version": "0.1.0"\n}\n',
-      "utf8",
-    );
+    writeFileSync(jsonPath, '{\n  "name": "alolite-ui",\n  "version": "0.1.0"\n}\n', "utf8");
     writeManifest(jsonPath, "0.2.0");
     expect(readVersion(jsonPath)).toBe("0.2.0");
   });
@@ -71,9 +67,7 @@ describe("suggestBump", () => {
   });
 
   it("suggests minor when feat merges", () => {
-    const prs = [
-      { number: 1, title: "feat(ui): add tools popover", mergedAt: "", labels: [] },
-    ];
+    const prs = [{ number: 1, title: "feat(ui): add tools popover", mergedAt: "", labels: [] }];
     expect(suggestBump(prs)?.level).toBe("minor");
   });
 
