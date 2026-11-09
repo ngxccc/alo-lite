@@ -1,6 +1,25 @@
+<div align="center">
+
+<img src=".github/assets/logo.svg" alt="Alolite - Lightweight Native Messaging Client for Linux" width="180" />
+
 # Alolite
 
-> **A fast, lightweight, native desktop messaging client written in Rust — no Node.js at runtime, no Electron, no Chromium.**
+**A fast, lightweight, native desktop messaging client written in Rust**  
+*No Node.js at runtime • No Electron • No Chromium bloat*
+
+[![Rust](https://img.shields.io/badge/Rust-1.75+-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![Tauri v2](https://img.shields.io/badge/Tauri-v2.0-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![React](https://img.shields.io/badge/React-19.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.3-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Bun](https://img.shields.io/badge/Bun-1.4-000000?logo=bun&logoColor=white)](https://bun.sh)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+[![Tokio](https://img.shields.io/badge/Tokio-Async-FF4088?logo=rust&logoColor=white)](https://tokio.rs)
+[![SQLite](https://img.shields.io/badge/SQLite-rusqlite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org)
+[![Linux](https://img.shields.io/badge/Platform-Linux_x64-FCC624?logo=linux&logoColor=black)](https://www.kernel.org)
+[![License: Source-Available](https://img.shields.io/badge/License-Source--Available-blue.svg)](LICENSE)
+
+</div>
 
 Alolite is a standalone desktop application that talks directly to the Zalo messaging service over its HTTP and WebSocket APIs. The protocol, storage and business logic live in a UI-independent Rust crate; the interface is a Tauri v2 window that uses the operating system's WebView (React + TypeScript, prebuilt into static assets embedded in the binary).
 
@@ -165,6 +184,7 @@ Details: [`docs/adr/`](docs/adr/) and [`docs/standards/`](docs/standards/).
 ## Documentation
 
 > Online documentation book is published at **[https://ngxccc.github.io/alo-lite/](https://ngxccc.github.io/alo-lite/)**.
+
 | Document | Contents |
 |:---|:---|
 | [`AGENTS.md`](AGENTS.md) | Operating guide for humans and AI agents: commands, architecture map, non-negotiables |
@@ -177,7 +197,7 @@ Details: [`docs/adr/`](docs/adr/) and [`docs/standards/`](docs/standards/).
 
 ## Contributing
 
-Read [`AGENTS.md`](AGENTS.md) and [`docs/standards/git-flow-and-pr-matrix.md`](docs/standards/git-flow-and-pr-matrix.md) before opening a PR: prefixed branches (`feature/`, `fix/`, `core/`, …), Conventional Commits, and **never commit** `session.json`, `*.db`, cookies, `zpw_sek`, `zpw_enk`, IMEI or capture dumps.
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md), [`AGENTS.md`](AGENTS.md), and [`docs/standards/git-flow-and-pr-matrix.md`](docs/standards/git-flow-and-pr-matrix.md) before opening a PR: prefixed branches (`feature/`, `fix/`, `core/`, …), Conventional Commits, and **never commit** `session.json`, `*.db`, cookies, `zpw_sek`, `zpw_enk`, IMEI or capture dumps.
 
 Any change to protocol parameters, signatures, frame IDs or the cipher flow needs evidence (a capture or note) plus a test or a documented manual verification.
 
