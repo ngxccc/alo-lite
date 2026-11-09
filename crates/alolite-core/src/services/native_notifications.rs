@@ -286,7 +286,8 @@ mod tests {
             {
                 use std::io::Write;
                 let mut file = std::fs::File::create(&path).unwrap();
-                file.write_all(format!("#!/bin/sh\n{body}\n").as_bytes()).unwrap();
+                file.write_all(format!("#!/bin/sh\n{body}\n").as_bytes())
+                    .unwrap();
                 file.sync_all().unwrap();
             }
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
