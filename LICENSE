@@ -1,0 +1,44 @@
+Alolite Source-Available & Non-Commercial License
+Version 1.0 (2026)
+
+Copyright (c) 2026 ngxc <ngoc.dev@gmail.com>
+Repository: https://github.com/ngxccc/alolite
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to inspect,
+study, modify, and run the Software, subject to the following conditions:
+
+1. NON-COMMERCIAL & PERSONAL USE ONLY
+   The Software may be used, modified, and executed solely for personal, non-commercial,
+   educational, and technical interoperability research purposes. Any commercial use,
+   monetization, commercial distribution, or inclusion in paid services is strictly prohibited.
+
+2. PROHIBITED USES & PROTOCOL RESTRICTIONS
+   You may NOT, directly or indirectly:
+   (a) Sell, rent, lease, sublicense, or charge a fee for the Software, derivative works,
+       or compiled binaries thereof;
+   (b) Extract, adapt, or port any protocol implementation, cryptographic routines,
+       or message synchronization logic from this Software (including but not limited to
+       ZDB4 container handling, BinNet TLV codecs, and Sync V2 state machines) into commercial
+       bots, automated messaging tools, spam/marketing suites, or closed-source applications;
+   (c) Offer the functionality of the Software or its protocol implementations as a hosted
+       service, API, SaaS, or commercial bot framework.
+
+3. MANDATORY ATTRIBUTION
+   All copies, substantial portions, forks, or derivative works of the Software must retain
+   the above copyright notice, this license document, and prominent attribution to the original
+   author (ngxc) and repository URL (https://github.com/ngxccc/alolite) in all documentation,
+   source distributions, and user-facing application interfaces.
+
+4. AUTOMATIC TERMINATION
+   Any breach of the terms and conditions of this License immediately and automatically
+   terminates your rights to use, copy, modify, or distribute the Software. Continued use
+   after termination constitutes willful copyright infringement.
+
+5. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+   CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

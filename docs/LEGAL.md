@@ -44,7 +44,7 @@ Users and contributors of Alolite agree to the following terms:
    - **No Automated Spamming or Harassment:** Using this software for automated unsolicited bulk messaging, automated calling, or harassment is strictly prohibited.
    - **No Data Scraping:** Using this software to harvest, scrape, or extract personal information from other users without consent is strictly prohibited.
    - **No Denial of Service:** Circumventing rate limits, exploiting vulnerabilities, or overloading service infrastructure is strictly prohibited.
-3. **Non-Commercial Nature:** Alolite is distributed free of charge under the dual MIT / Apache-2.0 license. It contains no advertisements, telemetry tracking, premium tiers, or commercial monetization mechanisms.
+3. **Non-Commercial Nature:** Alolite is distributed free of charge under the Alolite Source-Available & Non-Commercial License (see `LICENSE`). It contains no advertisements, telemetry tracking, premium tiers, or commercial monetization mechanisms.
 
 ---
 

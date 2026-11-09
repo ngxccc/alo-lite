@@ -191,4 +191,4 @@ Any change to protocol parameters, signatures, frame IDs or the cipher flow need
 
 ## License
 
-Dual-licensed under **[MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE)**. The project exists for learning and systems-programming research with Rust.
+Licensed under the **[Alolite Source-Available & Non-Commercial License](LICENSE)**. Personal, non-commercial, and technical research use only.

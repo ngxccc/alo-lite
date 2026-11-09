@@ -12,7 +12,7 @@ edition = "2021"
 authors = ["ngxc <ngoc.dev@gmail.com>"]
 homepage = "https://github.com/ngxccc/alolite"
 repository = "https://github.com/ngxccc/alolite"
-license = "MIT OR Apache-2.0"
+license-file = "LICENSE"
 
 [profile.release]
 opt-level = 3

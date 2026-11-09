@@ -3,6 +3,7 @@ name = "alolite-desktop"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
+license-file.workspace = true
 description = "AloLite Desktop UI Host (Tauri v2 + TypeScript)"
 
 [features]

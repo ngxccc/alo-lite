@@ -22,7 +22,7 @@ Name:           alolite
 Version:        ${VERSION}
 Release:        1
 Summary:        Lightweight native messaging client in Rust + Tauri
-License:        MIT OR Apache-2.0
+License:        Proprietary (Source-Available)
 URL:            https://github.com/ngxccc/alolite
 BuildArch:      x86_64
 AutoReqProv:    no
