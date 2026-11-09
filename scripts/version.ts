@@ -77,9 +77,9 @@ export function setVersion(version: string, syncCargoLock = true): void {
   writeManifest(path, version);
  }
  if (syncCargoLock) {
-  console.log("  Syncing Cargo.lock (running fast cargo check)...");
+  console.log("  Syncing Cargo.lock (running workspace cargo check)...");
   const proc = Bun.spawnSync({
-   cmd: ["cargo", "check", "-p", "alolite-core", "--quiet"],
+   cmd: ["cargo", "check", "--workspace", "--quiet"],
    stdout: "inherit",
    stderr: "inherit",
   });

@@ -402,11 +402,11 @@ if (import.meta.main) {
   Plan:
     1. branch ${branch}
     2. generate notes, prepend ${CHANGELOG}
-    3. write ${target} into ${MANIFESTS.length} manifests
+    3. write ${target} into ${MANIFESTS.length} manifests and sync Cargo.lock
     4. commit chore(release): v${target} and push
-    5. open PR against main, wait for checks
-    6. squash-merge, return to main
-    7. gh release create v${target} with the same notes
+    5. open PR against main for review
+    6. return local branch to main
+    (Once merged, GitHub Actions automatically tags and releases v${target})
   `);
   process.exit(0);
  }
@@ -448,40 +448,14 @@ if (import.meta.main) {
  if (!prNumber) fail(`could not read PR number from: ${url}`);
  console.log(`  ${url}`);
 
- step("Merge pull request");
- run(["gh", "pr", "merge", String(prNumber), "--squash", "--delete-branch"]);
-
  step("Return to main");
  run(["git", "switch", "main"]);
- run(["git", "pull", "--ff-only", "--quiet"]);
- run(["git", "push", "origin", "--delete", branch], { allowFailure: true });
- run(["git", "branch", "-D", branch], { allowFailure: true });
 
- const releaseSha = run(["git", "rev-parse", "HEAD"], { capture: true });
- const shipped = JSON.parse(readFileSync(MANIFESTS[0], "utf8")).version;
- if (shipped !== target) {
-  fail(
-   `main declares ${shipped}, expected ${target} — the merge did not land`,
-  );
- }
-
- step(`Publish v${target}`);
- run(
-  [
-   "gh",
-   "release",
-   "create",
-   `v${target}`,
-   "--title",
-   `AloLite Release v${target}`,
-   "--notes-file",
-   "-",
-   "--target",
-   releaseSha,
-  ],
-  { input: notes },
+ console.log(`\n✔ Release PR #${prNumber} created: ${url}`);
+ console.log(
+  "  Review the changes and CHANGELOG.md on GitHub, then squash-merge the PR.",
  );
-
- console.log(`\n✔ v${target} released from ${releaseSha.slice(0, 7)}`);
- console.log(`  https://github.com/${repoSlug()}/releases/tag/v${target}`);
+ console.log(
+  `  Once merged into main, GitHub Actions will automatically tag and release v${target}!\n`,
+ );
 }
