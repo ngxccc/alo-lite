@@ -1,0 +1,15 @@
+# Ignore build artifacts and large workspace directories
+target/
+.git/
+node_modules/
+apps/desktop/node_modules/
+apps/desktop/dist/
+packaging/output/
+release_assets/
+dist/
+*.deb
+*.rpm
+*.AppImage
+*.tar.gz
+*.db
+*.log
