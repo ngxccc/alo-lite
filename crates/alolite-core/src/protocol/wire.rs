@@ -98,7 +98,7 @@ pub fn is_group_flag(v: &Value) -> bool {
         .unwrap_or(false)
 }
 
-/// Strip Alolite's local `"group_"` / `"g"` / `"G"` thread prefix to obtain the raw numeric `grid`.
+/// Strip AloLite's local `"group_"` / `"g"` / `"G"` thread prefix to obtain the raw numeric `grid`.
 pub fn strip_group_prefix(thread_id: &str) -> &str {
     thread_id
         .trim_start_matches("group_")

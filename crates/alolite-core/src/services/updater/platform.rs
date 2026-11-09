@@ -9,7 +9,7 @@ use super::install::{install_release, InstallTarget};
 
 /// Dispatch a non-blocking native OS desktop notification announcing a new GitHub release.
 pub fn notify_os_new_update(latest_version: &str, current_version: &str, release_title: &str) {
-    let title = format!("alolite — Có bản cập nhật mới v{latest_version}");
+    let title = format!("AloLite — Có bản cập nhật mới v{latest_version}");
     let body = if release_title.trim().is_empty() {
         format!("Phiên bản mới v{latest_version} đã sẵn sàng trên GitHub (hiện tại: v{current_version}). Mở ứng dụng để cập nhật tự động.")
     } else {
@@ -36,7 +36,7 @@ pub fn notify_os_new_update(latest_version: &str, current_version: &str, release
         let _ = std::process::Command::new("notify-send")
             .args([
                 "-a",
-                "alolite",
+                "AloLite",
                 "-i",
                 "software-update-available",
                 &title,

@@ -1,4 +1,4 @@
-# ROADMAP: Alolite Linux (Minimal Native Messaging Client)
+# ROADMAP: AloLite (Minimal Native Messaging Client)
 
 **Objective**: Build a minimal, ultra-lightweight, native Linux messaging client in Rust that starts instantaneously, uses minimal system resources, and eliminates Electron, Node.js, and out-of-scope non-core features (VoIP, Video Feed, Multi-platform bloat).
 

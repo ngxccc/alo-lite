@@ -63,3 +63,12 @@ Rules:
 - One ADR per decision. Bundle only tightly coupled choices.
 - Include the evidence that justified the decision (capture date, server `error_code`, upstream observation) — protocol work is not self-evident.
 - Link the ADR from the issue and the PR (`docs/adr/0007-...`).
+
+## 6. Project & Package Naming Conventions
+
+See `GLOSSARY.md` (Product & Workspace Naming) for canonical terms and avoided synonyms:
+
+- **Product Display Name**: `AloLite` (UI headers, window title, desktop entry name, notifications, documentation headers).
+- **Binaries**: `alolite` (CLI/launcher) and `alolite-desktop` (GUI desktop host).
+- **Crates & Packages**: `alolite-core`, `alolite-cli`, `alolite-desktop` (Rust workspace) and `alolite-desktop` (UI package `apps/desktop/package.json`).
+

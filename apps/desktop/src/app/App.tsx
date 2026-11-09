@@ -93,7 +93,7 @@ export function App() {
     return (
       <div className="flex h-full w-full items-center justify-center bg-canvas p-6">
         <div className="flex w-full max-w-md flex-col gap-3 rounded-xl border border-border bg-card p-6 shadow-xl">
-          <div className="text-base font-bold text-foreground">AloLite UI</div>
+          <div className="text-base font-bold text-foreground">AloLite</div>
           <div className="text-xs text-destructive">{bootError}</div>
         </div>
       </div>

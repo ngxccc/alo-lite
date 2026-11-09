@@ -177,7 +177,7 @@ pub async fn handle_mcp_request(engine: &CoreEngine, req: &Value) -> Option<Valu
                 "tools": [
                     {
                         "name": "zalo_status",
-                        "description": "Kiểm tra trạng thái phiên đăng nhập alolite và thống kê dữ liệu cục bộ",
+                        "description": "Kiểm tra trạng thái phiên đăng nhập AloLite và thống kê dữ liệu cục bộ",
                         "inputSchema": {
                             "type": "object",
                             "properties": {}
@@ -716,7 +716,7 @@ mod tests {
                 id: "r2".into(),
                 keyword: "/ping".into(),
                 match_mode: "prefix".into(),
-                reply_text: "Pong từ alolite!".into(),
+                reply_text: "Pong từ AloLite!".into(),
                 enabled: true,
                 scope: "all".into(),
             },

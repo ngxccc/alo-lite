@@ -42,6 +42,16 @@ Ubiquitous language for `alolite`. Use these terms verbatim in issues, ADRs, tes
 | **UI thread** | The Tauri WebView event loop (`apps/desktop/src/`); must never block on I/O. | "frontend" |
 | **Store** | Local SQLite database managed by `MessageStore` (`crates/alolite-core/src/storage/`), plus fast-startup JSON snapshot in `storage::thread_cache`. | "cache" (cache is non-authoritative) |
 
+## Product & Workspace Naming
+
+| Term | Definition | Avoid |
+| :--- | :--- | :--- |
+| **`AloLite`** | Canonical product display name for user-facing UI, window title, desktop entry name, notifications, and documentation headers. | "Alolite", "AloLite Linux", "Alolite Linux", "Alo-Lite" |
+| **`alolite`** | Headless CLI binary, system desktop entry executable/file name, base data directory (`~/.local/share/alolite`), and root npm package name. | "alo-lite", "alolite-cli" (when referring to the binary) |
+| **`alolite-desktop`** | GUI binary name (`target/release/alolite-desktop`), Tauri host crate name (`crates/alolite-desktop`), and desktop UI package name (`apps/desktop/package.json`). | "alolite-ui", "@alolite/desktop", "AloLite Desktop" (as binary name) |
+| **`alolite-core`** | UI-independent Rust core crate (`crates/alolite-core`). | "core", "alolite_core" |
+| **`alolite-cli`** | Headless CLI/launcher crate (`crates/alolite-cli`) that compiles to the `alolite` binary. | "alolite-bin" |
+
 ## Invariants
 
 Domain invariants are tagged `INV-N` here and referenced verbatim from code and tests.

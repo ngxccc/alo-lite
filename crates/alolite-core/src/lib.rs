@@ -1,4 +1,4 @@
-//! Alolite Core — UI-independent Zalo protocol, Tokio `CoreEngine`, SQLite store, and MCP server.
+//! AloLite Core — UI-independent Zalo protocol, Tokio `CoreEngine`, SQLite store, and MCP server.
 
 #![allow(
     clippy::too_many_arguments,

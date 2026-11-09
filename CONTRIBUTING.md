@@ -1,12 +1,12 @@
-# Contributing to Alolite
+# Contributing to AloLite
 
-Thank you for your interest in contributing to **Alolite**! This guide outlines our engineering standards, architecture, clean-room policies, and pull request workflows.
+Thank you for your interest in contributing to **AloLite**! This guide outlines our engineering standards, architecture, clean-room policies, and pull request workflows.
 
 ---
 
 ## 1. Principles & Clean-Room Standards
 
-Alolite is an independent, clean-room software client created for platform interoperability on Linux operating systems. All contributors must strictly adhere to our compliance invariants:
+AloLite is an independent, clean-room software client created for platform interoperability on Linux operating systems. All contributors must strictly adhere to our compliance invariants:
 
 - **Clean-Room Re-implementation**: Only reverse-engineered wire specifications, cryptographic handshakes, and public network protocols may be analyzed. **Never** commit decompiled source code, disassembly dumps (Ghidra, IDA, Hopper), or proprietary binaries.
 - **Zero Copyrighted Media**: Do not commit official brand logos, proprietary sticker packs, notification sounds, or commercial artwork. All user-facing media must be fetched dynamically at runtime into local cache.
@@ -44,7 +44,7 @@ See [`docs/LEGAL.md`](docs/LEGAL.md) and [`docs/standards/compliance-and-ip.md`]
 
 ## 3. Architecture Overview
 
-Alolite is organized as a Cargo workspace with a dedicated web frontend:
+AloLite is organized as a Cargo workspace with a dedicated web frontend:
 
 ```
 alolite/
