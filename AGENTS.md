@@ -28,7 +28,8 @@ Operating guide for AI agents and humans working in this repository.
 
 |Path|Responsibility|
 |:---|:---|
-|`crates/alolite-core/`|UI-independent `CoreEngine`, `protocol/`, `storage/`, `mcp/`, `services/`, `common/`, and `assets/`|
+|`crates/alolite-core/`|UI-independent `CoreEngine`, `protocol/`, `storage/`, `mcp/`, `services/`, and `common/`|
+|`assets/`|Shared desktop icon (`app_icon.png`, `.ico`, `.svg`) and branding assets|
 |`crates/alolite-cli/`|`alolite` binary (`--mcp`, `--api-only`, `--qr`, `--phone`, desktop launcher)|
 |`crates/alolite-desktop/`|Tauri v2 native desktop host (`alolite-desktop`) over `alolite-core` embedding `apps/desktop/dist`|
 |`apps/desktop/`|Pure feature-based TypeScript + React frontend (`src/{app,shared,features}/`)|

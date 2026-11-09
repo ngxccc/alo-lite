@@ -78,7 +78,7 @@ fn encode_png_asset(bytes: &[u8]) -> String {
 }
 
 pub fn embedded_app_logo_data_url() -> String {
-    encode_png_asset(include_bytes!("../../assets/app_icon.png"))
+    encode_png_asset(include_bytes!("../../../../assets/app_icon.png"))
 }
 
 /// Probe whether the host WebView has the runtime codecs/sinks needed for inline `<video>`

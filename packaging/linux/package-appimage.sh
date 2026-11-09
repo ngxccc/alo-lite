@@ -21,9 +21,9 @@ cp target/release/alolite AppDir/usr/bin/alolite
 cp target/release/alolite-desktop AppDir/usr/bin/alolite-desktop
 cp packaging/linux/alolite.desktop AppDir/alolite.desktop
 cp packaging/linux/alolite.desktop AppDir/usr/share/applications/alolite.desktop
-cp crates/alolite-core/assets/app_icon.png AppDir/alolite.png
-cp crates/alolite-core/assets/app_icon.png AppDir/.DirIcon
-cp crates/alolite-core/assets/app_icon.png AppDir/usr/share/icons/hicolor/256x256/apps/alolite.png
+cp assets/app_icon.png AppDir/alolite.png
+cp assets/app_icon.png AppDir/.DirIcon
+cp assets/app_icon.png AppDir/usr/share/icons/hicolor/256x256/apps/alolite.png
 
 cat > AppDir/AppRun << 'EOF'
 #!/bin/sh
