@@ -20,7 +20,7 @@ mkdir -p dist pkg_deb/DEBIAN pkg_deb/usr/bin pkg_deb/usr/share/applications pkg_
 cp target/release/alolite pkg_deb/usr/bin/alolite
 cp target/release/alolite-desktop pkg_deb/usr/bin/alolite-desktop
 cp packaging/linux/alolite.desktop pkg_deb/usr/share/applications/alolite.desktop
-cp crates/alolite-core/assets/app_icon.png pkg_deb/usr/share/icons/hicolor/256x256/apps/alolite.png
+cp assets/app_icon.png pkg_deb/usr/share/icons/hicolor/256x256/apps/alolite.png
 
 cat > pkg_deb/DEBIAN/control << EOF
 Package: alolite

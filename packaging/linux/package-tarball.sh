@@ -27,7 +27,7 @@ cp target/release/alolite-desktop "$STAGE_DIR/$STAGE/alolite-desktop"
 cp packaging/linux/install.sh "$STAGE_DIR/$STAGE/install.sh"
 cp packaging/linux/uninstall.sh "$STAGE_DIR/$STAGE/uninstall.sh"
 cp packaging/linux/alolite.desktop "$STAGE_DIR/$STAGE/alolite.desktop"
-cp crates/alolite-core/assets/app_icon.png "$STAGE_DIR/$STAGE/alolite.png"
+cp assets/app_icon.png "$STAGE_DIR/$STAGE/alolite.png"
 cp README.md LICENSE "$STAGE_DIR/$STAGE/"
 chmod +x "$STAGE_DIR/$STAGE/alolite" "$STAGE_DIR/$STAGE/alolite-desktop" "$STAGE_DIR/$STAGE/install.sh" "$STAGE_DIR/$STAGE/uninstall.sh"
 
