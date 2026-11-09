@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Suggest an enhancement or new capability for Alolite.
+        Suggest an enhancement or new capability for AloLite.
         
         *Note: Out-of-scope non-core features (VoIP, Video Feed, Multi-platform Windows/macOS wrappers) will be closed as wontfix.*
   - type: textarea
@@ -14,7 +14,7 @@ body:
     attributes:
       label: Outcome
       description: "One-sentence observable behavior or state when complete (not file inventory)."
-      placeholder: "e.g. Alolite supports rendering custom sticker sets fetched from Zalo CDN with animated WebP previews."
+      placeholder: "e.g. AloLite supports rendering custom sticker sets fetched from Zalo CDN with animated WebP previews."
     validations:
       required: true
   - type: textarea

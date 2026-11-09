@@ -1,4 +1,4 @@
-//! CLI options parsing and command handlers for Alolite.
+//! CLI options parsing and command handlers for AloLite.
 
 use anyhow::Result;
 

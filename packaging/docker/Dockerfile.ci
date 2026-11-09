@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 LABEL org.opencontainers.image.title="alolite-ci" \
       org.opencontainers.image.description="Pre-built container environment for AloLite CI, WebKitGTK, Bun, and Rust" \
-      org.opencontainers.image.source="https://github.com/ngxccc/alo-lite"
+      org.opencontainers.image.source="https://github.com/ngxccc/alolite"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC \

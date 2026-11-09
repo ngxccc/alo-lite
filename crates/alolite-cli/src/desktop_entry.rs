@@ -58,7 +58,7 @@ pub fn install_desktop_entry() -> Result<()> {
     println!("  Binary thực thi: {}", desktop_exe.display());
     println!("  Icon ứng dụng:   {}", icon_path.display());
     println!("  Desktop entry:   {}", desktop_path.display());
-    println!("Biểu tượng Alolite hiện đã sẵn sàng trong App Menu và Dock hệ thống!");
+    println!("Biểu tượng AloLite hiện đã sẵn sàng trong App Menu và Dock hệ thống!");
     Ok(())
 }
 

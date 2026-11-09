@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src=".github/assets/logo.svg" alt="Alolite - Lightweight Native Messaging Client for Linux" width="180" />
+<img src=".github/assets/logo.svg" alt="AloLite - Lightweight Native Messaging Client for Linux" width="180" />
 
-# Alolite
+# AloLite
 
 **A fast, lightweight, native desktop messaging client written in Rust**  
 *No Node.js at runtime • No Electron • No Chromium bloat*
@@ -21,11 +21,11 @@
 
 </div>
 
-Alolite is a standalone, lightweight desktop messaging client written in pure Rust and Tauri v2. It connects directly to upstream messaging endpoints without intermediate proxies. All protocol state machines, cryptographic operations, and SQLite local caches reside in an isolated, UI-independent Rust core — delivering a native desktop experience with **instantaneous startup** and **under 40 MB base memory footprint**.
+AloLite is a standalone, lightweight desktop messaging client written in pure Rust and Tauri v2. It connects directly to upstream messaging endpoints without intermediate proxies. All protocol state machines, cryptographic operations, and SQLite local caches reside in an isolated, UI-independent Rust core — delivering a native desktop experience with **instantaneous startup** and **under 40 MB base memory footprint**.
 
 > [!WARNING]
 > **Legal Notice & Trademark Disclaimer**  
-> Alolite is an independent third-party open-source project and is **not** affiliated with, sponsored by, or endorsed by VNG Corporation. "Zalo" is a registered trademark of VNG Corporation; all references within this repository are made strictly under **Nominative Fair Use** for technical interoperability research on Linux. See [`docs/LEGAL.md`](docs/LEGAL.md).
+> AloLite is an independent third-party open-source project and is **not** affiliated with, sponsored by, or endorsed by VNG Corporation. "Zalo" is a registered trademark of VNG Corporation; all references within this repository are made strictly under **Nominative Fair Use** for technical interoperability research on Linux. See [`docs/LEGAL.md`](docs/LEGAL.md).
 
 ---
 
@@ -60,7 +60,7 @@ Alolite is a standalone, lightweight desktop messaging client written in pure Ru
 
 ## Installation & Runtime Packages
 
-Alolite renders its interface using the system's native **WebKitGTK 4.1** WebView, keeping memory usage minimal with zero bundled Chromium or Electron runtimes.
+AloLite renders its interface using the system's native **WebKitGTK 4.1** WebView, keeping memory usage minimal with zero bundled Chromium or Electron runtimes.
 
 <details>
 <summary><b>Distribution Packages & System Dependencies (Debian, Ubuntu, Fedora, Arch)</b></summary>
@@ -79,7 +79,7 @@ Alolite renders its interface using the system's native **WebKitGTK 4.1** WebVie
 
 ### 2. Video playback (GStreamer)
 
-WebKitGTK plays inline `<video>` through GStreamer. Alolite checks for `qtdemux` (MP4 demuxer) and `autoaudiosink` elements at startup and shows a helpful hint in chat when they are absent.
+WebKitGTK plays inline `<video>` through GStreamer. AloLite checks for `qtdemux` (MP4 demuxer) and `autoaudiosink` elements at startup and shows a helpful hint in chat when they are absent.
 
 | Distribution | Command |
 |:---|:---|
@@ -189,7 +189,7 @@ Details: [`docs/adr/`](docs/adr/) and [`docs/standards/`](docs/standards/).
 
 ## Documentation
 
-> Online documentation book is published at **[https://ngxccc.github.io/alo-lite/](https://ngxccc.github.io/alo-lite/)**.
+> Online documentation book is published at **[https://ngxccc.github.io/alolite/](https://ngxccc.github.io/alolite/)**.
 
 | Document | Contents |
 |:---|:---|

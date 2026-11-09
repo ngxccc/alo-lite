@@ -1,4 +1,4 @@
-//! Multi-account management for alolite.
+//! Multi-account management for AloLite.
 //!
 //! Stores isolated account sessions, thread caches, and history databases in `accounts/<uin>.*`.
 

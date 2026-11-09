@@ -145,7 +145,7 @@ export function MessageBubble({
           {msg.reply_to_text ? (
             <div
               onClick={() => jumpToQuoted(msg)}
-              className="mb-2 cursor-pointer rounded-md border-l-[3px] border-primary bg-background/40 px-2.5 py-1.5 text-[13px] hover:bg-background/70"
+              className="mb-2 cursor-pointer rounded-md bg-background/40 px-2.5 py-1.5 text-[13px] hover:bg-background/70"
             >
               <div className="text-[12px] font-bold text-primary">
                 {resolveReplySenderName(msg.reply_to_sender)}
