@@ -38,7 +38,7 @@ mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
 install -m 755 %{_topdir}/../target/release/alolite %{buildroot}/usr/bin/alolite
 install -m 755 %{_topdir}/../target/release/alolite-desktop %{buildroot}/usr/bin/alolite-desktop
 install -m 644 %{_topdir}/../packaging/linux/alolite.desktop %{buildroot}/usr/share/applications/alolite.desktop
-install -m 644 %{_topdir}/../crates/alolite-core/assets/app_icon.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/alolite.png
+install -m 644 %{_topdir}/../assets/app_icon.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/alolite.png
 
 %files
 /usr/bin/alolite

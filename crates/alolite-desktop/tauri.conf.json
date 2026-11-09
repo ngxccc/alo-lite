@@ -29,8 +29,8 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "../alolite-core/assets/app_icon.png",
-      "../alolite-core/assets/app_icon.ico"
+      "../../assets/app_icon.png",
+      "../../assets/app_icon.ico"
     ]
   }
 }

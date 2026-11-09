@@ -21,7 +21,7 @@ pub fn install_desktop_entry() -> Result<()> {
     let icon_dir = home.join(".local/share/icons/hicolor/256x256/apps");
     std::fs::create_dir_all(&icon_dir)?;
     let icon_path = icon_dir.join("alolite.png");
-    let icon_bytes = include_bytes!("../../alolite-core/assets/app_icon.png");
+    let icon_bytes = include_bytes!("../../../assets/app_icon.png");
     std::fs::write(&icon_path, icon_bytes)?;
 
     // 2. Dynamically generate ~/.local/share/applications/alolite.desktop with exact absolute paths
