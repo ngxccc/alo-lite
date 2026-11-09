@@ -1,0 +1,74 @@
+# .github/labeler.yml - `area:*` labels from modified file paths (v5 schema).
+#
+# Only "where" lives here. "What" — `type:*` — comes from the pull request's
+# conventional-commit prefix, set by pr-type-label.yml. Both workflows write a
+# different label set, so they never fight over the same label.
+
+"area:protocol":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/protocol/**/*"
+
+"area:store":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/storage/**/*"
+
+"area:mcp":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/mcp/**/*"
+
+"area:core":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-core/src/core/**/*"
+          - "crates/alolite-core/src/common/**/*"
+          - "crates/alolite-core/src/services/**/*"
+          - "crates/alolite-core/Cargo.toml"
+          - "crates/alolite-core/src/lib.rs"
+
+"area:cli":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "crates/alolite-cli/**/*"
+
+"area:ui":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/desktop/**/*"
+          - "crates/alolite-desktop/**/*"
+
+"area:packaging":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packaging/**/*"
+
+"area:assets":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "assets/**/*"
+          - ".github/assets/**/*"
+
+"area:docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**/*"
+          - "README.md"
+          - "CONTRIBUTING.md"
+          - "LICENSE"
+
+"area:ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**/*"
+          - ".github/*.yml"
+
+"area:harness":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "AGENTS.md"
+          - ".omp/**/*"
+          - ".claude/**/*"
+          - "scripts/**/*"
+          - "Makefile"
