@@ -10,52 +10,72 @@ body:
         
         **SECURITY WARNING: NEVER paste `session.json`, cookies, `zpw_sek`, `zpw_enk`, IMEIs, phone numbers, or unredacted packet captures.**
   - type: textarea
-    id: summary
+    id: outcome
     attributes:
-      label: Description
-      description: "What happened, and what did you expect to happen?"
+      label: Outcome
+      description: "Expected correct behavior once this bug is resolved."
+      placeholder: "e.g. Session resumes gracefully without crashing when network connection restores."
     validations:
       required: true
   - type: textarea
-    id: reproduction
+    id: context
     attributes:
-      label: Steps to Reproduce
-      description: "Minimal steps to reproduce the issue"
+      label: Context
+      description: "Observed buggy behavior, reproduction steps, error codes, and environment."
       value: |
-        1. Launch Alolite on Linux
+        ### Observed Behavior
+        
+        ### Steps to Reproduce
+        1. Launch Alolite (`alolite-desktop` or `alolite`)
         2. 
         3. 
+
+        ### Environment & Error Codes
+        - OS / Distro: Linux (Arch / Ubuntu 24.04 / Fedora 40)
+        - Display Server: Wayland / X11
+        - Version: v0.1.1
+        - Server error_code (if applicable): 
     validations:
       required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "Conditions to verify that the bug is fixed without regression."
+      value: |
+        - [ ] Root cause identified and resolved.
+        - [ ] Regression test added covering the failure path.
+        - [ ] `cargo test --locked` and `bun run check` pass.
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: "Explicit non-goals for this bug fix."
+      placeholder: "e.g. Do not rewrite the entire network polling subsystem in this fix."
+    validations:
+      required: false
   - type: dropdown
     id: area
     attributes:
       label: Area
+      description: "Select the affected architectural domain."
       options:
-        - "protocol (auth, network, socket, encryption)"
-        - "gui (window, chat views, theme, rendering)"
-        - "storage (sqlite, database, cache)"
-        - "packaging (desktop file, .deb, installation)"
-        - "other"
-    validations:
-      required: true
-  - type: input
-    id: error-code
-    attributes:
-      label: Server error_code (if applicable)
-      description: "Numeric error_code from server response (e.g. 600, 18012, 429)"
-      placeholder: "e.g. 600"
-    validations:
-      required: false
-  - type: textarea
-    id: environment
-    attributes:
-      label: Environment
-      description: "Linux distribution, display server, and Alolite version"
-      value: |
-        - OS / Distro: Linux (e.g. Arch, Ubuntu 24.04, Fedora 40)
-        - Display Server: Wayland / X11
-        - Alolite Version: v0.1.0
+        - "area:core (engine, services, runtime, common)"
+        - "area:protocol (wire, crypto, socket, endpoints, registry)"
+        - "area:auth (QR/password login, trusted device, session)"
+        - "area:net (HTTP failover, WebSocket framing, ParamCipher v2)"
+        - "area:chat (threads, message identity, reactions, recall)"
+        - "area:store (SQLite schema, migrations, cache)"
+        - "area:mcp (MCP server, REST daemon, autoreply)"
+        - "area:ui (Tauri v2 host & React frontend)"
+        - "area:cli (command-line interface, terminal QR)"
+        - "area:packaging (Linux .deb, .rpm, .AppImage, tarball)"
+        - "area:assets (desktop icons, SVGs, branding)"
+        - "area:docs (documentation book, ADRs, standards, README)"
+        - "area:ci (GitHub Actions workflows)"
+        - "area:harness (AGENTS.md, AI tooling, scripts)"
     validations:
       required: true
   - type: checkboxes

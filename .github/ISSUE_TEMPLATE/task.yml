@@ -1,0 +1,81 @@
+name: "Task / Chore / Maintenance"
+description: "Work item for chore, refactor, task, docs, or dependency updates"
+title: "task(<scope>): <summary>"
+labels: ["type:task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Track a planned engineering task, chore, refactoring, dependency update, or documentation work.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: "One-sentence observable behavior or state when complete (not file inventory)."
+      placeholder: "e.g. Toàn bộ tên gọi hiển thị (product display name), package name và binary name được chuẩn hoá theo một quy ước thống nhất trong toàn bộ repo."
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: "Background, current problem, discrepancy, or rationale."
+      placeholder: "e.g. Hiện có sự lệch pha giữa các nơi: display name, package name, binary name."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "Checklist of measurable conditions required for completion."
+      value: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: "Explicit non-goals to prevent scope creep."
+      placeholder: "e.g. Không đổi tên repository GitHub (ngxccc/alolite)."
+    validations:
+      required: false
+  - type: dropdown
+    id: type
+    attributes:
+      label: Work Type
+      description: "Select the Conventional Commits work type."
+      options:
+        - "type:task"
+        - "type:chore"
+        - "type:refactor"
+        - "type:docs"
+        - "type:perf"
+        - "type:test"
+        - "type:ci"
+        - "type:style"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: "Select the primary architectural domain."
+      options:
+        - "area:core (engine, services, runtime, common)"
+        - "area:protocol (wire, crypto, socket, endpoints, registry)"
+        - "area:auth (QR/password login, trusted device, session)"
+        - "area:net (HTTP failover, WebSocket framing, ParamCipher v2)"
+        - "area:chat (threads, message identity, reactions, recall)"
+        - "area:store (SQLite schema, migrations, cache)"
+        - "area:mcp (MCP server, REST daemon, autoreply)"
+        - "area:ui (Tauri v2 host & React frontend)"
+        - "area:cli (command-line interface, terminal QR)"
+        - "area:packaging (Linux .deb, .rpm, .AppImage, tarball)"
+        - "area:assets (desktop icons, SVGs, branding)"
+        - "area:docs (documentation book, ADRs, standards, README)"
+        - "area:ci (GitHub Actions workflows)"
+        - "area:harness (AGENTS.md, AI tooling, scripts)"
+    validations:
+      required: true

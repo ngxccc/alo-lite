@@ -70,10 +70,23 @@ Canonical vocabulary consumed by `/triage`. Do not introduce synonyms.
 
 ## 4. Native Sub-Issues Protocol
 
-1. Create the child:
+1. Create the child with canonical body format:
 
    ```bash
-   gh issue create --title "task(<area>): <summary>" --body "..." --label "type:task,area:<area>"
+   gh issue create --title "task(<area>): <summary>" --label "type:task,area:<area>" --body "$(cat <<'EOF'
+   ### Outcome
+   <One-sentence observable behaviour or state when complete.>
+   
+   ### Context
+   <Child task context or sub-problem specification.>
+   
+   ### Acceptance Criteria
+   - [ ] <Specific verifiable condition>
+   
+   ### Non-goals
+   - <Explicit boundaries>
+   EOF
+   )"
    ```
 
 2. Link it to the parent:
@@ -89,7 +102,6 @@ Canonical vocabulary consumed by `/triage`. Do not introduce synonyms.
    gh api repos/ngxccc/alolite/issues/<parent_number>/sub_issues \
      --jq '.[] | "#\(.number): \(.title)"'
    ```
-
 ## 5. Wayfinding
 
 - **Map ticket**: one issue labeled `wayfinder:map`, holding decisions and the fog tracker.
@@ -98,14 +110,54 @@ Canonical vocabulary consumed by `/triage`. Do not introduce synonyms.
 
 ## 6. Ticket Quality Bar
 
-A ticket is actionable only when it carries:
+A ticket is actionable only when it adheres to the canonical issue body structure (enforced across `.github/ISSUE_TEMPLATE/` and CLI usage):
+
+### A. Canonical Body Structure
+
+```markdown
+### Outcome
+<One-sentence observable behaviour or state when complete, not file inventory.>
+
+### Context
+<Current limitation, background, discrepancy, or reproduction steps.>
+
+### Acceptance Criteria
+- [ ] <Specific verifiable condition>
+- [ ] <Verification command or test pass criteria>
+
+### Non-goals
+- <Explicit non-goal to prevent scope creep.>
+```
+
+### B. Checklist Requirements
 
 - [ ] One-sentence outcome (observable behaviour, not file inventory).
-- [ ] Reproduction or acceptance checklist.
-- [ ] Affected area label.
+- [ ] Reproduction or acceptance checklist (`- [ ]`).
+- [ ] Affected area label (`area:*`) and type label (`type:*`).
 - [ ] Evidence for protocol changes (capture path, `re-notes/` reference, server `error_code`).
 - [ ] Explicit non-goals when scope is easy to over-read.
 
+### C. CLI Heredoc Creation Template
+
+```bash
+gh issue create \
+  --title "<type>(<area>): <summary>" \
+  --label "type:<type>,area:<area>" \
+  --body "$(cat <<'EOF'
+### Outcome
+...
+
+### Context
+...
+
+### Acceptance Criteria
+- [ ] ...
+
+### Non-goals
+- ...
+EOF
+)"
+```
 ## 7. Security Rule
 
 Never paste `session.json`, `zpw_sek`, `zpw_enk`, cookies, IMEI or raw captures containing them into an issue. Redact to `zpw_sek=<redacted>` and attach only sanitized excerpts.

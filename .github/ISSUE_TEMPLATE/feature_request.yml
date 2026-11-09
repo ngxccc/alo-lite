@@ -6,27 +6,62 @@ body:
   - type: markdown
     attributes:
       value: |
-        Suggest an enhancement or new capability for Alolite on Linux.
+        Suggest an enhancement or new capability for Alolite.
         
         *Note: Out-of-scope non-core features (VoIP, Video Feed, Multi-platform Windows/macOS wrappers) will be closed as wontfix.*
   - type: textarea
-    id: problem
+    id: outcome
     attributes:
-      label: Problem Statement
-      description: "Is your feature request related to a problem or limitation? Please describe."
+      label: Outcome
+      description: "One-sentence observable behavior or state when complete (not file inventory)."
+      placeholder: "e.g. Alolite supports rendering custom sticker sets fetched from Zalo CDN with animated WebP previews."
     validations:
       required: true
   - type: textarea
-    id: solution
+    id: context
     attributes:
-      label: Proposed Solution
-      description: "Describe the desired behavior, API, or visual change."
+      label: Context
+      description: "Background, motivation, or limitation being addressed."
+      placeholder: "e.g. Currently stickers only show static placeholders, missing animated preview support."
     validations:
       required: true
   - type: textarea
-    id: alternatives
+    id: acceptance-criteria
     attributes:
-      label: Alternatives Considered
-      description: "Any alternative approaches or workarounds you've considered?"
+      label: Acceptance Criteria
+      description: "Checklist of measurable conditions required for completion."
+      value: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: "Explicit non-goals to prevent scope creep."
+      placeholder: "e.g. Do not implement sticker store purchase flows or VoIP reactions."
     validations:
       required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: "Select the primary architectural domain."
+      options:
+        - "area:core (engine, services, runtime, common)"
+        - "area:protocol (wire, crypto, socket, endpoints, registry)"
+        - "area:auth (QR/password login, trusted device, session)"
+        - "area:net (HTTP failover, WebSocket framing, ParamCipher v2)"
+        - "area:chat (threads, message identity, reactions, recall)"
+        - "area:store (SQLite schema, migrations, cache)"
+        - "area:mcp (MCP server, REST daemon, autoreply)"
+        - "area:ui (Tauri v2 host & React frontend)"
+        - "area:cli (command-line interface, terminal QR)"
+        - "area:packaging (Linux .deb, .rpm, .AppImage, tarball)"
+        - "area:assets (desktop icons, SVGs, branding)"
+        - "area:docs (documentation book, ADRs, standards, README)"
+        - "area:ci (GitHub Actions workflows)"
+        - "area:harness (AGENTS.md, AI tooling, scripts)"
+    validations:
+      required: true
