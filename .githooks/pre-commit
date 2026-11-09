@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit - Fast, zero-dependency staged checks for Rust + Desktop UI + Scripts
+set -euo pipefail
+
+# 1. Discover staged files (excluding deletions)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+# 2. Check Rust formatting if any .rs file is staged
+RS_FILES=$(echo "$STAGED_FILES" | grep -E '\.rs$' || true)
+if [ -n "$RS_FILES" ]; then
+  echo "🔍 [pre-commit] Checking Rust code format..."
+  if ! cargo fmt --all -- --check; then
+    echo ""
+    echo "❌ [pre-commit] Rust code formatting check failed!"
+    echo "   Please run:"
+    echo "     cargo fmt --all"
+    echo "   and re-stage your changes before committing."
+    echo ""
+    exit 1
+  fi
+fi
+
+# 3. Check Desktop UI formatting if any frontend file is staged
+UI_FILES=$(echo "$STAGED_FILES" | grep -E '^apps/desktop/.*\.(ts|tsx|js|jsx|css|json)$' || true)
+if [ -n "$UI_FILES" ]; then
+  echo "🔍 [pre-commit] Checking Desktop UI code format (oxfmt)..."
+  if command -v bun >/dev/null 2>&1; then
+    if ! (cd apps/desktop && bun run format:check >/dev/null 2>&1); then
+      echo ""
+      echo "❌ [pre-commit] Desktop UI code formatting check failed!"
+      echo "   Please run:"
+      echo "     cd apps/desktop && bun run format"
+      echo "   and re-stage your changes before committing."
+      echo ""
+      exit 1
+    fi
+  fi
+fi
+
+# 4. Check scripts if any release/version script is staged
+SCRIPT_FILES=$(echo "$STAGED_FILES" | grep -E '^scripts/.*\.(ts|js)$' || true)
+if [ -n "$SCRIPT_FILES" ]; then
+  echo "🔍 [pre-commit] Verifying release and versioning scripts..."
+  if command -v bun >/dev/null 2>&1; then
+    if ! bun test scripts/ >/dev/null 2>&1; then
+      echo ""
+      echo "❌ [pre-commit] Tests failed for modified scripts in scripts/!"
+      echo "   Please run 'bun test scripts/' to inspect."
+      echo ""
+      exit 1
+    fi
+  fi
+fi
+
+exit 0
