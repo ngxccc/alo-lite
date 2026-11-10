@@ -17,6 +17,7 @@ import type { AppSettings } from "@/shared/types/ipc";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { cn } from "@/shared/utils/cn";
 import type { SettingsTab } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 import {
   AccountTab,
   AppearanceTab,
@@ -60,7 +61,13 @@ const TAB_COMPONENTS: Record<SettingsTab, React.ComponentType<SettingsTabProps>>
   update: UpdateTab,
 };
 
-export function SettingsModal({ state, dispatch }: SettingsModalProps) {
+export function SettingsModal({
+  state: propState,
+  dispatch: propDispatch,
+}: SettingsModalProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   useEffect(() => {
     if (!state.settingsModalOpen || !isTauriRuntime()) return;
     if (state.settingsTab === "account") {

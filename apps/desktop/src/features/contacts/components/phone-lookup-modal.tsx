@@ -4,13 +4,20 @@ import { ipc } from "@/shared/api/ipc";
 import { Avatar } from "@/shared/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 
 interface PhoneLookupModalProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
-export function PhoneLookupModal({ state, dispatch }: PhoneLookupModalProps) {
+export function PhoneLookupModal({
+  state: propState,
+  dispatch: propDispatch,
+}: PhoneLookupModalProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [phone, setPhone] = useState("");
   if (!state.phoneModalOpen) return null;
 

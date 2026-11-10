@@ -17,15 +17,16 @@ import { DevToolsModal } from "@/features/devtools/components/dev-tools-modal";
 import { useAppStore } from "@/app/store/use-app-store";
 
 export function App() {
-  const state = useAppStore();
   const dispatch = useAppStore((s) => s.dispatch);
   const themeMode = useAppStore((s) => s.settings?.theme_mode ?? "dark");
   const toast = useAppStore((s) => s.toast);
   const bootstrapped = useAppStore((s) => s.bootstrapped);
   const loggedIn = useAppStore((s) => s.loggedIn);
   const activeSection = useAppStore((s) => s.activeSection);
+  const imageViewer = useAppStore((s) => s.imageViewer);
+  const mediaCache = useAppStore((s) => s.mediaCache);
+  const downloadDir = useAppStore((s) => s.settings?.download_dir ?? "");
   const [bootError, setBootError] = useState<string | null>(null);
-
   useEffect(() => {
     const resolved =
       themeMode === "system" && window.matchMedia("(prefers-color-scheme: light)").matches
@@ -111,32 +112,32 @@ export function App() {
   return (
     <TooltipProvider delayDuration={250}>
       {!loggedIn ? (
-        <LoginView state={state} dispatch={dispatch} />
+        <LoginView />
       ) : (
         <div className="flex h-full w-full overflow-hidden bg-background text-foreground">
-          <NavRail state={state} dispatch={dispatch} />
+          <NavRail />
           {activeSection === "contacts" ? (
-            <ContactsView state={state} dispatch={dispatch} />
+            <ContactsView />
           ) : (
             <>
-              <ThreadsSidebar state={state} dispatch={dispatch} />
-              <ChatArea state={state} dispatch={dispatch} />
-              <InfoDrawer state={state} dispatch={dispatch} />
+              <ThreadsSidebar />
+              <ChatArea />
+              <InfoDrawer />
             </>
           )}
         </div>
       )}
 
-      <SettingsModal state={state} dispatch={dispatch} />
-      <PhoneLookupModal state={state} dispatch={dispatch} />
-      <PhoneSyncModal state={state} dispatch={dispatch} />
-      <ForwardModal state={state} dispatch={dispatch} />
-      <WipeConfirmModal state={state} dispatch={dispatch} />
-      <DevToolsModal state={state} dispatch={dispatch} />
+      <SettingsModal />
+      <PhoneLookupModal />
+      <PhoneSyncModal />
+      <ForwardModal />
+      <WipeConfirmModal />
+      <DevToolsModal />
       <ImageViewerModal
-        viewer={state.imageViewer}
-        mediaCache={state.mediaCache}
-        downloadDir={state.settings?.download_dir ?? ""}
+        viewer={imageViewer}
+        mediaCache={mediaCache}
+        downloadDir={downloadDir}
         onClose={() => dispatch({ type: "SET_IMAGE_VIEWER", viewer: null })}
       />
 

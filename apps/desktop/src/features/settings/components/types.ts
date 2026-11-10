@@ -2,8 +2,8 @@ import type { AppAction, AppState } from "@/app/store/app-reducer";
 import type { AppSettings } from "@/shared/types/ipc";
 
 export interface SettingsModalProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
 export interface SettingsTabProps {

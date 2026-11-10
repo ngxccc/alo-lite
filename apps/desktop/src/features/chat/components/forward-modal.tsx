@@ -6,13 +6,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Input } from "@/shared/ui/input";
 import { matchesVnQuery } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 
 interface ForwardModalProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
-export function ForwardModal({ state, dispatch }: ForwardModalProps) {
+export function ForwardModal({ state: propState, dispatch: propDispatch }: ForwardModalProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [filter, setFilter] = useState("");
   if (!state.forwardMsg) return null;
 

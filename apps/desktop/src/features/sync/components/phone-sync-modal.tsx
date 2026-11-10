@@ -3,13 +3,20 @@ import { ipc } from "@/shared/api/ipc";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 
 interface PhoneSyncModalProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
-export function PhoneSyncModal({ state, dispatch }: PhoneSyncModalProps) {
+export function PhoneSyncModal({
+  state: propState,
+  dispatch: propDispatch,
+}: PhoneSyncModalProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   if (!state.phoneSyncModalOpen) return null;
 
   return (

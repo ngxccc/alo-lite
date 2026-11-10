@@ -8,13 +8,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { cn } from "@/shared/utils/cn";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 
 interface DevToolsModalProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
-export function DevToolsModal({ state, dispatch }: DevToolsModalProps) {
+export function DevToolsModal({
+  state: propState,
+  dispatch: propDispatch,
+}: DevToolsModalProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [tab, setTab] = useState<"logs" | "scanner" | "crypto">("logs");
   const [diag, setDiag] = useState<DevDiagnosticsSnapshot | null>(null);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
