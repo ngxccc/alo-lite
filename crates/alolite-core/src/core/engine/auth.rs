@@ -27,14 +27,16 @@ use crate::storage::{
 
 impl CoreEngine {
     pub(super) async fn handle_expired_session(self: &Arc<Self>, message: &str) {
+        self.set_session_verified(false);
         {
             let mut sl = self.session.lock().await;
             sl.mark_expired();
             let _ = sl.save_to_file("session.json");
             sl.logout();
         }
+        // Do not mint a new QR automatically: login is a user action, and the desktop
+        // `LoginView` starts the flow on demand.
         self.emit(CoreEvent::SessionExpired(message.to_string()));
-        self.request_qr().await;
     }
 
     pub async fn request_qr(self: &Arc<Self>) {
@@ -46,9 +48,14 @@ impl CoreEngine {
         }
         let engine = Arc::clone(self);
         let handle = tokio::spawn(async move {
+            engine.set_session_verified(false);
             {
                 let mut s = engine.session.lock().await;
-                s.logout();
+                // A valid session must survive a QR refresh; only clear leftover credentials
+                // when there is nothing to preserve.
+                if !s.has_live_credentials() || s.is_expired_marked() {
+                    s.logout();
+                }
             }
             {
                 let mut ps = engine.poll_state.lock().await;
@@ -176,6 +183,7 @@ impl CoreEngine {
             return;
         }
         let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+        self.set_session_verified(true);
         let _ = save_current_account_snapshot(&uin);
         let name = s
             .login
@@ -240,6 +248,7 @@ impl CoreEngine {
     }
 
     pub async fn logout(&self) {
+        self.set_session_verified(false);
         let cur_uin = {
             let s = self.session.lock().await;
             s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default()
@@ -298,6 +307,11 @@ impl CoreEngine {
             }
         };
         if loaded {
+            self.set_session_verified(false);
+            let snapshot = self.session.lock().await.clone();
+            let verified =
+                snapshot.has_live_credentials() && snapshot.session_status().await.is_valid();
+            self.set_session_verified(verified);
             let db_path = self.resolve_db_path_for_uin(&uin);
             let threads = tokio::task::spawn_blocking(move || {
                 let mut threads = load_threads_cache();

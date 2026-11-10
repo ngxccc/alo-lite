@@ -1,4 +1,4 @@
-import { useEffect, useState, type SyntheticEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import {
   AlertCircle,
   KeyRound,
@@ -75,13 +75,14 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
   const [phone, setPhone] = useState("");
   const [pass, setPass] = useState("");
   const [captchaCode, setCaptchaCode] = useState("");
+  const [qrRequested, setQrRequested] = useState(false);
 
-  // Request fresh QR code whenever QR tab is focused without an active code
-  useEffect(() => {
-    if (tab === "qr" && !state.qrDataUrl && !state.loginInProgress) {
-      void ipc.requestQr();
-    }
-  }, [tab, state.qrDataUrl, state.loginInProgress]);
+  // Starting a login is an explicit user action: mounting the view must not touch the network.
+  const startQr = () => {
+    if (state.loginInProgress) return;
+    setQrRequested(true);
+    void ipc.requestQr();
+  };
 
   const handlePasswordLogin = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -139,6 +140,9 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
             value={tab}
             onValueChange={(v) => {
               setTab(v as "qr" | "password");
+              if (v === "qr" && !state.qrDataUrl && !qrRequested) {
+                startQr();
+              }
               if (state.loginError) {
                 dispatch({
                   type: "CORE_EVENT",
@@ -203,7 +207,7 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
                       variant="default"
                       size="sm"
                       className="mt-1 h-7 gap-1.5 rounded-md px-3 text-xs"
-                      onClick={() => void ipc.requestQr()}
+                      onClick={startQr}
                     >
                       <RefreshCw className="h-3 w-3" /> Thử lại
                     </Button>
@@ -215,7 +219,7 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
                     alt="Zalo QR"
                     className="h-full w-full object-contain select-none [image-rendering:pixelated]"
                   />
-                ) : (
+                ) : qrRequested ? (
                   /* State D: Loading QR skeleton */
                   <div className="flex flex-col items-center justify-center gap-2.5 text-center text-slate-400">
                     <div className="relative flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
@@ -224,6 +228,24 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
                     <div className="text-xs font-medium text-slate-500">
                       Đang tạo mã QR bảo mật…
                     </div>
+                  </div>
+                ) : (
+                  /* State E: Idle — nothing requested until the user asks for a code */
+                  <div className="flex flex-col items-center justify-center gap-2.5 p-3 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400">
+                      <QrCode className="h-6 w-6" />
+                    </div>
+                    <div className="text-xs font-medium text-slate-500">
+                      Bấm để tạo mã QR đăng nhập
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="mt-0.5 h-7 gap-1.5 rounded-md px-3 text-xs"
+                      onClick={startQr}
+                    >
+                      <QrCode className="h-3 w-3" /> Tạo mã QR
+                    </Button>
                   </div>
                 )}
               </div>
@@ -237,14 +259,16 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
               ) : !hasQrError ? (
                 <div className="flex flex-col items-center gap-1 text-center">
                   <div className="text-xs text-muted-foreground">
-                    Mở ứng dụng Zalo trên điện thoại để quét mã
+                    {state.qrDataUrl
+                      ? "Mở ứng dụng Zalo trên điện thoại để quét mã"
+                      : "Mã QR chỉ được tạo khi bạn yêu cầu"}
                   </div>
                   {state.qrDataUrl ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => void ipc.requestQr()}
+                      onClick={startQr}
                     >
                       <RefreshCw className="h-3 w-3" /> Làm mới mã
                     </Button>
