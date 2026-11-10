@@ -213,6 +213,14 @@ impl Session {
         self.expired_at.is_some()
     }
 
+    /// True only when every credential needed by authenticated endpoints is present.
+    ///
+    /// `logout()` clears `zpw_sek`/`secret_key` while callers may still hold a [`Session`]
+    /// snapshot that keeps `login`, so pollers must gate on this instead of `login.is_some()`.
+    pub fn has_live_credentials(&self) -> bool {
+        self.login.is_some() && self.zpw_sek.is_some() && self.secret_key.is_some()
+    }
+
     /// Record that the server refused these credentials.
     pub fn mark_expired(&mut self) {
         self.expired_at = Some(crate::clock::unix_now());

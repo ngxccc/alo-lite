@@ -37,6 +37,24 @@ fn session_set_zpw_sek_updates_fields() {
 }
 
 #[test]
+fn has_live_credentials_requires_login_cookie_and_secret_key() {
+    let mut s = Session::new(false, false, false).unwrap();
+    assert!(!s.has_live_credentials());
+
+    s.login = Some(LoginInfo::default());
+    assert!(!s.has_live_credentials(), "login alone is not enough");
+
+    s.set_zpw_sek("test_sek_value".into());
+    assert!(!s.has_live_credentials(), "AES key is still missing");
+
+    s.secret_key = Some(vec![0u8; 32]);
+    assert!(s.has_live_credentials());
+
+    s.logout();
+    assert!(!s.has_live_credentials(), "logout must clear credentials");
+}
+
+#[test]
 fn apply_server_info_takes_long_polling_hosts_from_the_server() {
     let mut s = Session::new(false, false, false).unwrap();
     s.apply_server_info(&serde_json::json!({
