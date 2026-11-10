@@ -152,7 +152,7 @@ impl CoreEngine {
     pub async fn status(&self) -> CoreStatus {
         let (logged_in, uin, display_name) = {
             let s = self.session.lock().await;
-            let logged = s.login.is_some() && s.zpw_sek.is_some();
+            let logged = s.has_live_credentials() && !s.is_expired_marked();
             let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
             let dname = s
                 .login

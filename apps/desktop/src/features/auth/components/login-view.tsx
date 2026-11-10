@@ -140,9 +140,9 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
             value={tab}
             onValueChange={(v) => {
               setTab(v as "qr" | "password");
-              if (v === "qr" && !state.qrDataUrl && !qrRequested) {
-                startQr();
-              }
+              // Switching tabs must stay offline: the QR ticket is created only by the
+              // explicit buttons below, because the webview focuses the first trigger on
+              // mount and would otherwise fire `onValueChange` without any user action.
               if (state.loginError) {
                 dispatch({
                   type: "CORE_EVENT",

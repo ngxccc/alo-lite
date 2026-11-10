@@ -161,7 +161,10 @@ impl CoreEngine {
                 let mut ws_sek = String::new();
                 loop {
                     let s_snap = engine.session.lock().await.clone();
-                    if s_snap.login.is_some() {
+                    // The socket authenticates with the same cookie, so it must not be opened
+                    // before the server accepted the credentials; a restored-but-dead
+                    // `zpw_sek` otherwise produces a rejected handshake on every reconnect.
+                    if s_snap.has_live_credentials() && engine.is_session_verified() {
                         let cur_sek = s_snap.zpw_sek.clone().unwrap_or_default();
                         if !cur_sek.is_empty() && (ws_rx.is_none() || ws_sek != cur_sek) {
                             ws_sek = cur_sek;

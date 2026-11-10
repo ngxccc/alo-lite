@@ -114,7 +114,10 @@ impl CoreEngine {
 
     pub async fn refresh_threads(self: &Arc<Self>, manual: bool) {
         let mut s = self.session.lock().await.clone();
-        if s.login.is_none() {
+        // Skip the probe entirely when there is nothing usable: no `login`, or a session
+        // the server already refused in a previous run (`expired_at`). `clear_expired()`
+        // resets that marker on every successful login, so this never hides a recovery.
+        if s.login.is_none() || s.is_expired_marked() {
             return;
         }
         match s.session_status().await {
