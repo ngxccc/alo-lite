@@ -130,17 +130,3 @@ async fn request_with_candidates_does_not_failover_on_auth_errors() {
         assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }
-
-#[test]
-fn session_set_proxy_rebuilds_client_and_preserves_zpw_sek() {
-    let mut s = Session::new(false, false, false).unwrap();
-    s.set_zpw_sek("sek_token_123".into());
-    let configured = s.set_proxy(Some("http://127.0.0.1:8080")).unwrap();
-    assert_eq!(configured.as_deref(), Some("http://127.0.0.1:8080"));
-    assert_eq!(s.proxy_url.as_deref(), Some("http://127.0.0.1:8080"));
-    assert_eq!(s.zpw_sek.as_deref(), Some("sek_token_123"));
-
-    let cleared = s.set_proxy(None).unwrap();
-    assert!(cleared.is_none());
-    assert!(s.proxy_url.is_none());
-}

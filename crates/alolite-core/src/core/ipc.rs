@@ -289,11 +289,6 @@ pub enum CoreEventDto {
         cancelled: bool,
         error: Option<String>,
     },
-    ProxyUpdated {
-        ok: bool,
-        proxy_url: Option<String>,
-        error: Option<String>,
-    },
     FileDownloaded {
         ok: bool,
         file_name: Option<String>,
@@ -524,18 +519,6 @@ impl From<CoreEvent> for CoreEventDto {
                 active_threads,
                 cancelled,
                 error,
-            },
-            CoreEvent::ProxyUpdated(res) => match res {
-                Ok(proxy_url) => Self::ProxyUpdated {
-                    ok: true,
-                    proxy_url,
-                    error: None,
-                },
-                Err(error) => Self::ProxyUpdated {
-                    ok: false,
-                    proxy_url: None,
-                    error: Some(error),
-                },
             },
             CoreEvent::FileDownloaded(res) => match res {
                 Ok((file_name, path)) => Self::FileDownloaded {

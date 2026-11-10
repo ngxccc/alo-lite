@@ -52,7 +52,6 @@ export function handleCoreEvent(state: AppState, event: CoreEventDto): AppState 
 
     case "MuteSnapshotSynced":
     case "MuteEventsReceived":
-    case "ProxyUpdated":
     case "NotificationAuthorization":
     case "UpdateCheckFinished":
     case "UpdateDownloadStatus":

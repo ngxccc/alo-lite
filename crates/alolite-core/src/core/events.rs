@@ -189,7 +189,6 @@ pub enum CoreEvent {
         cancelled: bool,
         error: Option<String>,
     },
-    ProxyUpdated(Result<Option<String>, String>),
     FileDownloaded(Result<(String, String), String>),
     LoggedOut,
     HistoryReachedStart(String),

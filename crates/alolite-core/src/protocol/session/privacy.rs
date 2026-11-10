@@ -1,11 +1,9 @@
-//! Privacy Guard outbound interceptor, proxy URL normalization, and secret/URL redaction.
+//! Privacy Guard outbound interceptor and secret/URL redaction.
 //!
-//! Ensures credentials, proxy passwords, `zpw_sek`, `zpw_enk`, and `params` never leak into
+//! Ensures credentials, `zpw_sek`, `zpw_enk`, and `params` never leak into
 //! logs, status banners, or debug dump files (`docs/standards/security-and-cryptography.md`).
 
 use std::sync::atomic::{AtomicBool, Ordering};
-
-use anyhow::{bail, Result};
 
 static PRIVACY_BLOCK_TYPING: AtomicBool = AtomicBool::new(false);
 static PRIVACY_BLOCK_DELIVERED: AtomicBool = AtomicBool::new(false);
@@ -51,55 +49,6 @@ pub fn is_url_blocked_by_privacy(url: &str) -> bool {
         return true;
     }
     false
-}
-
-/// Normalize and validate a proxy URL string (`http://`, `https://`, `socks5://`, `socks5h://`, or `host:port`, #64).
-///
-/// # Errors
-/// Returns an error if the scheme is unsupported, the host is missing, or `reqwest::Proxy` rejects it.
-pub fn normalize_proxy_url(raw: &str) -> Result<Option<String>> {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-    let with_scheme = if trimmed.contains("://") {
-        trimmed.to_string()
-    } else {
-        format!("http://{trimmed}")
-    };
-    let parsed = reqwest::Url::parse(&with_scheme)
-        .map_err(|e| anyhow::anyhow!("Định dạng Proxy không hợp lệ ({e})"))?;
-    let scheme = parsed.scheme();
-    if !matches!(scheme, "http" | "https" | "socks5" | "socks5h") {
-        bail!("Giao thức Proxy không được hỗ trợ: '{scheme}://' (chỉ hỗ trợ http://, https://, socks5://)");
-    }
-    if parsed.host_str().unwrap_or("").is_empty() {
-        bail!("Địa chỉ Proxy thiếu tên miền hoặc IP máy chủ");
-    }
-    let _ = reqwest::Proxy::all(with_scheme.as_str())
-        .map_err(|e| anyhow::anyhow!("Không tạo được cấu hình Proxy: {e}"))?;
-    Ok(Some(with_scheme))
-}
-
-/// Mask `user:password@` credentials in a proxy URL so secrets never appear in logs or status text (#64).
-pub fn redact_proxy_url(raw: &str) -> String {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    if let Ok(mut parsed) = reqwest::Url::parse(trimmed) {
-        if !parsed.username().is_empty() || parsed.password().is_some() {
-            let _ = parsed.set_username("***");
-            let _ = parsed.set_password(Some("***"));
-            return parsed.to_string();
-        }
-    }
-    if let Some((scheme, rest)) = trimmed.split_once("://") {
-        if let Some((_, host_part)) = rest.rsplit_once('@') {
-            return format!("{scheme}://***:***@{host_part}");
-        }
-    }
-    trimmed.to_string()
 }
 
 /// Strip anything that could be a credential before a URL lands in a log or dump file.
@@ -163,27 +112,6 @@ mod tests {
         assert_eq!(redact_secret("1234567890abcdef"), "12345678…<redacted>");
         assert_eq!(redact_secret("short"), "short…<redacted>");
         assert_eq!(redact_secret(""), "…<redacted>");
-    }
-
-    #[test]
-    fn proxy_url_normalization_and_credential_redaction() {
-        assert_eq!(normalize_proxy_url("   ").unwrap(), None);
-        assert_eq!(
-            normalize_proxy_url("127.0.0.1:8888").unwrap().as_deref(),
-            Some("http://127.0.0.1:8888")
-        );
-        assert_eq!(
-            normalize_proxy_url("http://user:secret123@10.0.0.2:3128")
-                .unwrap()
-                .as_deref(),
-            Some("http://user:secret123@10.0.0.2:3128")
-        );
-        assert!(normalize_proxy_url("ftp://127.0.0.1:21").is_err());
-
-        let redacted = redact_proxy_url("http://admin:super_secret_pw@192.168.1.10:8080");
-        assert!(!redacted.contains("super_secret_pw"));
-        assert!(!redacted.contains("admin"));
-        assert!(redacted.contains("192.168.1.10:8080"));
     }
 
     #[test]

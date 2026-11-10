@@ -29,7 +29,7 @@ Decompose the protocol and persistence layers into cohesive single-responsibilit
    - `session/mod.rs`: `Session` HTTP transport (`reqwest`, `ParamCipher`, candidate failover, `api_get`/`api_post`).
    - `session/domains.rs`: `Domains` routing table, `heal_from_verified`, `apply_service_map`, candidate ranking.
    - `session/persistence.rs`: `SavedSession`, `LoginInfo`, `DeviceIdentity`, `save_to_file`/`load_from_file`, `official_imei`.
-   - `session/privacy.rs`: Privacy Guard toggles (`block_typing`/`block_delivered`/`block_seen`), `normalize_proxy_url`, `redact_*`, `urlencode`, `truncate`.
+   - `session/privacy.rs`: Privacy Guard toggles (`block_typing`/`block_delivered`/`block_seen`), `redact_*`, `urlencode`, `truncate`.
    - `session/status.rs`: `SessionError`, `SessionStatus`, `AUTH_ERROR_CODES`.
 
 3. **Domain-Grouped Protocol Subdirectories (`src/protocol/{auth,social,messaging}/`):**

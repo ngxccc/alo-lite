@@ -55,7 +55,6 @@ export type AppSettings = {
 	thread_labels?: { [key in string]: string },
 	auto_check_updates?: boolean,
 	skipped_update_version?: string,
-	proxy_url?: string,
 	multi_profile_name?: string,
 	info_drawer_open?: boolean,
 };
@@ -246,10 +245,6 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 	added: number | null,
 	active_threads: number | null,
 	cancelled: boolean,
-	error: string | null,
-} } | { type: "ProxyUpdated"; payload: {
-	ok: boolean,
-	proxy_url: string | null,
 	error: string | null,
 } } | { type: "FileDownloaded"; payload: {
 	ok: boolean,

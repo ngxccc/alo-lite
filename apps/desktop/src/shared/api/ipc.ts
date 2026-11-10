@@ -132,7 +132,6 @@ export const ipc = {
     call<void>("reject_friend", { userId, userName }),
   undoFriend: (userId: string, userName: string) => call<void>("undo_friend", { userId, userName }),
   saveSettings: (settings: AppSettings) => call<AppSettings>("save_settings", { settings }),
-  setProxy: (proxyUrl: string) => call<void>("set_proxy", { proxyUrl }),
   downloadFile: (url: string, fileName: string, downloadDir: string) =>
     call<void>("download_file", { url, fileName, downloadDir }),
   importLocalHistory: (path: string) => call<ImportSummaryDto>("import_local_history", { path }),
@@ -155,8 +154,7 @@ export const ipc = {
   saveAutoreplyRules: (rules: AutoReplyRule[]) => call<void>("save_autoreply_rules", { rules }),
   getDevDiagnostics: () => call<DevDiagnosticsSnapshot>("get_dev_diagnostics"),
   openPathInOs: (path: string) => call<void>("open_path_in_os", { path }),
-  spawnMultiProfile: (profile: string, proxyUrl: string) =>
-    call<void>("spawn_multi_profile", { profile, proxyUrl }),
+  spawnMultiProfile: (profile: string) => call<void>("spawn_multi_profile", { profile }),
 
   async openExternalUrl(url: string): Promise<void> {
     if (isTauriRuntime()) {

@@ -12,7 +12,6 @@ pub struct CliOptions {
     pub force_logout: bool,
     pub force_mcp: bool,
     pub api_port: Option<u16>,
-    pub cli_proxy: Option<String>,
 }
 
 impl CliOptions {
@@ -37,15 +36,6 @@ impl CliOptions {
                     .and_then(|v| v.parse::<u16>().ok())
             });
 
-        let cli_proxy = args
-            .iter()
-            .position(|a| a == "--proxy")
-            .and_then(|i| args.get(i + 1).cloned())
-            .or_else(|| {
-                args.iter()
-                    .find_map(|a| a.strip_prefix("--proxy=").map(str::to_string))
-            });
-
         Self {
             dev_mode,
             dump,
@@ -54,7 +44,6 @@ impl CliOptions {
             force_logout,
             force_mcp,
             api_port,
-            cli_proxy,
         }
     }
 }
@@ -79,7 +68,6 @@ pub fn print_help() {
     println!("        --print-data-dir     In đường dẫn thư mục lưu trữ XDG và thoát");
     println!("        --mcp                Khởi chạy Model Context Protocol JSON-RPC qua stdio\n");
     println!("TÙY CHỌN:");
-    println!("        --proxy <URL>        Thiết lập HTTP/HTTPS/SOCKS5 proxy cho phiên");
     println!(
         "        --api-port <CỔNG>    Mở cổng REST API & MCP HTTP server (ví dụ: --api-port 18128)"
     );

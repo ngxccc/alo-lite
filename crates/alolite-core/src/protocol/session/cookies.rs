@@ -1,30 +1,8 @@
-//! Cookie jar seeding and network proxy configuration.
+//! Cookie jar seeding.
 
-use anyhow::Result;
-
-use super::privacy::normalize_proxy_url;
-use super::transport::build_http_client;
 use super::Session;
 
 impl Session {
-    /// Configure or clear the HTTP/HTTPS/SOCKS5 proxy for this session, rebuilding the underlying
-    /// `reqwest::Client` while preserving all session cookies (`zpw_sek`, #64).
-    ///
-    /// # Errors
-    /// Returns an error if `proxy_url` is malformed or uses an unsupported scheme.
-    pub fn set_proxy(&mut self, proxy_url: Option<&str>) -> Result<Option<String>> {
-        let norm = match proxy_url {
-            Some(raw) => normalize_proxy_url(raw)?,
-            None => None,
-        };
-        self.http = build_http_client(&self.jar, norm.as_deref())?;
-        self.proxy_url = norm.clone();
-        if let Some(sek) = self.zpw_sek.clone() {
-            self.set_zpw_sek(sek);
-        }
-        Ok(norm)
-    }
-
     /// Store `zpw_sek` session token, attach it to `self.login`, and insert the session cookie.
     pub fn set_zpw_sek(&mut self, v: String) {
         if v.is_empty() {

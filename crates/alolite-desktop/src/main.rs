@@ -37,18 +37,6 @@ async fn main() -> anyhow::Result<()> {
 
     let mut session = Session::new(dev_mode, dump, dump_raw)?;
     session.load_or_init_device_identity("device.json");
-    if let Some(proxy) = args
-        .iter()
-        .position(|a| a == "--proxy")
-        .and_then(|i| args.get(i + 1))
-        .cloned()
-        .or_else(|| {
-            args.iter()
-                .find_map(|a| a.strip_prefix("--proxy=").map(str::to_string))
-        })
-    {
-        let _ = session.set_proxy(Some(&proxy));
-    }
     let _ = session.load_from_file("session.json");
 
     let mut initial_threads = store::load_threads_cache();
@@ -126,7 +114,6 @@ async fn main() -> anyhow::Result<()> {
             commands::reject_friend,
             commands::undo_friend,
             commands::save_settings,
-            commands::set_proxy,
             commands::download_file,
             commands::import_local_history,
             commands::auto_detect_import_history,

@@ -47,9 +47,6 @@ pub struct SavedSession {
     /// Epoch seconds at which the server last refused these credentials (#21).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expired_at: Option<i64>,
-    /// Optional HTTP/HTTPS/SOCKS5 proxy URL configured for this account/profile (#64).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub proxy_url: Option<String>,
     /// Companion identity public key (base64) when linked via Trusted Device flow.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub companion_ik: Option<String>,
@@ -184,7 +181,7 @@ impl Session {
         self.session_key = None;
         self.expired_at = None;
         self.jar = Arc::new(Jar::default());
-        if let Ok(c) = build_http_client(&self.jar, self.proxy_url.as_deref()) {
+        if let Ok(c) = build_http_client(&self.jar) {
             self.http = c;
         }
     }
@@ -207,7 +204,6 @@ impl Session {
             login: self.login.clone(),
             domains: self.domains.clone(),
             expired_at: self.expired_at,
-            proxy_url: self.proxy_url.clone(),
             companion_ik: self
                 .companion_ik
                 .as_ref()
@@ -247,11 +243,6 @@ impl Session {
         let text = std::fs::read_to_string(path)?;
         let saved: SavedSession = serde_json::from_str(&text)?;
 
-        if self.proxy_url.is_none() {
-            if let Some(ref p) = saved.proxy_url {
-                let _ = self.set_proxy(Some(p));
-            }
-        }
         self.imei = if saved.imei.len() == 69 {
             saved.imei
         } else {

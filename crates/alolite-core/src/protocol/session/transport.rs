@@ -8,10 +8,10 @@ use reqwest::header::{HeaderMap, HeaderValue, ORIGIN, REFERER};
 use reqwest::{Client, Method};
 use serde_json::Value;
 
-use super::privacy::{is_url_blocked_by_privacy, normalize_proxy_url, redact_url, truncate};
+use super::privacy::{is_url_blocked_by_privacy, redact_url, truncate};
 use super::status::SessionError;
 use super::{Session, ZALO_UA};
-pub(crate) fn build_http_client(jar: &Arc<Jar>, proxy_url: Option<&str>) -> Result<Client> {
+pub(crate) fn build_http_client(jar: &Arc<Jar>) -> Result<Client> {
     let mut default_headers = HeaderMap::new();
     default_headers.insert(
         REFERER,
@@ -21,25 +21,12 @@ pub(crate) fn build_http_client(jar: &Arc<Jar>, proxy_url: Option<&str>) -> Resu
         ORIGIN,
         HeaderValue::from_static(crate::endpoints::CHAT_ORIGIN),
     );
-    let mut builder = Client::builder()
+    let builder = Client::builder()
         .cookie_provider(Arc::clone(jar))
         .default_headers(default_headers)
         .connect_timeout(std::time::Duration::from_secs(10))
         .timeout(std::time::Duration::from_secs(35))
         .user_agent(ZALO_UA);
-    if let Some(raw_proxy) = proxy_url.map(str::trim).filter(|s| !s.is_empty()) {
-        if let Some(norm) = normalize_proxy_url(raw_proxy)? {
-            let mut proxy = reqwest::Proxy::all(&norm)?;
-            if let Ok(parsed) = reqwest::Url::parse(&norm) {
-                let user = parsed.username();
-                if !user.is_empty() {
-                    let pass = parsed.password().unwrap_or("");
-                    proxy = proxy.basic_auth(user, pass);
-                }
-            }
-            builder = builder.proxy(proxy);
-        }
-    }
     Ok(builder.build()?)
 }
 

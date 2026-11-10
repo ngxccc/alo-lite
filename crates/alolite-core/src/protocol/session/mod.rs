@@ -29,8 +29,8 @@ pub use crate::protocol::wire::obj;
 pub use domains::Domains;
 pub use persistence::{detect_device_name, official_imei, DeviceIdentity, LoginInfo, SavedSession};
 pub use privacy::{
-    is_url_blocked_by_privacy, normalize_proxy_url, privacy_blocker_state, redact_proxy_url,
-    redact_secret, redact_url, set_privacy_blocker, truncate, urlencode,
+    is_url_blocked_by_privacy, privacy_blocker_state, redact_secret, redact_url,
+    set_privacy_blocker, truncate, urlencode,
 };
 pub use status::{SessionError, SessionStatus, AUTH_ERROR_CODES};
 pub(crate) use transport::build_http_client;
@@ -62,8 +62,6 @@ pub struct Session {
     pub dump_raw: bool,
     /// `Some(epoch)` once the server has refused these credentials (#21).
     pub expired_at: Option<i64>,
-    /// Optional outbound proxy URL (`http://`, `https://`, `socks5://`, `socks5h://`) (#64).
-    pub proxy_url: Option<String>,
     /// Companion identity public key (33 bytes) when linked as a Trusted Companion Device.
     pub companion_ik: Option<Vec<u8>>,
     /// Companion identity private key (32 bytes) when linked as a Trusted Companion Device.
@@ -82,14 +80,10 @@ impl Session {
     /// Construct a fresh unauthenticated [`Session`] with verified domain defaults.
     ///
     /// # Errors
-    /// Returns an error if the underlying `reqwest::Client` or proxy configuration fails to build.
+    /// Returns an error if the underlying `reqwest::Client` fails to build.
     pub fn new(verbose: bool, dump: bool, dump_raw: bool) -> Result<Self> {
         let jar = Arc::new(Jar::default());
-        let env_proxy = std::env::var("ZALO_PROXY")
-            .or_else(|_| std::env::var("ALOZLITE_PROXY"))
-            .ok()
-            .and_then(|v| normalize_proxy_url(&v).ok().flatten());
-        let http = build_http_client(&jar, env_proxy.as_deref())?;
+        let http = build_http_client(&jar)?;
         Ok(Self {
             http,
             jar,
@@ -104,7 +98,6 @@ impl Session {
             dump,
             dump_raw,
             expired_at: None,
-            proxy_url: env_proxy,
             companion_ik: None,
             companion_priv: None,
             companion_master_id: None,

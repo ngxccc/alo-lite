@@ -82,19 +82,9 @@ export function UtilitiesTab({ settings, updateSettings, dispatch }: SettingsTab
         ))}
       </SettingCard>
 
-      <SectionHeading>Proxy &amp; Đa phiên bản</SectionHeading>
+      <SectionHeading>Đa phiên bản</SectionHeading>
       <SettingCard>
         <div className="px-4 py-3">
-          <div className="mb-2 flex gap-1.5">
-            <Input
-              value={settings.proxy_url}
-              onChange={(e) => updateSettings({ proxy_url: e.target.value })}
-              placeholder="http://127.0.0.1:8080 hoặc socks5://..."
-            />
-            <Button variant="default" onClick={() => void ipc.setProxy(settings.proxy_url)}>
-              Áp dụng
-            </Button>
-          </div>
           <div className="flex gap-1.5">
             <Input
               value={settings.multi_profile_name}
@@ -103,9 +93,7 @@ export function UtilitiesTab({ settings, updateSettings, dispatch }: SettingsTab
             />
             <Button
               variant="outline"
-              onClick={() =>
-                void ipc.spawnMultiProfile(settings.multi_profile_name, settings.proxy_url)
-              }
+              onClick={() => void ipc.spawnMultiProfile(settings.multi_profile_name)}
             >
               Mở Profile mới
             </Button>

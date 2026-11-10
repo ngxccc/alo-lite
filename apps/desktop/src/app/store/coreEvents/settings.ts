@@ -6,7 +6,6 @@ export type SettingsCoreEvent = Extract<
   CoreEventDto,
   | { type: "MuteSnapshotSynced" }
   | { type: "MuteEventsReceived" }
-  | { type: "ProxyUpdated" }
   | { type: "NotificationAuthorization" }
   | { type: "UpdateCheckFinished" }
   | { type: "UpdateDownloadStatus" }
@@ -50,18 +49,6 @@ export function handleSettingsEvent(state: AppState, event: SettingsCoreEvent): 
         settings: { ...state.settings, muted_threads },
       };
     }
-
-    case "ProxyUpdated":
-      return {
-        ...state,
-        toast: nextToast(
-          event.payload.ok
-            ? event.payload.proxy_url
-              ? `Đã áp dụng proxy: ${event.payload.proxy_url}`
-              : "Đã xóa cấu hình proxy"
-            : `Lỗi cấu hình proxy: ${event.payload.error ?? "không xác định"}`,
-        ),
-      };
 
     case "NotificationAuthorization":
       return {
