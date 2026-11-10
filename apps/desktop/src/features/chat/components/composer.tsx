@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { ipc, isTauriRuntime } from "@/shared/api/ipc";
-import type { StickerItem, Thread } from "@/shared/types/ipc";
+import type { StickerItem, Thread } from "@/shared/types/ipc.generated";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
@@ -213,7 +213,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
   // Locked-group notice bar at the bottom
   if (isSendLocked) {
     return (
-      <div className="flex h-14 shrink-0 items-center justify-center gap-2 border-t border-border bg-sidebar px-4 text-[13px] text-muted-foreground dark:border-[rgba(255,255,255,0.1)]">
+      <div className="flex h-14 shrink-0 items-center justify-center gap-2 border-t border-border bg-sidebar px-4 text-sm text-muted-foreground dark:border-[rgba(255,255,255,0.1)]">
         <Info className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
         <span>
           Chỉ <span className="font-semibold text-primary">trưởng/phó nhóm</span> mới được gửi tin
@@ -260,7 +260,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
             <div className="truncate font-bold text-foreground">
               {linkPreview?.title ?? "Đang tải xem trước liên kết…"}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">
+            <div className="truncate text-xs text-muted-foreground">
               {linkPreview?.desc ?? firstUrl}
             </div>
           </div>
@@ -408,9 +408,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
                       }}
                     >
                       <span className="truncate">{pack.name}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {pack.total_image} nhãn
-                      </span>
+                      <span className="text-xs text-muted-foreground">{pack.total_image} nhãn</span>
                     </Button>
                   ))
                 )}
@@ -517,7 +515,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
           onKeyDown={handleKeyDown}
           onPaste={(e) => void handlePaste(e)}
           placeholder={`@, Nhập tin nhắn tới ${thread.name || thread.id}`}
-          className="max-h-28 min-h-[38px] flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] text-foreground select-text placeholder:text-muted-foreground/60 focus:outline-none"
+          className="max-h-28 min-h-[38px] flex-1 resize-none bg-transparent px-2 py-1.5 text-base text-foreground select-text placeholder:text-muted-foreground/60 focus:outline-none"
         />
         <div className="flex shrink-0 items-center gap-1 pr-1">
           <button

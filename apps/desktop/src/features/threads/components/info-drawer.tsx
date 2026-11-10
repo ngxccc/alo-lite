@@ -164,7 +164,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
       >
         {icon}
       </div>
-      <span className="text-[12px] leading-tight text-muted-foreground group-hover:text-foreground">
+      <span className="text-xs leading-tight text-muted-foreground group-hover:text-foreground">
         {label}
       </span>
     </button>
@@ -226,7 +226,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
     <aside className="flex h-full w-[343px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background text-foreground">
       {/* Header: 68px, centered title 18px/500 */}
       <div className="flex h-[68px] shrink-0 items-center justify-center border-b border-border">
-        <span className="text-[18px] font-medium text-foreground">
+        <span className="text-lg font-medium text-foreground">
           {thread.is_group ? "Thông tin nhóm" : "Thông tin hội thoại"}
         </span>
       </div>
@@ -243,7 +243,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
           mediaCache={state.mediaCache}
         />
         <div className="mt-2 flex items-center gap-1.5">
-          <span className="max-w-[220px] truncate text-[18px] font-medium text-foreground">
+          <span className="max-w-[220px] truncate text-lg font-medium text-foreground">
             {thread.name || thread.id}
           </span>
           <button
@@ -256,7 +256,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
         </div>
 
         {/* Subtitle */}
-        <div className="text-[13px] text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           {thread.is_group
             ? `${memberCount} thành viên`
             : isCloud
@@ -334,7 +334,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
                   className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
                 >
                   <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <span className="text-[14px]">{memberCount} thành viên</span>
+                  <span className="text-sm">{memberCount} thành viên</span>
                 </button>
                 {thread.presentation.members.length > 0 ? (
                   <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto pt-1 pb-1">
@@ -347,9 +347,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
                           size={32}
                           mediaCache={state.mediaCache}
                         />
-                        <span className="truncate text-[14px] text-foreground">
-                          {m.name || m.id}
-                        </span>
+                        <span className="truncate text-sm text-foreground">{m.name || m.id}</span>
                       </div>
                     ))}
                   </div>
@@ -373,14 +371,14 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
                   className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
                 >
                   <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <span className="text-[14px]">Danh sách nhắc hẹn</span>
+                  <span className="text-sm">Danh sách nhắc hẹn</span>
                 </button>
                 <button
                   type="button"
                   className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
                 >
                   <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <span className="text-[14px]">Ghi chú, ghim, bình chọn</span>
+                  <span className="text-sm">Ghi chú, ghim, bình chọn</span>
                 </button>
               </div>
             ) : null}
@@ -396,7 +394,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
               className="flex cursor-pointer items-center gap-3 py-2.5 text-foreground hover:text-accent-foreground"
             >
               <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
-              <span className="text-[14px]">Danh sách nhắc hẹn</span>
+              <span className="text-sm">Danh sách nhắc hẹn</span>
             </button>
           </div>
         </>
@@ -412,7 +410,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
         {photosExpanded ? (
           <>
             {sharedPhotos.length === 0 ? (
-              <p className="px-4 pb-3 text-center text-[13px] text-muted-foreground">
+              <p className="px-4 pb-3 text-center text-sm text-muted-foreground">
                 Chưa có hình ảnh nào
               </p>
             ) : (
@@ -438,7 +436,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
                             },
                           })
                         }
-                        className="h-[60px] cursor-pointer overflow-hidden rounded bg-muted text-[10px] text-muted-foreground hover:opacity-90"
+                        className="h-[60px] cursor-pointer overflow-hidden rounded bg-muted text-xs text-muted-foreground hover:opacity-90"
                       >
                         {thumbSrc ? (
                           <img
@@ -472,9 +470,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
         />
         {fileExpanded ? (
           <>
-            <p className="px-4 pb-2 text-[13px] text-muted-foreground">
-              Chưa có file nào được chia sẻ
-            </p>
+            <p className="px-4 pb-2 text-sm text-muted-foreground">Chưa có file nào được chia sẻ</p>
             <ViewAllButton />
           </>
         ) : null}
@@ -490,7 +486,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
         />
         {linkExpanded ? (
           <>
-            <p className="px-4 pb-2 text-[13px] text-muted-foreground">
+            <p className="px-4 pb-2 text-sm text-muted-foreground">
               Chưa có liên kết nào được chia sẻ
             </p>
             <ViewAllButton />
@@ -502,7 +498,7 @@ export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDra
       <SectionBand />
       <button
         type="button"
-        className="flex w-full cursor-pointer items-center justify-center gap-2 py-3.5 text-[14px] text-destructive hover:bg-destructive/5"
+        className="flex w-full cursor-pointer items-center justify-center gap-2 py-3.5 text-sm text-destructive hover:bg-destructive/5"
         onClick={() => {
           const last = thread.messages.at(-1);
           void ipc.deleteThread(

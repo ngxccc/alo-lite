@@ -31,13 +31,13 @@ export function ForwardModal({ state: propState, dispatch: propDispatch }: Forwa
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-[16px] font-semibold">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
             <Forward className="h-4.5 w-4.5 text-primary" /> Chuyển tiếp tin nhắn
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-3 p-4">
-          <div className="truncate rounded-md bg-muted px-3 py-2 text-[13px] text-muted-foreground">
+          <div className="truncate rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             Nội dung: {preview}
           </div>
 
@@ -47,7 +47,7 @@ export function ForwardModal({ state: propState, dispatch: propDispatch }: Forwa
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Tìm hội thoại…"
-              className="h-9 pl-9 text-[13px]"
+              className="h-9 pl-9 text-sm"
               autoFocus
             />
           </div>
@@ -65,7 +65,7 @@ export function ForwardModal({ state: propState, dispatch: propDispatch }: Forwa
                     message: `Đang chuyển tiếp tới ${t.name}`,
                   });
                 }}
-                className="flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-left text-[13px] font-medium transition hover:bg-accent hover:text-accent-foreground"
+                className="flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium transition hover:bg-accent hover:text-accent-foreground"
               >
                 <Avatar
                   id={t.id}

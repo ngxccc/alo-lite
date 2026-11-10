@@ -19,7 +19,7 @@ export function InChatSearch({ isOpen, query, onOpen, onClose, onQueryChange }: 
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Tìm trong cuộc trò chuyện…"
-          className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+          className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
         <button
           type="button"

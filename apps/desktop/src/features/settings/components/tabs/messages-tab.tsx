@@ -98,7 +98,7 @@ export function MessagesTab({ settings, updateSettings }: SettingsTabProps) {
           value={settings.send_message_key}
           onChange={(v) =>
             updateSettings({
-              send_message_key: v as "enter" | "cmd_enter",
+              send_message_key: v,
             })
           }
           options={[

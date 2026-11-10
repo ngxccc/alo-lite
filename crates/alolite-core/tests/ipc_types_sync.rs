@@ -58,8 +58,10 @@ fn remap_integers_to_number(dt: &mut DataType) {
             | Primitive::i64
             | Primitive::u64
             | Primitive::u128
-            | Primitive::i128 => {
-                *p = Primitive::f64;
+            | Primitive::i128
+            | Primitive::f32
+            | Primitive::f64 => {
+                *p = Primitive::i32;
             }
             _ => {}
         },
@@ -158,15 +160,36 @@ pub fn generate_ipc_typescript() -> String {
         .register::<SidebarMember>()
         .register::<SidebarPresentation>()
         .register::<Thread>()
-        .register::<ChatMessage>();
+        .register::<ChatMessage>()
+        .register::<alolite_core::mcp::AutoReplyRule>();
 
     let types = specta_serde::Format
         .map_types(&types)
         .expect("serde formatting failed");
-
     let types = types.into_owned().map(|mut ndt| {
+        let type_name = ndt.name.to_string();
         if let Some(dt) = &mut ndt.ty {
             remap_integers_to_number(dt);
+            if let DataType::Struct(s) = dt {
+                if let Fields::Named(named) = &mut s.fields {
+                    for (field_name, f) in &mut named.fields {
+                        if type_name == "ChatMessage" {
+                            let is_core = matches!(
+                                field_name.as_ref(),
+                                "id" | "sender" | "text" | "time" | "is_outgoing" | "ts"
+                            );
+                            f.optional = !is_core;
+                        } else if type_name == "Thread"
+                            || type_name == "AppSettings"
+                            || type_name == "UnreadState"
+                            || type_name == "SidebarPresentation"
+                            || type_name == "SidebarMember"
+                        {
+                            f.optional = false;
+                        }
+                    }
+                }
+            }
         }
         ndt
     });

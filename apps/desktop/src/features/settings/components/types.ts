@@ -1,5 +1,5 @@
 import type { AppAction, AppState } from "@/app/store/app-reducer";
-import type { AppSettings } from "@/shared/types/ipc";
+import type { AppSettings } from "@/shared/types/ipc.generated";
 
 export interface SettingsModalProps {
   state?: AppState;

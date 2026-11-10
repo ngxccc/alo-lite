@@ -1,5 +1,5 @@
 import { cn } from "@/shared/utils/cn";
-import { SectionHeading, SettingCard, SwitchRow, ThemeThumbnail } from "../primitives";
+import { SectionHeading, SelectRow, SettingCard, SwitchRow, ThemeThumbnail } from "../primitives";
 import type { SettingsTabProps } from "../types";
 
 export function AppearanceTab({ settings, updateSettings }: SettingsTabProps) {
@@ -42,6 +42,20 @@ export function AppearanceTab({ settings, updateSettings }: SettingsTabProps) {
             })}
           </div>
         </div>
+      </SettingCard>
+
+      <SectionHeading>Cỡ chữ & Hiển thị</SectionHeading>
+      <SettingCard>
+        <SelectRow
+          label="Cỡ chữ toàn ứng dụng"
+          value={settings.font_size}
+          onChange={(v) => updateSettings({ font_size: v })}
+          options={[
+            { value: "small", label: "Nhỏ" },
+            { value: "medium", label: "Tiêu chuẩn" },
+            { value: "large", label: "Lớn" },
+          ]}
+        />
       </SettingCard>
 
       <SectionHeading>Nền trò chuyện</SectionHeading>

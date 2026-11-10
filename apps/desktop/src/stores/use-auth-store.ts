@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { AccountProfile } from "@/shared/types/ipc";
+import type { AccountProfile } from "@/shared/types/ipc.generated";
 
 export interface AuthState {
   bootstrapped: boolean;

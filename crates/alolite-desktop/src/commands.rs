@@ -36,8 +36,19 @@ pub async fn login_password(
     state: State<'_, AppCoreState>,
     phone: String,
     pass: String,
+    captcha_token: Option<String>,
+    captcha_answer: Option<String>,
 ) -> Result<(), String> {
-    state.engine.login_password(phone, pass).await;
+    state
+        .engine
+        .login_password(phone, pass, captcha_token, captcha_answer)
+        .await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn refresh_captcha(state: State<'_, AppCoreState>) -> Result<(), String> {
+    state.engine.refresh_captcha().await;
     Ok(())
 }
 

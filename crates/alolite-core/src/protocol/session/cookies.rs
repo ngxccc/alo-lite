@@ -8,6 +8,16 @@ impl Session {
         if v.is_empty() {
             return;
         }
+        for (host, domain) in [
+            ("https://chat.zalo.me", ".zalo.me"),
+            ("https://wpa.chat.zalo.me", ".zalo.me"),
+            ("https://wpa.zaloapp.com", ".zaloapp.com"),
+        ] {
+            if let Ok(url) = reqwest::Url::parse(host) {
+                let cookie = format!("zpw_sek={v}; Domain={domain}; Path=/");
+                self.jar.add_cookie_str(&cookie, &url);
+            }
+        }
         for &host in crate::endpoints::COOKIE_SEED_HOSTS {
             if let Ok(url) = reqwest::Url::parse(host) {
                 let cookie = format!("zpw_sek={v}; Path=/");

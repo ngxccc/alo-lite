@@ -1,4 +1,4 @@
-import type { Thread } from "@/shared/types/ipc";
+import type { Thread } from "@/shared/types/ipc.generated";
 
 let toastSeq = 1;
 

@@ -61,6 +61,10 @@ pub struct CachedMessageWireData {
     pub link_thumb: Option<serde_json::Value>,
     #[serde(rename = "link_src")]
     pub link_src: Option<serde_json::Value>,
+    #[serde(rename = "client_message_id")]
+    pub client_message_id: Option<serde_json::Value>,
+    #[serde(rename = "cliMsgId")]
+    pub cli_msg_id: Option<serde_json::Value>,
 }
 
 impl CachedMessageWireData {
@@ -143,6 +147,11 @@ impl CachedMessageWireData {
     /// Link card source label.
     pub fn link_src(&self) -> Option<String> {
         opt_string(self.link_src.as_ref())
+    }
+
+    /// Client message id (`client_message_id` > `cliMsgId`).
+    pub fn client_message_id(&self) -> Option<String> {
+        opt_string(self.client_message_id.as_ref()).or_else(|| opt_string(self.cli_msg_id.as_ref()))
     }
 }
 
@@ -312,6 +321,7 @@ impl MessageStore {
                 let mut link_desc = None;
                 let mut link_thumb = None;
                 let mut link_src = None;
+                let mut client_message_id = String::new();
                 if !sm.raw_json.is_empty() {
                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(&sm.raw_json) {
                         let cached = CachedMessageWireData::from_value(&val);
@@ -336,6 +346,9 @@ impl MessageStore {
                         link_desc = cached.link_desc();
                         link_thumb = cached.link_thumb();
                         link_src = cached.link_src();
+                        if let Some(cid) = cached.client_message_id() {
+                            client_message_id = cid;
+                        }
                     }
                 }
                 let sender_id_opt = if !sm.sender_id.is_empty() {
@@ -374,6 +387,7 @@ impl MessageStore {
                     link_thumb,
                     link_src,
 
+                    client_message_id,
                     ..Default::default()
                 };
                 if let Some(existing) = t.messages.iter_mut().find(|existing| {
@@ -416,6 +430,9 @@ impl MessageStore {
                     }
                     if existing.reactions.is_empty() && !cm.reactions.is_empty() {
                         existing.reactions = cm.reactions;
+                    }
+                    if existing.client_message_id.is_empty() && !cm.client_message_id.is_empty() {
+                        existing.client_message_id = cm.client_message_id;
                     }
                     existing.is_pinned = existing.is_pinned || cm.is_pinned;
                     existing.is_starred = existing.is_starred || cm.is_starred;

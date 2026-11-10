@@ -3,7 +3,7 @@ import {
   reconcileSentMessage,
   sortThreads,
 } from "@/features/threads/utils/threads";
-import type { ChatMessage, CoreEventDto } from "@/shared/types/ipc";
+import type { ChatMessage, CoreEventDto } from "@/shared/types/ipc.generated";
 import { formatClockNow } from "@/shared/utils/text";
 import type { AppState } from "../app-state";
 import { nextToast, updateThreadMessage } from "../helpers";
@@ -16,6 +16,7 @@ export type MessagesCoreEvent = Extract<
   | { type: "AttachmentSent" }
   | { type: "QuoteSent" }
   | { type: "Reacted" }
+  | { type: "ReactFailed" }
   | { type: "MessageDeleted" }
   | { type: "MessageRecalled" }
   | { type: "SendFailed" }
@@ -159,6 +160,22 @@ export function handleMessagesEvent(state: AppState, event: MessagesCoreEvent): 
           }),
         })),
         statusMessage: "Đã thả cảm xúc",
+      };
+    }
+    case "ReactFailed": {
+      const { thread_id, msg_id, ts, reaction } = event.payload;
+      return {
+        ...state,
+        threads: updateThreadMessage(state.threads, thread_id, (t) => ({
+          ...t,
+          messages: t.messages.map((m) => {
+            const matches = (msg_id && m.id === msg_id) || (!msg_id && m.ts === ts);
+            if (!matches) return m;
+            const current = m.reactions ?? [];
+            return { ...m, reactions: current.filter((r) => r !== reaction) };
+          }),
+        })),
+        statusMessage: "Thả cảm xúc thất bại",
       };
     }
 

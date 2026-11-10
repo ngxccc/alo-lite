@@ -7,6 +7,28 @@
  * Layer 3: Chat Semantic Tokens (--bubble-in, --bubble-out, --online, --warning)
  */
 
+:root {
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Be Vietnam Pro",
+    "Noto Sans", sans-serif;
+  --app-font-size: 16px;
+}
+
+:root[data-font-size="small"],
+[data-font-size="small"] {
+  --app-font-size: 15px;
+}
+
+:root[data-font-size="medium"],
+[data-font-size="medium"] {
+  --app-font-size: 16px;
+}
+
+:root[data-font-size="large"],
+[data-font-size="large"] {
+  --app-font-size: 18px;
+}
+
 :root,
 [data-theme="light"] {
   --radius: 0.5rem;
@@ -133,6 +155,7 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-sans);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
   --color-rail-muted: var(--rail-muted);
@@ -190,13 +213,15 @@
     overflow: hidden;
     background-color: var(--background);
     color: var(--foreground);
-    font-family:
-      "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Be Vietnam Pro",
-      Roboto, "Noto Sans", sans-serif;
-    font-size: 14px;
+    font-family: var(--font-sans);
+    font-size: 1rem;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     user-select: none;
+  }
+
+  html {
+    font-size: var(--app-font-size);
   }
 
   /* Custom subtle desktop scrollbars */

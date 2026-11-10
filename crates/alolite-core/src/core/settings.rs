@@ -26,6 +26,7 @@ pub struct AppSettings {
     pub friend_src_card: bool,
     // 3. Giao diện
     pub theme_mode: String, // "light" | "dark" | "system"
+    pub font_size: String,  // "small" | "medium" | "large"
     pub use_avatar_as_wallpaper: bool,
     // 4. Thông báo
     pub enable_notifications: bool,
@@ -90,6 +91,7 @@ impl Default for AppSettings {
             friend_src_group: true,
             friend_src_card: true,
             theme_mode: "dark".into(),
+            font_size: "medium".into(),
             use_avatar_as_wallpaper: false,
             enable_notifications: true,
             play_notification_sound: false,

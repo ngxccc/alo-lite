@@ -120,24 +120,50 @@ impl CoreEngine {
         *guard = Some(handle);
     }
 
-    pub async fn login_password(self: &Arc<Self>, phone: String, pass: String) {
+    pub async fn login_password(
+        self: &Arc<Self>,
+        phone: String,
+        pass: String,
+        captcha_token: Option<String>,
+        captcha_answer: Option<String>,
+    ) {
         self.emit(CoreEvent::StatusUpdate("Đang xác thực tài khoản…".into()));
-        let auth_res = {
-            let mut s = self.session.lock().await;
-            let res = login::login_by_password(&mut s, &phone, &pass, "VN").await;
-            if res.is_ok() {
+        let mut s = self.session.lock().await;
+        match login::login_by_password(
+            &mut s,
+            &phone,
+            &pass,
+            "VN",
+            captcha_token.as_deref(),
+            captcha_answer.as_deref(),
+        )
+        .await
+        {
+            Ok(login::LoginPasswordOutcome::Success(_)) => {
                 let _ = login::fetch_and_apply_login_info(&mut s).await;
                 let _ = s.save_to_file("session.json");
                 let _ = s.save_device_identity("device.json");
-            }
-            res.map(|_| s.clone())
-        };
-        match auth_res {
-            Ok(s_clone) => {
+                let s_clone = s.clone();
+                drop(s);
                 self.finish_authenticated_bootstrap(s_clone).await;
+            }
+            Ok(login::LoginPasswordOutcome::CaptchaRequired(challenge)) => {
+                self.emit(CoreEvent::CaptchaRequired(challenge));
             }
             Err(e) => {
                 self.emit(CoreEvent::LoginFailed(e.to_string()));
+            }
+        }
+    }
+
+    pub async fn refresh_captcha(self: &Arc<Self>) {
+        let s = self.session.lock().await.clone();
+        match login::get_login_captcha(&s).await {
+            Ok(challenge) => {
+                self.emit(CoreEvent::CaptchaRequired(challenge));
+            }
+            Err(e) => {
+                self.emit(CoreEvent::LoginFailed(format!("Lỗi làm mới captcha: {e}")));
             }
         }
     }

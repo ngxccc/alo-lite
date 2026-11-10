@@ -21,9 +21,9 @@ help:
 	@echo "  make release       - Cut release: bump, changelog, tag (e.g. make release VERSION=minor)"
 	@echo "  make clean         - Clean build artifacts and dist/"
 
-dev dev-desktop run:
+dev-desktop:
 	cd apps/desktop && bun run build
-	cargo run -p alolite-desktop --bin alolite-desktop
+	cargo run -p alolite-desktop --bin alolite-desktop -- --dev
 
 mcp:
 	cargo run -p alolite-cli --bin alolite -- --mcp

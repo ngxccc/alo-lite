@@ -29,7 +29,7 @@ export function syncDomainStores(next: AppState): void {
 
   // Sync to useUIStore
   useUIStore.setState({
-    themeMode: next.settings?.theme_mode ?? "dark",
+    themeMode: (next.settings?.theme_mode as "system" | "light" | "dark" | undefined) ?? "dark",
     activeSection: next.activeSection,
     devMode: next.devMode,
     appLogoDataUrl: next.appLogoDataUrl,

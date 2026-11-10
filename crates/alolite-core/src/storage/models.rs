@@ -92,6 +92,12 @@ impl From<&ChatMessage> for StoredMessage {
         if let Some(lsrc) = &m.link_src {
             meta.insert("link_src".into(), serde_json::json!(lsrc));
         }
+        if !m.client_message_id.is_empty() {
+            meta.insert(
+                "client_message_id".into(),
+                serde_json::json!(m.client_message_id),
+            );
+        }
         let raw_json = if meta.is_empty() {
             String::new()
         } else {

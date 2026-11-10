@@ -32,7 +32,7 @@ import { useAppStore } from "@/app/store/use-app-store";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useChatStore } from "@/stores/use-chat-store";
 import { useUIStore } from "@/stores/use-ui-store";
-import type { AppSettings } from "@/shared/types/ipc";
+import type { AppSettings } from "@/shared/types/ipc.generated";
 import { threadUnreadCount } from "@/features/threads/utils/threads";
 
 interface NavRailProps {
@@ -75,7 +75,7 @@ function RailBtn({
         >
           {children}
           {badge != null && badge > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-[3px] text-[11px] leading-none font-bold text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-[3px] text-xs leading-none font-bold text-white">
               {badge > 99 ? "99+" : badge}
             </span>
           )}
@@ -310,7 +310,7 @@ function ToolItemBtn({ item }: { item: ToolItemDef }) {
         {item.badge && (
           <span
             className={cn(
-              "absolute -top-1 -right-1 rounded-full px-[5px] text-[9px] leading-[14px] font-bold text-white",
+              "absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-xs leading-none font-bold text-white",
               item.badge === "BASIC" ? "bg-sky-500" : "bg-orange-500",
             )}
           >
@@ -318,7 +318,7 @@ function ToolItemBtn({ item }: { item: ToolItemDef }) {
           </span>
         )}
       </div>
-      <span className="w-full text-[11px] leading-tight text-popover-foreground">{item.label}</span>
+      <span className="w-full text-xs leading-tight text-popover-foreground">{item.label}</span>
     </button>
   );
 }
@@ -393,9 +393,7 @@ function ToolsPopover({ dispatch }: { dispatch: (action: AppAction) => void; isD
       <PopoverContent side="right" align="end" sideOffset={8} className="w-[272px] p-0">
         {/* Popover header */}
         <div className="border-b border-border px-3 py-2.5">
-          <span className="text-[13px] font-semibold text-popover-foreground">
-            Công cụ zBusiness
-          </span>
+          <span className="text-sm font-semibold text-popover-foreground">Công cụ zBusiness</span>
         </div>
         {/* 3-column tool grid */}
         <div className="grid grid-cols-3 gap-0.5 p-2">

@@ -1,5 +1,5 @@
 import { sortThreads } from "@/features/threads/utils/threads";
-import type { StickerItem } from "@/shared/types/ipc";
+import type { StickerItem } from "@/shared/types/ipc.generated";
 import type { AppAction, AppState } from "./app-state";
 import { nextToast, updateThreadMessage } from "./helpers";
 

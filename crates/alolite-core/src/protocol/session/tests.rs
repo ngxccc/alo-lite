@@ -130,3 +130,34 @@ async fn request_with_candidates_does_not_failover_on_auth_errors() {
         assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }
+#[tokio::test]
+async fn maybe_decrypt_unwraps_inner_decrypted_envelope() {
+    let s = Session::new(false, false, false).unwrap();
+    let key = b"1234567890123456";
+    let inner_json = serde_json::json!({
+        "error_code": 0,
+        "error_message": "Successful.",
+        "data": { "foo": "bar", "count": 42 }
+    });
+    let enc = crate::crypto::encode_aes(key, &inner_json.to_string()).unwrap();
+    let raw_resp = serde_json::json!({
+        "error_code": 0,
+        "error_message": "Successful.",
+        "data": enc
+    });
+
+    let dec = s.maybe_decrypt(raw_resp, key).await;
+    assert_eq!(
+        dec.get("error_code").and_then(serde_json::Value::as_i64),
+        Some(0)
+    );
+    assert_eq!(
+        dec.get("error_message").and_then(serde_json::Value::as_str),
+        Some("Successful.")
+    );
+    assert_eq!(
+        dec.get("data"),
+        Some(&serde_json::json!({ "foo": "bar", "count": 42 }))
+    );
+}
+

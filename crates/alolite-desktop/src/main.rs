@@ -37,7 +37,11 @@ async fn main() -> anyhow::Result<()> {
 
     let mut session = Session::new(dev_mode, dump, dump_raw)?;
     session.load_or_init_device_identity("device.json");
-    let _ = session.load_from_file("session.json");
+    if let Err(e) = session.load_from_file("session.json") {
+        if std::path::Path::new("session.json").exists() {
+            eprintln!("! nạp session.json thất bại: {e}");
+        }
+    }
 
     let mut initial_threads = store::load_threads_cache();
     let uin = session
@@ -71,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
             commands::bootstrap_state,
             commands::request_qr,
             commands::login_password,
+            commands::refresh_captcha,
             commands::logout,
             commands::switch_account,
             commands::add_new_account,

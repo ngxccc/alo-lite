@@ -271,12 +271,24 @@ impl CoreEngine {
             Ok(ack) => {
                 let err_s = format!("server error {}", ack.err_code().unwrap_or(0));
                 crate::logger::log_error("core::react", &err_s);
+                self.emit(CoreEvent::ReactFailed {
+                    thread_id: to_id,
+                    msg_id: msg.id,
+                    ts: msg.ts,
+                    reaction,
+                });
                 self.emit(CoreEvent::StatusUpdate(format!(
                     "Thả cảm xúc thất bại: {err_s}"
                 )));
             }
             Err(e) => {
                 crate::logger::log_error("core::react", &e.to_string());
+                self.emit(CoreEvent::ReactFailed {
+                    thread_id: to_id,
+                    msg_id: msg.id,
+                    ts: msg.ts,
+                    reaction,
+                });
                 self.emit(CoreEvent::StatusUpdate(format!(
                     "Thả cảm xúc thất bại: {e}"
                 )));

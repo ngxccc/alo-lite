@@ -1,5 +1,5 @@
 import { ChevronDown, MessageSquare } from "lucide-react";
-import type { ChatMessage } from "@/shared/types/ipc";
+import type { ChatMessage } from "@/shared/types/ipc.generated";
 import { Button } from "@/shared/ui/button";
 
 interface PinnedBarProps {
@@ -22,8 +22,8 @@ export function PinnedBar({ pinnedMessages, onJumpToPinned, onToggleInfoDrawer }
           <MessageSquare className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] leading-tight font-semibold text-foreground">Tin nhắn</div>
-          <div className="truncate text-[12px] leading-tight text-muted-foreground">
+          <div className="text-sm leading-tight font-semibold text-foreground">Tin nhắn</div>
+          <div className="truncate text-xs leading-tight text-muted-foreground">
             {pinnedMessage.sender ? `${pinnedMessage.sender}: ` : ""}
             {pinnedMessage.text || "[Hình ảnh/Tập tin]"}
           </div>
@@ -34,7 +34,7 @@ export function PinnedBar({ pinnedMessages, onJumpToPinned, onToggleInfoDrawer }
           <button
             type="button"
             onClick={onToggleInfoDrawer}
-            className="flex items-center gap-1 rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted"
+            className="flex items-center gap-1 rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted"
           >
             +{pinnedMessages.length - 1} ghim
             <ChevronDown className="h-3 w-3" />

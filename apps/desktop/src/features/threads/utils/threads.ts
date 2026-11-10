@@ -1,4 +1,4 @@
-import type { AppSettings, ChatMessage, Thread } from "@/shared/types/ipc";
+import type { AppSettings, ChatMessage, Thread } from "@/shared/types/ipc.generated";
 import { normalizeTsMs } from "@/shared/utils/text";
 
 export function isThreadMuted(
@@ -32,7 +32,7 @@ export function threadMemberCount(thread: Thread): number {
 export function threadLastActivityTs(thread: Thread): number {
   const lastMsg = thread.messages.at(-1);
   return Math.max(
-    normalizeTsMs(thread.presentation.last_message_ts || 0),
+    normalizeTsMs(thread.presentation.last_message_ts),
     normalizeTsMs(lastMsg?.ts ?? 0),
   );
 }

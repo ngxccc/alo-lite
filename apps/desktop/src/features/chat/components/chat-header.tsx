@@ -1,5 +1,5 @@
 import { PanelRight, Star, Tag, UserPlus, Users } from "lucide-react";
-import type { Thread } from "@/shared/types/ipc";
+import type { Thread } from "@/shared/types/ipc.generated";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
@@ -30,12 +30,12 @@ export function ChatHeader({ thread, state, dispatch }: ChatHeaderProps) {
           mediaCache={state.mediaCache}
         />
         <div className="min-w-0">
-          <div className="truncate text-[18px] font-semibold text-foreground">
+          <div className="truncate text-lg font-semibold text-foreground">
             {thread.name || thread.id}
           </div>
           <div
             className={cn(
-              "flex items-center gap-1 text-[14px]",
+              "flex items-center gap-1 text-sm",
               onlineInfo?.[0] ? "font-medium text-online" : "text-muted-foreground",
             )}
           >

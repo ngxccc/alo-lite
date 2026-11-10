@@ -1,5 +1,5 @@
 import { sortThreads } from "@/features/threads/utils/threads";
-import type { CoreEventDto } from "@/shared/types/ipc";
+import type { CoreEventDto } from "@/shared/types/ipc.generated";
 import type { AppState } from "../app-state";
 import { nextToast } from "../helpers";
 

@@ -19,7 +19,7 @@ use crate::core::CoreEngine;
 pub const AUTOREPLY_FILE: &str = "autoreply_rules.json";
 pub const DEFAULT_API_PORT: u16 = 17890;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 pub struct AutoReplyRule {
     pub id: String,
     pub keyword: String,

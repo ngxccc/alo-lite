@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { DevDiagnosticsSnapshot } from "@/shared/types/ipc";
+import type { DevDiagnosticsSnapshot } from "@/shared/types/ipc.generated";
 import type { ImageViewerState, NavSection, SettingsTab } from "@/app/store/app-state";
 
 export interface UIState {
