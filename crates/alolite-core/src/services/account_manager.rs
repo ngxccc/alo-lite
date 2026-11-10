@@ -6,7 +6,73 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// `login` object of a persisted `session.json` (one per Zalo account).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "login": {
+///     "uin": "1234567890",
+///     "display_name": "Ngọc Trần",
+///     "avatar": "https://avatar.example/240"
+///   }
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Feeds [`AccountProfile`]; an empty `uin` means the file is not a usable account session and is
+/// skipped by the caller.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct PersistedSessionWireData {
+    #[serde(rename = "login")]
+    login: Option<PersistedLoginWireData>,
+}
+
+/// `login` block of a persisted `session.json`.
+///
+/// # Wire Response Example
+/// ```json
+/// { "uin": "1234567890", "display_name": "Ngọc Trần", "avatar": "https://avatar.example/240" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct PersistedLoginWireData {
+    #[serde(rename = "uin")]
+    uin: Option<serde_json::Value>,
+    #[serde(rename = "display_name")]
+    display_name: Option<serde_json::Value>,
+    #[serde(rename = "avatar")]
+    avatar: Option<serde_json::Value>,
+}
+
+impl PersistedLoginWireData {
+    /// Account id (`uin`), empty when absent.
+    fn uin(&self) -> &str {
+        self.uin
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+    }
+
+    /// Display name, defaulting to the Vietnamese fallback label.
+    fn display_name(&self) -> &str {
+        self.display_name
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("Người dùng Zalo")
+    }
+
+    /// Avatar URL, when present.
+    fn avatar(&self) -> Option<String> {
+        self.avatar
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 pub struct AccountProfile {
     pub uin: String,
     pub display_name: String,
@@ -38,22 +104,13 @@ pub fn list_saved_accounts(current_uin: &str) -> Vec<AccountProfile> {
             }
             if let Ok(text) = std::fs::read_to_string(&path) {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
-                    if let Some(login) = val.get("login") {
-                        let uin = login
-                            .get("uin")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or_default()
-                            .to_string();
+                    let persisted: PersistedSessionWireData =
+                        serde_json::from_value(val).unwrap_or_default();
+                    if let Some(login) = persisted.login {
+                        let uin = login.uin().to_string();
                         if !uin.is_empty() {
-                            let display_name = login
-                                .get("display_name")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("Người dùng Zalo")
-                                .to_string();
-                            let avatar = login
-                                .get("avatar")
-                                .and_then(|v| v.as_str())
-                                .map(str::to_string);
+                            let display_name = login.display_name().to_string();
+                            let avatar = login.avatar();
                             let is_current = uin == current_uin;
                             let last_active_ts = entry
                                 .metadata()

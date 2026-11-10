@@ -1,10 +1,150 @@
+use crate::protocol::wire::{opt_string, opt_u64, WireData};
 use anyhow::Result;
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
 
 use super::models::{MessageStore, StoredMessage, StoredThread};
 use crate::protocol::messaging::threads::{
     deduplicate_threads, is_generic_thread_name, ChatMessage, Thread,
 };
+
+/// `messages.raw_json` as written by the store when a message is persisted.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "stickerId": 12345,
+///   "cateId": 1234,
+///   "type": 7,
+///   "reply_to_id": "1731215399000_9",
+///   "reply_to_text": "Tin trước đó",
+///   "is_pinned": true,
+///   "link_url": "https://example.com"
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Rehydrates the sticker, reply, reaction, pin/star, and link columns of a cached
+/// [`ChatMessage`]; the newest `raw_json` wins because the store rewrites it on merge.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CachedMessageWireData {
+    #[serde(rename = "stickerId")]
+    pub sticker_id_camel: Option<serde_json::Value>,
+    #[serde(rename = "id")]
+    pub id: Option<serde_json::Value>,
+    #[serde(rename = "cateId")]
+    pub cate_id: Option<serde_json::Value>,
+    #[serde(rename = "catId")]
+    pub cat_id: Option<serde_json::Value>,
+    #[serde(rename = "type")]
+    pub sticker_type: Option<serde_json::Value>,
+    #[serde(rename = "reply_to_id")]
+    pub reply_to_id: Option<serde_json::Value>,
+    #[serde(rename = "reply_to_sender")]
+    pub reply_to_sender: Option<serde_json::Value>,
+    #[serde(rename = "reply_to_text")]
+    pub reply_to_text: Option<serde_json::Value>,
+    #[serde(rename = "reactions")]
+    pub reactions: Option<Vec<serde_json::Value>>,
+    #[serde(rename = "is_pinned")]
+    pub is_pinned: Option<serde_json::Value>,
+    #[serde(rename = "is_starred")]
+    pub is_starred: Option<serde_json::Value>,
+    #[serde(rename = "link_url")]
+    pub link_url: Option<serde_json::Value>,
+    #[serde(rename = "link_title")]
+    pub link_title: Option<serde_json::Value>,
+    #[serde(rename = "link_desc")]
+    pub link_desc: Option<serde_json::Value>,
+    #[serde(rename = "link_thumb")]
+    pub link_thumb: Option<serde_json::Value>,
+    #[serde(rename = "link_src")]
+    pub link_src: Option<serde_json::Value>,
+}
+
+impl CachedMessageWireData {
+    /// Sticker id (`stickerId` > `id`).
+    pub fn sticker_id(&self) -> Option<u64> {
+        opt_u64(self.sticker_id_camel.as_ref()).or_else(|| opt_u64(self.id.as_ref()))
+    }
+
+    /// Sticker category id (`cateId` > `catId`).
+    pub fn sticker_cate_id(&self) -> Option<u64> {
+        opt_u64(self.cate_id.as_ref()).or_else(|| opt_u64(self.cat_id.as_ref()))
+    }
+
+    /// Sticker type as a `u32`.
+    pub fn sticker_type(&self) -> Option<u32> {
+        opt_u64(self.sticker_type.as_ref()).map(|n| n as u32)
+    }
+
+    /// Quoted message id.
+    pub fn reply_to_id(&self) -> Option<String> {
+        opt_string(self.reply_to_id.as_ref())
+    }
+
+    /// Quoted message sender.
+    pub fn reply_to_sender(&self) -> Option<String> {
+        opt_string(self.reply_to_sender.as_ref())
+    }
+
+    /// Quoted message text.
+    pub fn reply_to_text(&self) -> Option<String> {
+        opt_string(self.reply_to_text.as_ref())
+    }
+
+    /// Legacy reaction emoji list stored alongside `raw_json`.
+    pub fn reactions(&self) -> Vec<String> {
+        self.reactions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect()
+    }
+
+    /// Whether the thread/message was pinned.
+    pub fn is_pinned(&self) -> bool {
+        self.is_pinned
+            .as_ref()
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// Whether the message was starred.
+    pub fn is_starred(&self) -> bool {
+        self.is_starred
+            .as_ref()
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// Link card URL.
+    pub fn link_url(&self) -> Option<String> {
+        opt_string(self.link_url.as_ref())
+    }
+
+    /// Link card title.
+    pub fn link_title(&self) -> Option<String> {
+        opt_string(self.link_title.as_ref())
+    }
+
+    /// Link card description.
+    pub fn link_desc(&self) -> Option<String> {
+        opt_string(self.link_desc.as_ref())
+    }
+
+    /// Link card thumbnail.
+    pub fn link_thumb(&self) -> Option<String> {
+        opt_string(self.link_thumb.as_ref())
+    }
+
+    /// Link card source label.
+    pub fn link_src(&self) -> Option<String> {
+        opt_string(self.link_src.as_ref())
+    }
+}
 
 impl MessageStore {
     /// Delete an entire conversation and all its messages from local SQLite store (#24).
@@ -174,66 +314,28 @@ impl MessageStore {
                 let mut link_src = None;
                 if !sm.raw_json.is_empty() {
                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(&sm.raw_json) {
-                        sticker_id = val
-                            .get("stickerId")
-                            .or_else(|| val.get("id"))
-                            .and_then(|v| v.as_u64());
-                        sticker_cate_id = val
-                            .get("cateId")
-                            .or_else(|| val.get("catId"))
-                            .and_then(|v| v.as_u64());
-                        sticker_type = val.get("type").and_then(|v| v.as_u64()).map(|n| n as u32);
-                        reply_to_id = val
-                            .get("reply_to_id")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
-                        reply_to_sender = val
-                            .get("reply_to_sender")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
-                        reply_to_text = val
-                            .get("reply_to_text")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
+                        let cached = CachedMessageWireData::from_value(&val);
+                        sticker_id = cached.sticker_id();
+                        sticker_cate_id = cached.sticker_cate_id();
+                        sticker_type = cached.sticker_type();
+                        reply_to_id = cached.reply_to_id();
+                        reply_to_sender = cached.reply_to_sender();
+                        reply_to_text = cached.reply_to_text();
                         let r_summaries =
                             crate::protocol::messaging::reactions::parse_reactions(&val);
                         if !r_summaries.is_empty() {
                             reactions =
                                 crate::protocol::messaging::reactions::legacy_emojis(&r_summaries);
-                        } else if let Some(arr) = val.get("reactions").and_then(|v| v.as_array()) {
-                            reactions = arr
-                                .iter()
-                                .filter_map(|v| v.as_str().map(str::to_string))
-                                .collect();
+                        } else {
+                            reactions = cached.reactions();
                         }
-                        is_pinned = val
-                            .get("is_pinned")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-                        is_starred = val
-                            .get("is_starred")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-                        link_url = val
-                            .get("link_url")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
-                        link_title = val
-                            .get("link_title")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
-                        link_desc = val
-                            .get("link_desc")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
-                        link_thumb = val
-                            .get("link_thumb")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
-                        link_src = val
-                            .get("link_src")
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string);
+                        is_pinned = cached.is_pinned();
+                        is_starred = cached.is_starred();
+                        link_url = cached.link_url();
+                        link_title = cached.link_title();
+                        link_desc = cached.link_desc();
+                        link_thumb = cached.link_thumb();
+                        link_src = cached.link_src();
                     }
                 }
                 let sender_id_opt = if !sm.sender_id.is_empty() {
