@@ -201,12 +201,30 @@ fn set_zpw_sek_reaches_every_chat_subdomain() {
             .map(|v| v.to_str().unwrap_or_default().to_string())
             .unwrap_or_default();
         assert!(header.contains("zpw_sek=sek123"), "{host} -> {header:?}");
+        assert!(header.contains("_zlang=vi"), "{host} -> {header:?}");
         assert_eq!(
             header.matches("zpw_sek=").count(),
             1,
             "{host} received duplicate cookies: {header:?}"
         );
     }
+}
+
+#[test]
+fn rotated_cookie_replaces_the_seeded_wildcard() {
+    use reqwest::cookie::CookieStore;
+    let mut s = Session::new(false, false, false).unwrap();
+    s.set_zpw_sek("old".into());
+    s.seed_wildcard_cookie("zpw_sek", "new");
+    let url = reqwest::Url::parse("https://tt-group-cm.chat.zalo.me").unwrap();
+    let header = s
+        .jar
+        .cookies(&url)
+        .map(|v| v.to_str().unwrap_or_default().to_string())
+        .unwrap_or_default();
+    assert!(header.contains("zpw_sek=new"), "{header:?}");
+    assert!(!header.contains("zpw_sek=old"), "{header:?}");
+    assert_eq!(header.matches("zpw_sek=").count(), 1, "{header:?}");
 }
 
 #[test]

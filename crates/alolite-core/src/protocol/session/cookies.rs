@@ -38,20 +38,28 @@ impl Session {
         }
     }
 
-    /// Store `zpw_sek` session token, attach it to `self.login`, and insert the session cookie.
+    /// Insert `name=value` as one wildcard cookie per registrable Zalo domain (`.zalo.me`,
+    /// `.zaloapp.com`) so every API subdomain sees exactly one copy.
+    pub(crate) fn seed_wildcard_cookie(&self, name: &str, value: &str) {
+        for (bare, domain) in [("zalo.me", ".zalo.me"), ("zaloapp.com", ".zaloapp.com")] {
+            if let Ok(url) = reqwest::Url::parse(&format!("https://{bare}")) {
+                let cookie = format!("{name}={value}; Domain={domain}; Path=/");
+                self.jar.add_cookie_str(&cookie, &url);
+            }
+        }
+    }
+
+    /// Store `zpw_sek` session token, attach it to `self.login`, and insert the session cookies.
     pub fn set_zpw_sek(&mut self, v: String) {
         if v.is_empty() {
             return;
         }
         // One wildcard cookie per registrable domain reaches every API subdomain
         // (`tt-profile-wpa`, `tt-group-cm`, `lp9-msg`, …) without emitting the same
-        // `zpw_sek` twice in the outgoing `Cookie` header.
-        for (bare, domain) in [("zalo.me", ".zalo.me"), ("zaloapp.com", ".zaloapp.com")] {
-            if let Ok(url) = reqwest::Url::parse(&format!("https://{bare}")) {
-                let cookie = format!("zpw_sek={v}; Domain={domain}; Path=/");
-                self.jar.add_cookie_str(&cookie, &url);
-            }
-        }
+        // `zpw_sek` twice in the outgoing `Cookie` header. `_zlang` travels with it
+        // because the transport no longer hand-builds the `Cookie` header.
+        self.seed_wildcard_cookie("zpw_sek", &v);
+        self.seed_wildcard_cookie("_zlang", "vi");
         // Host-only fallback for any seeded or discovered host outside those domains.
         let mut hosts: Vec<&str> = crate::endpoints::COOKIE_SEED_HOSTS.to_vec();
         hosts.extend([
