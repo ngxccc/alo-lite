@@ -48,3 +48,8 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 
 # Local SQLite Storage
 rusqlite = { version = "0.41", features = ["bundled"] }
+specta = { version = "2.0.0-rc.28", features = ["derive", "serde_json"] }
+
+[dev-dependencies]
+specta-serde = "0.0.15"
+specta-typescript = "0.0.15"

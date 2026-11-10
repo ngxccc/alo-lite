@@ -1,7 +1,7 @@
 use alolite_core::{CoreEvent, CoreEventDto, CoreEventSink};
 use tauri::{AppHandle, Emitter};
 
-/// Bridges [`CoreEngine`] domain events to the Tauri WebView via `"core-event"`.
+/// Bridges [`alolite_core::core::CoreEngine`] domain events to the Tauri WebView via `"core-event"`.
 pub struct TauriEventSink {
     pub app: AppHandle,
 }
