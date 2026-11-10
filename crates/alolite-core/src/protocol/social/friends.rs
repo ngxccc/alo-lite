@@ -115,7 +115,7 @@ where
         }
     );
     let raw = s
-        .get_endpoint("friend", &path_and_query)
+        .get_endpoint("profile", &path_and_query)
         .await
         .map_err(|e| e.context("không tải được danh sách bạn bè"))?;
     let resp = s.maybe_decrypt(raw, s.session_key_bytes()).await;
@@ -272,6 +272,15 @@ pub async fn get_user_online_status(s: &Session, uid: &str) -> Result<(bool, Str
     Ok((false, format!("Truy cập {days} ngày trước")))
 }
 
+/// Helper: encode params, POST to friend endpoint, and decrypt response.
+async fn post_friend_api(s: &Session, endpoint_path: &str, body: &Value) -> Result<Value> {
+    let enc = s.encoded_params(body)?;
+    let host = default_friend_host(s);
+    let url = format!("{host}{endpoint_path}?{}", s.common_params());
+    let resp = s.post_form(&url, format!("params={enc}")).await?;
+    Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
+}
+
 /// Send a friend request (`/api/friend/sendreq`, cmd `11424`).
 ///
 /// # Errors
@@ -285,11 +294,7 @@ pub async fn send_friend_request(s: &Session, to_id: &str, msg: &str) -> Result<
         ("imei", json!(s.imei)),
         ("language", json!("vi")),
     ]);
-    let enc = s.encoded_params(&body)?;
-    let host = default_friend_host(s);
-    let url = format!("{host}/api/friend/sendreq?{}", s.common_params());
-    let resp = s.post_form(&url, format!("params={enc}")).await?;
-    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    let dec = post_friend_api(s, "/api/friend/sendreq", &body).await?;
     crate::protocol::wire::ensure_ok_code(&dec, "sendreq error")?;
     Ok(ActionAck::from_wire(&dec))
 }
@@ -301,11 +306,7 @@ pub async fn send_friend_request(s: &Session, to_id: &str, msg: &str) -> Result<
 pub async fn accept_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[("fid", json!(fid)), ("language", json!("vi"))]);
-    let enc = s.encoded_params(&body)?;
-    let host = default_friend_host(s);
-    let url = format!("{host}/api/friend/accept?{}", s.common_params());
-    let resp = s.post_form(&url, format!("params={enc}")).await?;
-    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    let dec = post_friend_api(s, "/api/friend/accept", &body).await?;
     crate::protocol::wire::ensure_ok_code(&dec, "accept error")?;
     Ok(ActionAck::from_wire(&dec))
 }
@@ -317,11 +318,7 @@ pub async fn accept_friend_request(s: &Session, fid: &str) -> Result<ActionAck> 
 pub async fn undo_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[("fid", json!(fid)), ("imei", json!(s.imei))]);
-    let enc = s.encoded_params(&body)?;
-    let host = default_friend_host(s);
-    let url = format!("{host}/api/friend/undo?{}", s.common_params());
-    let resp = s.post_form(&url, format!("params={enc}")).await?;
-    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    let dec = post_friend_api(s, "/api/friend/undo", &body).await?;
     Ok(ActionAck::from_wire(&dec))
 }
 
@@ -332,11 +329,7 @@ pub async fn undo_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
 pub async fn reject_friend_request(s: &Session, fid: &str) -> Result<ActionAck> {
     require_login(s)?;
     let body = obj(&[("fid", json!(fid)), ("imei", json!(s.imei))]);
-    let enc = s.encoded_params(&body)?;
-    let host = default_friend_host(s);
-    let url = format!("{host}/api/friend/reject?{}", s.common_params());
-    let resp = s.post_form(&url, format!("params={enc}")).await?;
-    let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
+    let dec = post_friend_api(s, "/api/friend/reject", &body).await?;
     Ok(ActionAck::from_wire(&dec))
 }
 
