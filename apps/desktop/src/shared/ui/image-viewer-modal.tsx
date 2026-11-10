@@ -4,7 +4,7 @@ import { ipc } from "@/shared/api/ipc";
 import { jxlToJpgUrl } from "@/shared/utils/text";
 import { Button } from "./button";
 import { Dialog, DialogContent } from "./dialog";
-import type { ImageViewerState } from "@/app/store/appReducer";
+import type { ImageViewerState } from "@/app/store/app-reducer";
 
 interface ImageViewerModalProps {
   viewer: ImageViewerState | null;

@@ -16,11 +16,11 @@ import {
   UserX,
 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { jxlToJpgUrl } from "@/shared/utils/text";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 import { isPhotoMessage } from "@/features/chat/utils/messages";
 import { isThreadMuted, threadMemberCount } from "@/features/threads/utils/threads";
 

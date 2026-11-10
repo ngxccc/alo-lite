@@ -1,9 +1,9 @@
 import { useState, type SyntheticEvent } from "react";
 import { MessageSquare, Search, UserPlus } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 
 interface PhoneLookupModalProps {
   state: AppState;

@@ -5,7 +5,7 @@ import {
 } from "@/features/threads/utils/threads";
 import type { ChatMessage, CoreEventDto } from "@/shared/types/ipc";
 import { formatClockNow } from "@/shared/utils/text";
-import type { AppState } from "../appState";
+import type { AppState } from "../app-state";
 import { nextToast, updateThreadMessage } from "../helpers";
 
 export type MessagesCoreEvent = Extract<

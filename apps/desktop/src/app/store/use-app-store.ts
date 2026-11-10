@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { appReducer, initialAppState, type AppAction, type AppState } from "./appReducer";
+import { appReducer, initialAppState, type AppAction, type AppState } from "./app-reducer";
 
 export interface AppStore extends AppState {
   dispatch: (action: AppAction) => void;

@@ -4,8 +4,8 @@ import type { ChatMessage, Thread } from "@/shared/types/ipc";
 import { Button } from "@/shared/ui/button";
 import { Popover, PopoverTrigger } from "@/shared/ui/popover";
 import { cn } from "@/shared/utils/cn";
-import type { AppAction } from "@/app/store/appReducer";
-import { ReactionPickerContent } from "./MessageReactions";
+import type { AppAction } from "@/app/store/app-reducer";
+import { ReactionPickerContent } from "./message-reactions";
 
 interface MessageActionsProps {
   msg: ChatMessage;

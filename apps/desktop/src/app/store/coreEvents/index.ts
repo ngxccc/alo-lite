@@ -1,5 +1,5 @@
 import type { CoreEventDto } from "@/shared/types/ipc";
-import type { AppState } from "../appState";
+import type { AppState } from "../app-state";
 import { handleContactsEvent } from "./contacts";
 import { handleLoginEvent } from "./login";
 import { handleMediaEvent } from "./media";
