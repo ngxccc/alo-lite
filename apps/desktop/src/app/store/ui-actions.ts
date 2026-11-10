@@ -1,6 +1,6 @@
 import { sortThreads } from "@/features/threads/utils/threads";
 import type { StickerItem } from "@/shared/types/ipc";
-import type { AppAction, AppState } from "./appState";
+import type { AppAction, AppState } from "./app-state";
 import { nextToast, updateThreadMessage } from "./helpers";
 
 export type UiAction = Exclude<AppAction, { type: "CORE_EVENT" }>;

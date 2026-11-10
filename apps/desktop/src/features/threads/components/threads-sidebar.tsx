@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import type { Thread } from "@/shared/types/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import {
@@ -36,7 +36,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/utils/cn";
 import { matchesVnQuery } from "@/shared/utils/text";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 import {
   isThreadMuted,
   threadMemberCount,

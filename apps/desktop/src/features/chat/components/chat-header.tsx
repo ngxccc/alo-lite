@@ -1,11 +1,11 @@
 import { PanelRight, Star, Tag, UserPlus, Users } from "lucide-react";
 import type { Thread } from "@/shared/types/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 import { threadMemberCount } from "@/features/threads/utils/threads";
-import { InChatSearch } from "./InChatSearch";
+import { InChatSearch } from "./in-chat-search";
 
 interface ChatHeaderProps {
   thread: Thread;

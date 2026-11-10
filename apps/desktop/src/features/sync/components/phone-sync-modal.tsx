@@ -2,7 +2,7 @@ import { FolderOpen, RefreshCw, Square } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 
 interface PhoneSyncModalProps {
   state: AppState;

@@ -1,4 +1,4 @@
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 import type { AppSettings } from "@/shared/types/ipc";
 
 export interface SettingsModalProps {

@@ -29,7 +29,7 @@ import { Input } from "@/shared/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { cn } from "@/shared/utils/cn";
 import { extractFirstUrl } from "@/shared/utils/text";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 import { stickerThumbnailUrl } from "@/features/chat/utils/messages";
 
 interface ComposerProps {

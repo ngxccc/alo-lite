@@ -11,10 +11,10 @@ import {
   Filter,
 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { cn } from "@/shared/utils/cn";
 import { foldVnSearch, matchesVnQuery } from "@/shared/utils/text";
-import type { AppAction, AppState, ContactsSubTab } from "@/app/store/appReducer";
+import type { AppAction, AppState, ContactsSubTab } from "@/app/store/app-reducer";
 import type { Thread } from "@/shared/types/ipc";
 
 interface ContactsViewProps {

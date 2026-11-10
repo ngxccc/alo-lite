@@ -1,6 +1,6 @@
-import type { AppAction, AppState } from "./appState";
+import type { AppAction, AppState } from "./app-state";
 import { handleCoreEvent } from "./coreEvents";
-import { handleUiAction } from "./uiActions";
+import { handleUiAction } from "./ui-actions";
 
 export type {
   AppAction,
@@ -9,8 +9,8 @@ export type {
   ImageViewerState,
   NavSection,
   SettingsTab,
-} from "./appState";
-export { initialAppState } from "./appState";
+} from "./app-state";
+export { initialAppState } from "./app-state";
 export { handleCoreEvent } from "./coreEvents";
 
 export function appReducer(state: AppState, action: AppAction): AppState {

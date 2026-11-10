@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { RowDivider, SectionHeading, SettingCard } from "../primitives";

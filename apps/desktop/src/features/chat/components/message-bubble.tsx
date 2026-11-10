@@ -1,10 +1,10 @@
 import { SmilePlus, Star } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import type { ChatMessage, Thread } from "@/shared/types/ipc";
-import { Avatar } from "@/shared/ui/Avatar";
+import { Avatar } from "@/shared/ui/avatar";
 import { Popover, PopoverTrigger } from "@/shared/ui/popover";
 import { cn } from "@/shared/utils/cn";
-import type { AppAction, AppState } from "@/app/store/appReducer";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
 import {
   isFileMessage,
   isGifUrl,
@@ -19,10 +19,10 @@ import {
   PhotoMessageMedia,
   StickerMessageMedia,
   VideoMessageMedia,
-} from "./MessageMedia";
-import { MessageReactionsChip, ReactionPickerContent } from "./MessageReactions";
-import { MessageActions } from "./MessageActions";
-import type { ResolvedSender } from "./useSenderLookup";
+} from "./message-media";
+import { MessageReactionsChip, ReactionPickerContent } from "./message-reactions";
+import { MessageActions } from "./message-actions";
+import type { ResolvedSender } from "./use-sender-lookup";
 
 interface MessageBubbleProps {
   msg: ChatMessage;

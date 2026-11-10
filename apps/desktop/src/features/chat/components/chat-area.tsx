@@ -3,15 +3,15 @@ import { ipc, isTauriRuntime } from "@/shared/api/ipc";
 import type { Thread } from "@/shared/types/ipc";
 import { cn } from "@/shared/utils/cn";
 import { dayKey, matchesVnQuery } from "@/shared/utils/text";
-import type { AppAction, AppState } from "@/app/store/appReducer";
-import { Composer } from "./Composer";
-import { ChatHeader } from "./ChatHeader";
-import { PinnedBar } from "./PinnedBar";
-import { DateDivider } from "./DateDivider";
-import { ChatHistoryBanners } from "./ChatHistoryBanners";
-import { MessageBubble } from "./MessageBubble";
-import { useChatScroll } from "./useChatScroll";
-import { useSenderLookup } from "./useSenderLookup";
+import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { Composer } from "./composer";
+import { ChatHeader } from "./chat-header";
+import { PinnedBar } from "./pinned-bar";
+import { DateDivider } from "./date-divider";
+import { ChatHistoryBanners } from "./chat-history-banners";
+import { MessageBubble } from "./message-bubble";
+import { useChatScroll } from "./use-chat-scroll";
+import { useSenderLookup } from "./use-sender-lookup";
 
 interface ChatAreaProps {
   state: AppState;

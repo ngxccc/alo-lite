@@ -1,5 +1,5 @@
 import type { CoreEventDto } from "@/shared/types/ipc";
-import type { AppState } from "../appState";
+import type { AppState } from "../app-state";
 
 export type ContactsCoreEvent = Extract<
   CoreEventDto,

@@ -1,7 +1,7 @@
 import { ChevronUp } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import type { Thread } from "@/shared/types/ipc";
-import type { AppAction } from "@/app/store/appReducer";
+import type { AppAction } from "@/app/store/app-reducer";
 
 interface ChatHistoryBannersProps {
   thread: Thread;

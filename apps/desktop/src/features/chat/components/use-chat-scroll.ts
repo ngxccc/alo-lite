@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage, Thread } from "@/shared/types/ipc";
-import type { AppAction } from "@/app/store/appReducer";
+import type { AppAction } from "@/app/store/app-reducer";
 import { uniqueReferenceIndex } from "@/features/chat/utils/messages";
 
 interface UseChatScrollOptions {
