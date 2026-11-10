@@ -110,7 +110,47 @@ Rules:
 
 ---
 
-## 8. Review Checklist
+## 8. Two-Tier Architecture & Code-as-SSOT
+
+AloLite enforces a strict separation between upstream server wire responses and in-process frontend IPC:
+
+### Tier 1: Upstream Wire Protocol (`protocol/`)
+- **Audience**: Core protocol engineers working in `crates/alolite-core/src/protocol/`.
+- **SSOT**: Rust `serde::Deserialize` structs (`ZaloWireEnvelope`, `SendMessageReceipt`, `ActionAck`, `PhoneLookupResult`, `ChatMessage`, etc.).
+- **Documentation**: Living documentation via `cargo doc --document-private-items` with docstrings (`///`) and sanitized JSON payload fixtures. The consolidated HTTP/WebSocket wire reference lives in `re-notes/14-http-rest-endpoint-catalog.md` (index: `re-notes/README.md`). Upstream schemas are never exposed as public AloLite web documentation to preserve Clean-Room compliance (`docs/standards/compliance-and-ip.md`).
+- **Isolation**: The UI thread and frontend React code **never** see or parse raw Zalo wire payloads.
+
+### Tier 2: Frontend IPC & State Contracts (`core/ipc.rs` ↔ `apps/desktop`)
+- **Audience**: Desktop frontend engineers working in `apps/desktop/` (React + TypeScript).
+- **SSOT**: Rust IPC event projection `CoreEventDto` and snapshot `CoreBootstrapSnapshot`.
+- **Automated Codegen**: Generated via `specta` directly from Rust structs to `apps/desktop/src/shared/types/ipc.generated.ts`. JSDoc comments written on Rust structs propagate directly to IDE tooltips.
+- **Drift Prevention**: Verified in CI by `cargo test -p alolite-core --test ipc_types_sync`. Any modification to Rust IPC structs without matching TypeScript regeneration causes an immediate test failure.
+
+### Wire struct convention (Tier 1)
+
+Every protocol function that reads an upstream JSON response names its payload with a typed
+`*WireData` struct instead of walking `serde_json::Value` inline.
+
+| Rule | Detail |
+|:---|:---|
+| **Location** | Same module as the endpoint function (e.g. `social/friends.rs`). |
+| **Name** | `<Thing>WireData` (e.g. `LastOnlineWireData`, `GroupProfileWireData`). |
+| **Derives** | `#[derive(Debug, Clone, Default, Serialize, Deserialize)]` + `#[serde(default)]`. |
+| **Field mapping** | Mirror the raw Zalo keys with `#[serde(rename = "...")]` / `#[serde(alias = "...")]`. |
+| **Type-inconsistent fields** | Keep the field as `Option<serde_json::Value>` and expose a typed accessor using the existing `protocol::wire` helpers (`val_i64`, `val_u64`, `pick_str`, `unwrap_data`). Never add new ad-hoc coercion. |
+| **Docstring** | Four blocks: summary line, `# Wire Response Example` (sanitized JSON), `# Core Transformation`, and `# Errors` on the consuming function. |
+| **Constructor** | `pub fn from_value(v: &Value) -> Self { serde_json::from_value(v.clone()).unwrap_or_default() }`; the parse must never fail, so an unexpected scalar cannot silently turn a payload into `Default`. |
+| **Envelope head** | Use `wire::ErrorEnvelopeWireData` instead of reading `error_code` / `error_message` inline. `code()` treats a missing code as success (`0`); use `code_opt()` when "absent" must stay distinct from `0`. |
+| **Shared coercion** | Multi-alias lookups keep `wire::pick_str`; an already-selected field uses `wire::field_str` so alias order lives in the accessor. |
+| **Behaviour** | Behaviour-preserving: no public signature change, no change to emitted values. |
+
+Reference implementations: `protocol/social/friends.rs` (`FriendWireData`,
+`PhoneProfileWireData`), `protocol/messaging/polling/parse.rs` (`ChatMessageWireData`,
+`QuoteWireData`), `protocol/messaging/unread/mute.rs` (`MuteSnapshotWireData`).
+
+---
+
+## 9. Review Checklist
 
 - [ ] No hardcoded host outside `endpoints.rs`.
 - [ ] New request uses the standard cipher/sign path.
@@ -118,3 +158,4 @@ Rules:
 - [ ] Retries limited to idempotent / transient failures.
 - [ ] No secret in logs, errors or issue reports.
 - [ ] New `WorkerCmd` has a matching completion event.
+- [ ] Rust IPC changes re-generate and pass `cargo test -p alolite-core --test ipc_types_sync`.
