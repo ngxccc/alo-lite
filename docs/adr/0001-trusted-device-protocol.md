@@ -40,7 +40,7 @@ Re-implement the entire Trusted Device Protocol in clean-room pure Rust under `s
 - **Portability:** Seamless compilation across Linux (x86_64, aarch64), Windows, and macOS without extra native C dependencies.
 
 ### Negative / Trade-offs
-- Future protocol updates from upstream Zalo require re-verifying against updated official packages using the established REA harness (`re-notes/11_trusted_device_protocol.md`).
+- Future protocol updates from upstream Zalo require re-verifying against updated official packages using the established REA harness (`re-notes/11-trusted-device-protocol.md`).
 
 ---
 
@@ -62,5 +62,5 @@ Re-implement the entire Trusted Device Protocol in clean-room pure Rust under `s
 The module is complete and offline-verified (KAT + integration tests), but **inactive in production**:
 Zalo's servers report `qr_format_trust_device = 0`, so the companion-linking QR (and the mobile
 biometric authorization it triggers) cannot be exercised end to end. Evidence and the probe matrix:
-`re-notes/10_trusted_device_and_bio_sync.md` §1.2.1.
+`re-notes/10-trusted-device-and-bio-sync.md` §1.2.1.
 

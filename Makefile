@@ -1,4 +1,4 @@
-.PHONY: all dev dev-desktop run qr build build-desktop mcp test lint fmt package install uninstall clean version-check version-bump release help
+.PHONY: all dev dev-desktop run qr build build-desktop mcp test lint fmt docs package install uninstall clean version-check version-bump release help
 
 all: dev-desktop
 
@@ -12,6 +12,7 @@ help:
 	@echo "  make test          - Run Rust core/cli tests + desktop TypeScript tests"
 	@echo "  make lint          - Check Rust workspace with clippy & TypeScript typecheck"
 	@echo "  make fmt           - Format Rust workspace with cargo fmt"
+	@echo "  make docs          - Build and open alolite-core private Rustdoc in browser"
 	@echo "  make package       - Build all Linux packages (.deb, .rpm, .AppImage, .tar.gz)"
 	@echo "  make install       - Install desktop entry and icon into ~/.local"
 	@echo "  make uninstall     - Uninstall desktop entry from ~/.local"
@@ -47,6 +48,9 @@ lint:
 fmt:
 	cargo fmt --all
 	cd apps/desktop && bun run format
+docs:
+	cargo doc -p alolite-core --no-deps --document-private-items --open
+
 package:
 	./packaging/linux/package-all.sh
 

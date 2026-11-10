@@ -6,9 +6,9 @@ use serde_json::Value;
 use super::message::ChatMessage;
 use crate::clock;
 use crate::protocol::messaging::unread::UnreadState;
-use crate::protocol::wire::{pick_str, val_u64};
+use crate::protocol::wire::{field_str, WireData};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 pub struct Thread {
     #[serde(default)]
     pub presentation: SidebarPresentation,
@@ -24,7 +24,7 @@ pub struct Thread {
 }
 
 /// Durable sidebar metadata, including metadata-only startup snapshots.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct SidebarPresentation {
     pub members: Vec<SidebarMember>,
@@ -40,7 +40,7 @@ pub struct SidebarPresentation {
     pub hidden: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct SidebarMember {
     pub id: String,
@@ -52,6 +52,130 @@ pub struct SidebarMember {
 pub enum SidebarFontStyle {
     Regular,
     Semibold,
+}
+
+/// Group roster payload consumed by [`Thread::apply_group_sidebar_metadata`] (`getmg-v2`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "totalMember": 12,
+///   "memVerList": [ "1234567890_3" ],
+///   "memberVerMap": { "1234567890": 3 },
+///   "creatorId": "1234567890",
+///   "adminIds": [ "1234567891" ],
+///   "topMember": [ { "id": "1234567890", "displayName": "Ngọc Trần" } ]
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Rebuilds `presentation.members`: leaders first, then roster ids, then `topMember` extras;
+/// names and avatars come from `topMember` when available.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GroupSidebarWireData {
+    #[serde(rename = "totalMember")]
+    pub total_member: Option<Value>,
+    #[serde(rename = "memVerList")]
+    pub mem_ver_list: Option<Value>,
+    #[serde(rename = "memberVerMap")]
+    pub member_ver_map: Option<Value>,
+    #[serde(rename = "creatorId")]
+    pub creator_id: Option<Value>,
+    #[serde(rename = "adminIds")]
+    pub admin_ids: Option<Value>,
+    #[serde(rename = "topMember")]
+    pub top_member: Option<Vec<Value>>,
+}
+
+impl GroupSidebarWireData {
+    /// `totalMember` as a count.
+    pub fn total_member(&self) -> Option<u64> {
+        self.total_member.as_ref().and_then(Value::as_u64)
+    }
+
+    /// Roster ids from `memVerList` (`"<id>_<ver>"` entries), falling back to `memberVerMap` keys.
+    pub fn roster_ids(&self) -> Vec<String> {
+        if let Some(list) = self.mem_ver_list.as_ref().and_then(Value::as_array) {
+            let mut ids = Vec::new();
+            for item in list.iter().filter_map(Value::as_str) {
+                let id = item.split('_').next().unwrap_or_default();
+                if !id.is_empty() && !ids.iter().any(|s| s == id) {
+                    ids.push(id.to_owned());
+                }
+            }
+            ids
+        } else if let Some(map) = self.member_ver_map.as_ref().and_then(Value::as_object) {
+            map.keys().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Leader ids: `creatorId` first, then `adminIds`.
+    pub fn leader_ids(&self) -> Vec<String> {
+        let mut leaders = Vec::new();
+        if let Some(creator) = self.creator_id.as_ref().and_then(Value::as_str) {
+            leaders.push(creator.to_owned());
+        }
+        if let Some(admins) = self.admin_ids.as_ref().and_then(Value::as_array) {
+            leaders.extend(admins.iter().filter_map(Value::as_str).map(str::to_owned));
+        }
+        leaders
+    }
+
+    /// Raw `topMember` profiles.
+    pub fn top_members(&self) -> &[Value] {
+        self.top_member.as_deref().unwrap_or_default()
+    }
+}
+
+/// One `topMember` profile of a group roster payload.
+///
+/// # Wire Response Example
+/// ```json
+/// { "id": "1234567890", "displayName": "Ngọc Trần", "avatar": "https://avatar.example/240" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SidebarProfileWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "userId")]
+    pub user_id: Option<Value>,
+    #[serde(rename = "uid")]
+    pub uid: Option<Value>,
+    #[serde(rename = "displayName")]
+    pub display_name: Option<Value>,
+    #[serde(rename = "zaloName")]
+    pub zalo_name: Option<Value>,
+    #[serde(rename = "name")]
+    pub name: Option<Value>,
+    #[serde(rename = "avatar")]
+    pub avatar_url: Option<Value>,
+    #[serde(rename = "avt")]
+    pub avt: Option<Value>,
+}
+
+impl SidebarProfileWireData {
+    /// Member id (`id` > `userId` > `uid`).
+    pub fn id(&self) -> Option<String> {
+        field_str(self.id.as_ref())
+            .or_else(|| field_str(self.user_id.as_ref()))
+            .or_else(|| field_str(self.uid.as_ref()))
+    }
+
+    /// Display name (`displayName` > `zaloName` > `name`).
+    pub fn display_name(&self) -> Option<String> {
+        field_str(self.display_name.as_ref())
+            .or_else(|| field_str(self.zalo_name.as_ref()))
+            .or_else(|| field_str(self.name.as_ref()))
+    }
+
+    /// Avatar URL (`avatar` > `avt`).
+    pub fn avatar(&self) -> Option<String> {
+        field_str(self.avatar_url.as_ref()).or_else(|| field_str(self.avt.as_ref()))
+    }
 }
 
 impl Thread {
@@ -169,41 +293,23 @@ impl Thread {
 
     /// Parse only group roster metadata observed in the original `getmg-v2` consumer.
     pub fn apply_group_sidebar_metadata(&mut self, info: &Value) {
-        if let Some(count) = val_u64(info.get("totalMember")) {
+        let wire = GroupSidebarWireData::from_value(info);
+        if let Some(count) = wire.total_member() {
             self.presentation.member_count = Some(count);
         }
-        let mut ids = Vec::new();
-        if let Some(list) = info.get("memVerList").and_then(Value::as_array) {
-            for item in list.iter().filter_map(Value::as_str) {
-                let id = item.split('_').next().unwrap_or_default();
-                if !id.is_empty() && !ids.iter().any(|s| s == id) {
-                    ids.push(id.to_owned());
-                }
-            }
-        } else if let Some(map) = info.get("memberVerMap").and_then(Value::as_object) {
-            ids.extend(map.keys().cloned());
-        }
-        let mut leaders = Vec::new();
-        if let Some(creator) = pick_str(info, &["creatorId"]) {
-            leaders.push(creator);
-        }
-        if let Some(admins) = info.get("adminIds").and_then(Value::as_array) {
-            leaders.extend(admins.iter().filter_map(Value::as_str).map(str::to_owned));
-        }
+        let mut ids = wire.roster_ids();
         let mut ordered = Vec::new();
-        for id in leaders.into_iter().chain(ids.iter().cloned()) {
+        for id in wire.leader_ids().into_iter().chain(ids.iter().cloned()) {
             if ids.contains(&id) && !ordered.contains(&id) {
                 ordered.push(id);
             }
         }
         ids = ordered;
-        let top = info.get("topMember").and_then(Value::as_array);
-        if let Some(top) = top {
-            for profile in top {
-                if let Some(id) = pick_str(profile, &["id", "userId", "uid"]) {
-                    if !ids.contains(&id) {
-                        ids.push(id);
-                    }
+        let top = wire.top_members();
+        for profile in top {
+            if let Some(id) = SidebarProfileWireData::from_value(profile).id() {
+                if !ids.contains(&id) {
+                    ids.push(id);
                 }
             }
         }
@@ -212,10 +318,8 @@ impl Thread {
             self.presentation.members =
                 ids.into_iter()
                     .map(|id| {
-                        let profile = top.and_then(|list| {
-                            list.iter().find(|p| {
-                                pick_str(p, &["id", "userId", "uid"]).as_ref() == Some(&id)
-                            })
+                        let profile = top.iter().find(|p| {
+                            SidebarProfileWireData::from_value(p).id().as_ref() == Some(&id)
                         });
                         let mut member = previous.iter().find(|m| m.id == id).cloned().unwrap_or(
                             SidebarMember {
@@ -224,12 +328,11 @@ impl Thread {
                             },
                         );
                         if let Some(profile) = profile {
-                            if let Some(name) =
-                                pick_str(profile, &["displayName", "zaloName", "name"])
-                            {
+                            let profile = SidebarProfileWireData::from_value(profile);
+                            if let Some(name) = profile.display_name() {
                                 member.name = name;
                             }
-                            if let Some(avatar) = pick_str(profile, &["avatar", "avt"]) {
+                            if let Some(avatar) = profile.avatar() {
                                 member.avatar = Some(avatar);
                             }
                         }

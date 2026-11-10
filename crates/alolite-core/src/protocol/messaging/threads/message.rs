@@ -12,9 +12,9 @@ use crate::protocol::messaging::reactions::{
     legacy_emojis, merge_untracked_snapshot, parse_reactions, ReactionEvent,
     ReactionSnapshotProvenance, ReactionSummary, ReactionVersion,
 };
-use crate::protocol::wire::val_i64;
+use crate::protocol::wire::{val_i64, WireData};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 pub struct ChatMessage {
     #[serde(default)]
     pub kind: MessageKind,
@@ -78,6 +78,41 @@ pub struct ChatMessage {
     pub history_source: Option<Value>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub resolved_mention_uids: BTreeMap<String, String>,
+}
+
+/// Archive history source carrying media metadata (`msgType`, `meta.attachsList`).
+///
+/// # Wire Response Example
+/// ```json
+/// { "msgType": 2, "meta": { "attachsList": [ { "href": "https://photo.example/1" } ] } }
+/// ```
+///
+/// # Core Transformation
+/// Yields the source-derived media label and the first attachment object that
+/// `extract_link_info` turns into link metadata.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HistoryMediaWireData {
+    #[serde(rename = "msgType")]
+    pub msg_type: Option<Value>,
+    #[serde(rename = "meta")]
+    pub meta: Option<Value>,
+}
+
+impl HistoryMediaWireData {
+    /// Source-derived media label for Zalo photo (`2..=4`) and video (`19`) message types.
+    pub fn source_kind(&self) -> Option<&'static str> {
+        match val_i64(self.msg_type.as_ref()) {
+            Some(2..=4) => Some("Hình ảnh Zalo"),
+            Some(19) => Some("Video Zalo"),
+            _ => None,
+        }
+    }
+
+    /// First entry of `meta.attachsList`.
+    pub fn first_attachment(&self) -> Option<&Value> {
+        self.meta.as_ref()?.get("attachsList")?.as_array()?.first()
+    }
 }
 
 impl ChatMessage {
@@ -278,21 +313,13 @@ impl ChatMessage {
             self.link_thumb.clone(),
             self.link_src.clone(),
         );
-        let source_kind =
-            self.history_source
-                .as_ref()
-                .and_then(|source| match val_i64(source.get("msgType")) {
-                    Some(2..=4) => Some("Hình ảnh Zalo"),
-                    Some(19) => Some("Video Zalo"),
-                    _ => None,
-                });
-        if let Some(source) = &self.history_source {
-            if let Some(attachment) = source
-                .get("meta")
-                .and_then(|m| m.get("attachsList"))
-                .and_then(Value::as_array)
-                .and_then(|a| a.first())
-            {
+        let media = self
+            .history_source
+            .as_ref()
+            .map(HistoryMediaWireData::from_value);
+        let source_kind = media.as_ref().and_then(HistoryMediaWireData::source_kind);
+        if let Some(media) = &media {
+            if let Some(attachment) = media.first_attachment() {
                 let (url, _, _, thumb, _) = extract_link_info(attachment);
                 if self.link_url.is_none() {
                     self.link_url = url;

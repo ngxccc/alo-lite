@@ -8,7 +8,7 @@ Operating guide for AI agents and humans working in this repository.
 
 - Repository: <https://github.com/ngxccc/alolite>
 - Rust 1.75+ / edition 2021
-- Product docs are Vietnamese (`docs/`, `README.md`); engineering standards are English (`docs/standards/`)
+- All documentation (`docs/`, `README.md`, `docs/standards/`) is written completely in English.
 
 ## Commands
 
@@ -58,6 +58,7 @@ Operating guide for AI agents and humans working in this repository.
 - **Comments in English, user-facing strings in Vietnamese.** See `docs/standards/code-comment-taxonomy.md`.
 - **Do not silently change protocol behaviour.** Any change to params, signing, frame IDs or cipher flow requires evidence (capture, note in `re-notes/`) and a test or documented manual verification.
 - **Missing or inaccurate RE documentation:** If reverse-engineering documentation (`re-notes/`, `docs/`) lacks information or deviates from live server behavior, engineers MUST use the `reverse-engineer-anything` skill and REA MCP tools to re-verify against actual application packages/endpoints rather than speculating.
+- **Wire protocol docs live in `re-notes/`.** HTTP `commandId` catalog, wire envelopes, and WebSocket `cmd` registry → `re-notes/14-http-rest-endpoint-catalog.md`; directory index → `re-notes/README.md`. Do not duplicate upstream schema under `docs/`.
 - **UI Icon Standard:** Always use embedded SVG/PNG icons (`lucide-react` vector icons and embedded PNG reaction/logo assets). NEVER use raw keyboard emojis (`⚠️`, `✅`, `❌`) in UI code.
 
 ## Engineering Standards

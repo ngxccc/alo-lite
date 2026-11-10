@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use crate::protocol::wire::{domain_or, error_text, obj, require_login, strip_group_prefix};
 use anyhow::Result;
 use serde_json::{json, Map, Value};
 
@@ -11,7 +12,6 @@ use crate::clock::unix_now;
 use crate::protocol::messaging::threads::{deduplicate_threads, Thread};
 use crate::protocol::session::{Session, SessionError};
 use crate::protocol::social::groups::resolve_thread_names;
-use crate::protocol::wire::{domain_or, obj, require_login, strip_group_prefix};
 
 /// `GET /api/preloadconvers/get-last-msgs` (`cmd 10053`).
 ///
@@ -131,13 +131,10 @@ pub async fn get_chat_from_polling(s: &Session, state: &mut PollState) -> Result
     match tokio::time::timeout(Duration::from_millis(12000), fut).await {
         Ok(Ok(resp)) => {
             let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-            if let Some(code) = dec.get("error_code").and_then(Value::as_i64) {
+            let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&dec);
+            if let Some(code) = env.code_opt() {
                 if code != 0 {
-                    let msg = dec
-                        .get("error_message")
-                        .and_then(Value::as_str)
-                        .unwrap_or("unknown");
-                    return Err(SessionError::new(code, msg).into());
+                    return Err(SessionError::new(code, error_text(env.message())).into());
                 }
             }
             state.update_from_response(&dec);

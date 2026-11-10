@@ -1,38 +1,187 @@
 //! Read points, seen receipts, and manual unread marks.
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::state::numeric_id;
 use crate::protocol::messaging::threads::Thread;
 
-pub(super) fn string(value: &Value, key: &str) -> Option<String> {
-    value.get(key).and_then(|v| {
-        v.as_str()
-            .map(str::to_owned)
-            .or_else(|| v.as_u64().map(|v| v.to_string()))
-    })
+use crate::protocol::wire::{opt_str, opt_u64, WireData};
+
+/// String-or-numeric coercion of one optional field (single-key form of the legacy `string` helper).
+fn field_string(v: Option<&Value>) -> Option<String> {
+    opt_str(v)
+        .map(str::to_owned)
+        .or_else(|| opt_u64(v).map(|n| n.to_string()))
+}
+
+/// Read-point payload carrying `clearUnreads` cursors.
+///
+/// # Wire Response Example
+/// ```json
+/// { "clearUnreads": [ { "idTo": "1234567890", "lastMsgId": "1731215400000_9", "isGroup": 1 } ] }
+/// ```
+///
+/// # Core Transformation
+/// Keys are kept raw so a non-array `clearUnreads` cannot silently fall through to
+/// `clearUnreadInfo` (the shipped client picks the first present key, then requires an array).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ReadPointsWireData {
+    #[serde(rename = "clearUnreads")]
+    pub clear_unreads: Option<Value>,
+    #[serde(rename = "clearUnreadInfo")]
+    pub clear_unread_info: Option<Value>,
+    #[serde(rename = "statusMap")]
+    pub status_map: Option<Value>,
+}
+
+impl ReadPointsWireData {
+    /// Cursor entries from the first present key (`clearUnreads`, `clearUnreadInfo`,
+    /// `statusMap.clearUnreads`).
+    pub fn entries(&self) -> &[Value] {
+        self.clear_unreads
+            .as_ref()
+            .or(self.clear_unread_info.as_ref())
+            .or_else(|| self.status_map.as_ref().and_then(|m| m.get("clearUnreads")))
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+    }
+}
+
+/// One `clearUnreads` cursor entry.
+///
+/// # Wire Response Example
+/// ```json
+/// { "idTo": "1234567890", "lastMsgId": "1731215400000_9", "isGroup": 1, "type": 1 }
+/// ```
+///
+/// # Core Transformation
+/// Advances `Thread::unread` seen cursors; subchat cursors (`type == 2` with `sct`) are ignored
+/// because the shipped desktop consumer ignores them.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ReadPointWireData {
+    #[serde(rename = "idTo")]
+    pub id_to: Option<Value>,
+    #[serde(rename = "lastMsgId")]
+    pub last_msg_id: Option<Value>,
+    #[serde(rename = "isGroup")]
+    pub is_group: Option<Value>,
+    #[serde(rename = "type")]
+    pub entry_type: Option<Value>,
+    #[serde(rename = "sct")]
+    pub sct: Option<Value>,
+}
+
+impl ReadPointWireData {
+    /// Subchat cursor the desktop consumer ignores (`type == 2` with `sct` present).
+    pub fn is_ignored_subchat(&self) -> bool {
+        self.entry_type.as_ref().and_then(Value::as_i64) == Some(2) && self.sct.is_some()
+    }
+
+    /// Conversation id (`idTo`).
+    pub fn id_to(&self) -> Option<String> {
+        field_string(self.id_to.as_ref())
+    }
+
+    /// Last message id (`lastMsgId`).
+    pub fn last_msg_id(&self) -> Option<String> {
+        field_string(self.last_msg_id.as_ref())
+    }
+
+    /// `isGroup` in boolean or `0`/`1` numeric form.
+    pub fn is_group(&self) -> bool {
+        self.is_group
+            .as_ref()
+            .is_some_and(|v| v.as_bool() == Some(true) || v.as_i64() == Some(1))
+    }
+}
+
+/// Manual-unread snapshot: `convsGroup` / `convsUser` rows plus the envelope error code.
+///
+/// # Wire Response Example
+/// ```json
+/// { "error_code": 0, "convsUser": [ { "id": "1234567890", "cliMsgId": "8888" } ] }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ManualUnreadSnapshotWireData {
+    #[serde(rename = "error_code")]
+    pub error_code: Option<Value>,
+    #[serde(rename = "convsGroup")]
+    pub convs_group: Option<Vec<Value>>,
+    #[serde(rename = "convsUser")]
+    pub convs_user: Option<Vec<Value>>,
+}
+
+impl ManualUnreadSnapshotWireData {
+    /// Fail when `error_code` is present and non-zero (number or numeric string).
+    pub fn check(&self) -> anyhow::Result<()> {
+        if let Some(code) = self.error_code.as_ref() {
+            if code.as_i64().or_else(|| code.as_str()?.parse().ok()) != Some(0) {
+                anyhow::bail!("Manual unread request failed");
+            }
+        }
+        Ok(())
+    }
+
+    /// Group and user rows, or `None` when either list is missing or not an array.
+    pub fn rows(&self) -> Option<(&[Value], &[Value])> {
+        Some((self.convs_group.as_deref()?, self.convs_user.as_deref()?))
+    }
+}
+
+/// One manual-unread row (`convsGroup` / `convsUser` item).
+///
+/// # Wire Response Example
+/// ```json
+/// { "id": "1234567890", "cliMsgId": "8888", "fromUid": "1234567890" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ManualUnreadRowWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "cliMsgId")]
+    pub cli_msg_id: Option<Value>,
+    #[serde(rename = "fromUid")]
+    pub from_uid: Option<Value>,
+}
+
+impl ManualUnreadRowWireData {
+    /// Conversation id (`id`).
+    pub fn id(&self) -> Option<String> {
+        field_string(self.id.as_ref())
+    }
+
+    /// Marked client message id (`cliMsgId`).
+    pub fn cli_msg_id(&self) -> Option<String> {
+        field_string(self.cli_msg_id.as_ref())
+    }
+
+    /// Sender id (`fromUid`).
+    pub fn from_uid(&self) -> Option<String> {
+        field_string(self.from_uid.as_ref())
+    }
 }
 
 /// Original desktop consumer ignores subchat cursors (`type=2`, `sct=1/2/3`).
 pub fn merge_read_points(threads: &mut [Thread], data: &Value) {
-    let entries = data
-        .get("clearUnreads")
-        .or_else(|| data.get("clearUnreadInfo"))
-        .or_else(|| data.get("statusMap").and_then(|v| v.get("clearUnreads")))
-        .and_then(Value::as_array);
-    for entry in entries.into_iter().flatten() {
-        if entry.get("type").and_then(Value::as_i64) == Some(2) && entry.get("sct").is_some() {
+    let wire = ReadPointsWireData::from_value(data);
+    for entry in wire.entries() {
+        let entry = ReadPointWireData::from_value(entry);
+        if entry.is_ignored_subchat() {
             continue;
         }
-        let (Some(id), Some(point)) = (string(entry, "idTo"), string(entry, "lastMsgId")) else {
+        let (Some(id), Some(point)) = (entry.id_to(), entry.last_msg_id()) else {
             continue;
         };
         if numeric_id(&point).is_none_or(|id| id == "0") || id.is_empty() || id == "0" {
             continue;
         }
-        let group = entry
-            .get("isGroup")
-            .is_some_and(|v| v.as_bool() == Some(true) || v.as_i64() == Some(1));
+        let group = entry.is_group();
         let tid = if group {
             format!("g{}", id.trim_start_matches('g'))
         } else {
@@ -59,15 +208,7 @@ pub struct ManualUnreadMark {
 }
 
 pub fn parse_manual_unread_marks(response: &Value) -> anyhow::Result<Vec<ManualUnreadMark>> {
-    fn checked(value: &Value) -> anyhow::Result<()> {
-        if let Some(code) = value.get("error_code") {
-            if code.as_i64().or_else(|| code.as_str()?.parse().ok()) != Some(0) {
-                anyhow::bail!("Manual unread request failed");
-            }
-        }
-        Ok(())
-    }
-    checked(response)?;
+    ManualUnreadSnapshotWireData::from_value(response).check()?;
     let raw = response.get("data").unwrap_or(response);
     let decoded;
     let data = if let Some(text) = raw.as_str() {
@@ -77,17 +218,17 @@ pub fn parse_manual_unread_marks(response: &Value) -> anyhow::Result<Vec<ManualU
     } else {
         raw
     };
-    checked(data)?;
-    let (Some(groups), Some(users)) = (
-        data.get("convsGroup").and_then(Value::as_array),
-        data.get("convsUser").and_then(Value::as_array),
-    ) else {
+    let snapshot = ManualUnreadSnapshotWireData::from_value(data);
+    snapshot.check()?;
+    let Some((groups, users)) = snapshot.rows() else {
         anyhow::bail!("Incomplete manual unread snapshot");
     };
     let mut marks = Vec::new();
     for (rows, group) in [(groups, true), (users, false)] {
         for row in rows {
-            let id = string(row, "id")
+            let row = ManualUnreadRowWireData::from_value(row);
+            let id = row
+                .id()
                 .filter(|id| !id.is_empty() && id != "0")
                 .ok_or_else(|| anyhow::anyhow!("Invalid manual unread identity"))?;
             marks.push(ManualUnreadMark {
@@ -96,8 +237,8 @@ pub fn parse_manual_unread_marks(response: &Value) -> anyhow::Result<Vec<ManualU
                 } else {
                     id
                 },
-                client_message_id: string(row, "cliMsgId").unwrap_or_default(),
-                from_uid: string(row, "fromUid").unwrap_or_default(),
+                client_message_id: row.cli_msg_id().unwrap_or_default(),
+                from_uid: row.from_uid().unwrap_or_default(),
             });
         }
     }

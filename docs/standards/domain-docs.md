@@ -29,7 +29,7 @@ If your proposal contradicts an accepted ADR, surface it explicitly:
 - **One term, one definition.** Add a row only for domain concepts with a precise meaning in this repo.
 - **Record avoided synonyms** in the `Avoid` column — that is what prevents drift.
 - **Every term is testable or observable.** Protocol constants, storage fields and runtime roles qualify; generic programming words do not.
-- **English only**, matching the standards language. Vietnamese remains for user-facing docs and UI strings.
+- **English only**, matching the standards language. Everything under `docs/` is English; Vietnamese remains only for user-facing UI strings in the application.
 
 ## 4. Invariant Traceability (`INV-N`)
 

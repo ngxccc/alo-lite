@@ -7,6 +7,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::oneshot;
 
@@ -14,7 +15,8 @@ use super::threads::ChatMessage;
 use crate::crypto::{md5_hex, md5_hex_bytes};
 use crate::protocol::session::{Session, SessionError};
 use crate::protocol::wire::{
-    domain_or, next_client_message_id, obj, pick_str, require_login, strip_group_prefix,
+    domain_or, error_text, field_str, next_client_message_id, obj, opt_str, opt_url, require_login,
+    strip_group_prefix, WireData,
 };
 
 const FILE_DONE_TIMEOUT: Duration = Duration::from_secs(90);
@@ -154,6 +156,88 @@ pub fn resolve_attachment_file_name(title: Option<&str>, text: &str, url: &str) 
     }
 }
 
+/// Non-empty, trimmed string from an optional wire field.
+fn non_empty_string(v: Option<&Value>) -> Option<String> {
+    opt_str(v)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+/// Lower-case file extension without the leading dot, when the field is present.
+fn normalized_ext(v: Option<&Value>) -> Option<String> {
+    opt_str(v)
+        .map(|s| s.trim().trim_start_matches('.').to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Link/media descriptor carried by the `content`/`params` of a link message.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "href": "https://example.com/report.pdf",
+///   "thumb": "https://thumb.example/1",
+///   "fileName": "report",
+///   "description": "Tài liệu họp",
+///   "fileExt": "pdf",
+///   "params": "{\"fileExt\":\"pdf\",\"fileSize\":1234,\"src\":\"Tập tin Zalo\"}"
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Feeds the `(url, thumb, title, src, desc)` tuple of `extract_link_info`; `params` is a
+/// JSON-encoded **string** on the wire and is decoded separately into [`LinkParamsWireData`].
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LinkInfoWireData {
+    #[serde(rename = "href")]
+    pub href: Option<Value>,
+    #[serde(rename = "thumb")]
+    pub thumb: Option<Value>,
+    #[serde(rename = "hd")]
+    pub hd: Option<Value>,
+    #[serde(rename = "fileName")]
+    pub file_name: Option<Value>,
+    #[serde(rename = "name")]
+    pub name: Option<Value>,
+    #[serde(rename = "title")]
+    pub title: Option<Value>,
+    #[serde(rename = "description")]
+    pub description: Option<Value>,
+    #[serde(rename = "caption")]
+    pub caption: Option<Value>,
+    #[serde(rename = "fileExt")]
+    pub file_ext: Option<Value>,
+    #[serde(rename = "params")]
+    pub params: Option<Value>,
+}
+
+impl LinkInfoWireData {
+    /// Decode the nested `params` JSON string, if it parses.
+    pub fn parsed_params(&self) -> Option<LinkParamsWireData> {
+        serde_json::from_str::<LinkParamsWireData>(self.params.as_ref()?.as_str()?.trim()).ok()
+    }
+}
+
+/// `params` sub-object of a link descriptor (sent as a JSON-encoded string).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LinkParamsWireData {
+    #[serde(rename = "fileName")]
+    pub file_name: Option<Value>,
+    #[serde(rename = "mediaTitle")]
+    pub media_title: Option<Value>,
+    #[serde(rename = "fileExt")]
+    pub file_ext: Option<Value>,
+    #[serde(rename = "fileSize")]
+    pub file_size: Option<Value>,
+    #[serde(rename = "checksum")]
+    pub checksum: Option<Value>,
+    #[serde(rename = "src")]
+    pub src: Option<Value>,
+}
+
 /// Extract rich link/media card metadata (`link_url`, `link_title`, `link_desc`, `link_thumb`, `link_src`)
 /// from a Zalo `chat.recommended` or rich-object `content`.
 pub(super) fn extract_link_info(
@@ -175,84 +259,41 @@ pub(super) fn extract_link_info(
             }
             (None, None, None, None, None)
         }
-        Value::Object(o) => {
-            let href = o
-                .get("href")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|h| {
-                    !h.is_empty() && (h.starts_with("http://") || h.starts_with("https://"))
-                })
-                .map(str::to_string);
-            let Some(url) = href else {
+        Value::Object(_) => {
+            let wire = LinkInfoWireData::from_value(v);
+            let Some(url) = opt_url(wire.href.as_ref()) else {
                 return (None, None, None, None, None);
             };
-            let thumb = o
-                .get("thumb")
-                .or_else(|| o.get("hd"))
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|t| {
-                    !t.is_empty() && (t.starts_with("http://") || t.starts_with("https://"))
-                })
-                .map(str::to_string);
-            let mut title = o
-                .get("fileName")
-                .or_else(|| o.get("name"))
-                .or_else(|| o.get("title"))
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|t| !t.is_empty())
-                .map(str::to_string);
-            let desc = o
-                .get("description")
-                .or_else(|| o.get("caption"))
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|d| !d.is_empty())
-                .map(str::to_string);
+            let thumb = opt_url(wire.thumb.as_ref().or(wire.hd.as_ref()));
+            let mut title = non_empty_string(
+                wire.file_name
+                    .as_ref()
+                    .or(wire.name.as_ref())
+                    .or(wire.title.as_ref()),
+            );
+            let desc = non_empty_string(wire.description.as_ref().or(wire.caption.as_ref()));
             let mut src = None;
-            let mut file_ext: Option<String> = o
-                .get("fileExt")
-                .and_then(Value::as_str)
-                .map(|s| s.trim().trim_start_matches('.').to_string())
-                .filter(|s| !s.is_empty());
+            let mut file_ext = normalized_ext(wire.file_ext.as_ref());
             let mut has_file_params =
-                o.get("fileName").is_some() || url.to_ascii_lowercase().contains("/renewmedia");
+                wire.file_name.is_some() || url.to_ascii_lowercase().contains("/renewmedia");
 
-            if let Some(params_str) = o.get("params").and_then(Value::as_str) {
-                if let Ok(p_json) = serde_json::from_str::<Value>(params_str.trim()) {
-                    if title.is_none() {
-                        title = p_json
-                            .get("fileName")
-                            .or_else(|| p_json.get("mediaTitle"))
-                            .and_then(Value::as_str)
-                            .map(str::trim)
-                            .filter(|s| !s.is_empty())
-                            .map(str::to_string);
-                    }
-                    if file_ext.is_none() {
-                        file_ext = p_json
-                            .get("fileExt")
-                            .and_then(Value::as_str)
-                            .map(|s| s.trim().trim_start_matches('.').to_string())
-                            .filter(|s| !s.is_empty());
-                    }
-                    if p_json.get("fileExt").is_some()
-                        || p_json.get("fileSize").is_some()
-                        || p_json.get("checksum").is_some()
-                    {
-                        has_file_params = true;
-                    }
-                    src = p_json
-                        .get("src")
-                        .and_then(Value::as_str)
-                        .map(str::trim)
-                        .filter(|s| !s.is_empty())
-                        .map(str::to_string);
+            if let Some(params) = wire.parsed_params() {
+                if title.is_none() {
+                    title =
+                        non_empty_string(params.file_name.as_ref().or(params.media_title.as_ref()));
                 }
+                if file_ext.is_none() {
+                    file_ext = normalized_ext(params.file_ext.as_ref());
+                }
+                if params.file_ext.is_some()
+                    || params.file_size.is_some()
+                    || params.checksum.is_some()
+                {
+                    has_file_params = true;
+                }
+                src = non_empty_string(params.src.as_ref());
             }
-            if let (Some(ref mut t), Some(ref ext)) = (&mut title, &file_ext) {
+            if let (Some(t), Some(ext)) = (title.as_mut(), file_ext.as_ref()) {
                 let suffix = format!(".{ext}");
                 if !t
                     .to_ascii_lowercase()
@@ -291,6 +332,182 @@ fn file_id_key(v: &Value) -> Option<String> {
     }
 }
 
+/// `act_type: "file_done"` control item: the file id plus the resolved media URL.
+///
+/// # Wire Response Example
+/// ```json
+/// { "act_type": "file_done", "fileId": 1234567, "data": { "url": "https://f.zdn.vn/a.pdf" } }
+/// ```
+///
+/// # Core Transformation
+/// Produces the `(fileId, url)` pairs that resolve pending async uploads; `fileId` is looked up
+/// on the control item first and on the decoded `data` object second.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FileDoneControlWireData {
+    #[serde(rename = "fileId")]
+    pub file_id: Option<Value>,
+    #[serde(rename = "url")]
+    pub url: Option<Value>,
+    #[serde(rename = "fileUrl")]
+    pub file_url: Option<Value>,
+}
+
+impl FileDoneControlWireData {
+    /// Raw `fileId` as sent (string or number).
+    pub fn file_id_value(&self) -> Option<&Value> {
+        self.file_id.as_ref()
+    }
+
+    /// Resolved media URL (`url` > `fileUrl`).
+    pub fn url(&self) -> Option<String> {
+        field_str(self.url.as_ref()).or_else(|| field_str(self.file_url.as_ref()))
+    }
+}
+
+/// `data` object of a photo upload (`/api/message/photo` family).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "photoId": "1234567890123456789",
+///   "normalUrl": "https://photo.example/normal",
+///   "hdUrl": "https://photo.example/hd",
+///   "thumbUrl": "https://photo.example/thumb"
+/// }
+/// ```
+///
+/// # Core Transformation
+/// `hdUrl` and `thumbUrl` fall back to the normal URL so an outgoing image message always has a
+/// renderable target.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhotoUploadWireData {
+    #[serde(rename = "photoId")]
+    pub photo_id: Option<Value>,
+    #[serde(rename = "clientFileId")]
+    pub client_file_id: Option<Value>,
+    #[serde(rename = "normalUrl")]
+    pub normal_url: Option<Value>,
+    #[serde(rename = "hdUrl")]
+    pub hd_url: Option<Value>,
+    #[serde(rename = "oriUrl")]
+    pub ori_url: Option<Value>,
+    #[serde(rename = "url")]
+    pub url: Option<Value>,
+    #[serde(rename = "thumbUrl")]
+    pub thumb_url: Option<Value>,
+}
+
+impl PhotoUploadWireData {
+    /// Server photo id (`photoId` > `clientFileId`).
+    pub fn photo_id(&self) -> Option<String> {
+        field_str(self.photo_id.as_ref()).or_else(|| field_str(self.client_file_id.as_ref()))
+    }
+
+    /// Primary media URL (`normalUrl` > `hdUrl` > `oriUrl` > `url`).
+    pub fn normal_url(&self) -> String {
+        field_str(self.normal_url.as_ref())
+            .or_else(|| field_str(self.hd_url.as_ref()))
+            .or_else(|| field_str(self.ori_url.as_ref()))
+            .or_else(|| field_str(self.url.as_ref()))
+            .unwrap_or_default()
+    }
+
+    /// High-definition URL (`hdUrl` > `normalUrl` > `oriUrl`).
+    pub fn hd_url(&self) -> Option<String> {
+        field_str(self.hd_url.as_ref())
+            .or_else(|| field_str(self.normal_url.as_ref()))
+            .or_else(|| field_str(self.ori_url.as_ref()))
+    }
+
+    /// Thumbnail URL (`thumbUrl` > `normalUrl` > `hdUrl`).
+    pub fn thumb_url(&self) -> Option<String> {
+        field_str(self.thumb_url.as_ref())
+            .or_else(|| field_str(self.normal_url.as_ref()))
+            .or_else(|| field_str(self.hd_url.as_ref()))
+    }
+}
+
+/// `data` object of a chunked file upload (`/api/message/asyncfile/upload`).
+///
+/// # Wire Response Example
+/// ```json
+/// { "fileId": "1234567890123456789", "fileUrl": "https://file.example/x", "normalUrl": "https://file.example/x" }
+/// ```
+///
+/// # Core Transformation
+/// Supplies the `fileId` / `fileUrl` pair used by the final `asyncfile/msg` call; a `-1` id means
+/// the chunk was accepted but the file is not ready yet.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UploadChunkWireData {
+    #[serde(rename = "fileId")]
+    pub file_id: Option<Value>,
+    #[serde(rename = "clientFileId")]
+    pub client_file_id: Option<Value>,
+    #[serde(rename = "fileUrl")]
+    pub file_url: Option<Value>,
+    #[serde(rename = "url")]
+    pub url: Option<Value>,
+    #[serde(rename = "normalUrl")]
+    pub normal_url: Option<Value>,
+}
+
+impl UploadChunkWireData {
+    /// Uploaded file id (`fileId` > `clientFileId`), dropping the `-1` placeholder.
+    pub fn file_id(&self) -> Option<String> {
+        field_str(self.file_id.as_ref())
+            .or_else(|| field_str(self.client_file_id.as_ref()))
+            .filter(|id| id != "-1")
+    }
+
+    /// Uploaded file URL (`fileUrl` > `url` > `normalUrl`).
+    pub fn file_url(&self) -> String {
+        field_str(self.file_url.as_ref())
+            .or_else(|| field_str(self.url.as_ref()))
+            .or_else(|| field_str(self.normal_url.as_ref()))
+            .unwrap_or_default()
+    }
+}
+
+/// `data` object of the outbound send endpoints (`sharefile_full`, `photo_original/send`, …).
+///
+/// # Wire Response Example
+/// ```json
+/// { "msgId": "1731215400000_123456789", "fileUrl": "https://f.zdn.vn/a.pdf" }
+/// ```
+///
+/// # Core Transformation
+/// Yields the outgoing message id (falling back to `out_<clientId>`) and, for share-file sends,
+/// the final media URL.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SendAckWireData {
+    #[serde(rename = "msgId")]
+    pub msg_id: Option<Value>,
+    #[serde(rename = "fileUrl")]
+    pub file_url: Option<Value>,
+    #[serde(rename = "url")]
+    pub url: Option<Value>,
+    #[serde(rename = "href")]
+    pub href: Option<Value>,
+}
+
+impl SendAckWireData {
+    /// Server message id (`msgId`).
+    pub fn msg_id(&self) -> Option<String> {
+        field_str(self.msg_id.as_ref())
+    }
+
+    /// Share-file media URL (`fileUrl` > `url` > `href`).
+    pub fn file_url(&self) -> Option<String> {
+        field_str(self.file_url.as_ref())
+            .or_else(|| field_str(self.url.as_ref()))
+            .or_else(|| field_str(self.href.as_ref()))
+    }
+}
+
 /// Parse `act_type: "file_done"` items (`{fileId, data: {url}}`) into `(fileId, fileUrl)` pairs.
 pub fn extract_file_done_controls(data_node: &Value) -> Vec<(String, String)> {
     let mut out = Vec::new();
@@ -298,15 +515,17 @@ pub fn extract_file_done_controls(data_node: &Value) -> Vec<(String, String)> {
         if c.get("act_type").and_then(Value::as_str) != Some("file_done") {
             continue;
         }
+        let outer = FileDoneControlWireData::from_value(c);
         let d = crate::protocol::wire::parse_control_data(c.get("data"));
-        let Some(file_id) = c
-            .get("fileId")
-            .or_else(|| d.get("fileId"))
+        let inner = FileDoneControlWireData::from_value(&d);
+        let Some(file_id) = outer
+            .file_id_value()
+            .or_else(|| inner.file_id_value())
             .and_then(file_id_key)
         else {
             continue;
         };
-        let Some(url) = pick_str(&d, &["url", "fileUrl"]) else {
+        let Some(url) = inner.url() else {
             continue;
         };
         out.push((file_id, url));
@@ -454,14 +673,12 @@ pub async fn send_attachment(
             last_up_dec = s.maybe_decrypt(up_raw, s.session_key_bytes()).await;
         }
 
-        let data_node = last_up_dec.get("data").unwrap_or(&last_up_dec);
-        let photo_id = pick_str(data_node, &["photoId", "clientFileId"]);
-        let normal_url =
-            pick_str(data_node, &["normalUrl", "hdUrl", "oriUrl", "url"]).unwrap_or_default();
-        let hd_url = pick_str(data_node, &["hdUrl", "normalUrl", "oriUrl"])
-            .unwrap_or_else(|| normal_url.clone());
-        let thumb_url = pick_str(data_node, &["thumbUrl", "normalUrl", "hdUrl"])
-            .unwrap_or_else(|| normal_url.clone());
+        let photo =
+            PhotoUploadWireData::from_value(last_up_dec.get("data").unwrap_or(&last_up_dec));
+        let photo_id = photo.photo_id();
+        let normal_url = photo.normal_url();
+        let hd_url = photo.hd_url().unwrap_or_else(|| normal_url.clone());
+        let thumb_url = photo.thumb_url().unwrap_or_else(|| normal_url.clone());
 
         let send_resp = if let Some(pid) = photo_id.filter(|_| !normal_url.is_empty()) {
             let send_ep = if is_group {
@@ -527,13 +744,10 @@ pub async fn send_attachment(
             s.maybe_decrypt(r, s.session_key_bytes()).await
         };
 
-        if let Some(code) = send_resp.get("error_code").and_then(Value::as_i64) {
+        let send_env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&send_resp);
+        if let Some(code) = send_env.code_opt() {
             if code != 0 {
-                let msg = send_resp
-                    .get("error_message")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown");
-                return Err(SessionError::new(code, msg).into());
+                return Err(SessionError::new(code, error_text(send_env.message())).into());
             }
         }
 
@@ -553,7 +767,7 @@ pub async fn send_attachment(
 
         let msg_id = send_resp
             .get("data")
-            .and_then(|d| pick_str(d, &["msgId"]))
+            .and_then(|d| SendAckWireData::from_value(d).msg_id())
             .unwrap_or_else(|| format!("out_{client_id}"));
         let display_text = if !caption.trim().is_empty() {
             caption.trim().to_string()
@@ -630,20 +844,17 @@ pub async fn send_attachment(
             .await
             .map_err(|e| anyhow::anyhow!("tải lên phần {chunk_id}/{total_chunks} thất bại: {e}"))?;
         last_up_dec = s.maybe_decrypt(up_raw, s.session_key_bytes()).await;
-        if let Some(code) = last_up_dec.get("error_code").and_then(Value::as_i64) {
+        let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&last_up_dec);
+        if let Some(code) = env.code_opt() {
             if code != 0 {
-                let msg = last_up_dec
-                    .get("error_message")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown");
-                return Err(SessionError::new(code, msg).into());
+                return Err(SessionError::new(code, error_text(env.message())).into());
             }
         }
     }
 
-    let data_node = last_up_dec.get("data").unwrap_or(&last_up_dec);
-    let file_id = pick_str(data_node, &["fileId", "clientFileId"]).filter(|id| id != "-1");
-    let mut file_url = pick_str(data_node, &["fileUrl", "url", "normalUrl"]).unwrap_or_default();
+    let upload = UploadChunkWireData::from_value(last_up_dec.get("data").unwrap_or(&last_up_dec));
+    let file_id = upload.file_id();
+    let mut file_url = upload.file_url();
     if file_url.is_empty() && FILE_DONE_LISTENER_ACTIVE.load(Ordering::Relaxed) {
         if let Some(fid) = file_id.as_deref() {
             match wait_for_file_done(fid, FILE_DONE_TIMEOUT).await {
@@ -694,9 +905,8 @@ pub async fn send_attachment(
         json!({ "error_code": -1 })
     };
 
-    if send_resp
-        .get("error_code")
-        .and_then(Value::as_i64)
+    if crate::protocol::wire::ErrorEnvelopeWireData::parse(&send_resp)
+        .code_opt()
         .unwrap_or(-1)
         != 0
     {
@@ -727,13 +937,10 @@ pub async fn send_attachment(
         send_resp = s.maybe_decrypt(r, s.session_key_bytes()).await;
     }
 
-    if let Some(code) = send_resp.get("error_code").and_then(Value::as_i64) {
+    let send_env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&send_resp);
+    if let Some(code) = send_env.code_opt() {
         if code != 0 {
-            let msg = send_resp
-                .get("error_message")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown");
-            return Err(SessionError::new(code, msg).into());
+            return Err(SessionError::new(code, error_text(send_env.message())).into());
         }
     }
 
@@ -742,12 +949,12 @@ pub async fn send_attachment(
     } else {
         send_resp
             .get("data")
-            .and_then(|d| pick_str(d, &["fileUrl", "url", "href"]))
+            .and_then(|d| SendAckWireData::from_value(d).file_url())
             .unwrap_or_default()
     };
     let msg_id = send_resp
         .get("data")
-        .and_then(|d| pick_str(d, &["msgId"]))
+        .and_then(|d| SendAckWireData::from_value(d).msg_id())
         .unwrap_or_else(|| format!("out_{client_id}"));
     let kind_label = if is_video { "Video" } else { "Tập tin" };
     let display_text = if !caption.trim().is_empty() {

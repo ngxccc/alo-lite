@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, LazyLock, Mutex};
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
 pub struct LogEntry {
     pub id: usize,
     pub timestamp: String,
@@ -19,7 +19,7 @@ pub struct LogEntry {
     pub error_msg: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
 pub struct ScanFinding {
     pub level: FindingLevel,
     pub title: String,
@@ -27,7 +27,7 @@ pub struct ScanFinding {
     pub suggestion: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
 pub enum FindingLevel {
     Info,
     Warning,

@@ -1,6 +1,6 @@
 //! ParamCipher v2 — per-request parameter encryption.
 //!
-//! Ported from `compact-app-pc-*.js` class `C`. Evidence: `re-notes/01_login.md` §2.1.
+//! Ported from `compact-app-pc-*.js` class `C`. Evidence: `re-notes/01-login.md` §2.1.
 //!
 //! The server rejects plain `params=` with `18060 Invalid encryption protocol`,
 //! so every authenticated and login call must use this path.
@@ -107,7 +107,7 @@ impl ParamCipher {
 
     /// The full request body, per `encryptParam(tag)`.
     ///
-    /// [O] Signed field set, confirmed byte-exact against a working live request:
+    /// \[O\] Signed field set, confirmed byte-exact against a working live request:
     /// `{client_version, enc_ver, params, type, zcid, zcid_ext}` — sorted by key name.
     /// Anything added afterwards (`ref`, `nretry`) must stay out of the hash.
     ///
@@ -138,7 +138,7 @@ impl ParamCipher {
     /// The AES key for this request. **This is the only key**: it decrypts the response
     /// too. There is no separate `enk` query parameter in the real protocol.
     ///
-    /// [O] Verified against a live Zalo Web session: `params` and the response `data`
+    /// \[O\] Verified against a live Zalo Web session: `params` and the response `data`
     /// both decrypt with this value and zero IV.
     pub fn key(&self) -> &str {
         &self.encrypt_key

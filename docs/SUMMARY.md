@@ -1,26 +1,26 @@
 # Summary
 
-[Thiết kế hệ thống](DESIGN.md)
+[System Design](DESIGN.md)
 
-- [Lộ trình phát triển](ROADMAP.md)
-- [Chính sách pháp lý](LEGAL.md)
+- [Roadmap](ROADMAP.md)
+- [Legal & Compliance](LEGAL.md)
 
-# Quyết định kiến trúc (ADR)
+# Architecture Decision Records (ADR)
 
 - [ADR 0001: Trusted Device Protocol](adr/0001-trusted-device-protocol.md)
-- [ADR 0002: Ranh giới Module Protocol](adr/0002-protocol-module-boundaries.md)
-- [ADR 0003: Kiến trúc UI Tauri v2](adr/0003-tauri-feature-ui-architecture.md)
-- [ADR 0004: Phân chia Workspace & Desktop](adr/0004-cargo-workspace-and-desktop-separation.md)
+- [ADR 0002: Protocol Module Boundaries](adr/0002-protocol-module-boundaries.md)
+- [ADR 0003: Tauri v2 UI Architecture](adr/0003-tauri-feature-ui-architecture.md)
+- [ADR 0004: Workspace & Desktop Separation](adr/0004-cargo-workspace-and-desktop-separation.md)
 
-# Tiêu chuẩn kỹ thuật
+# Engineering Standards
 
-- [Thiết kế API & Xử lý lỗi](standards/api-design-and-error-handling.md)
-- [Phân loại Comment & Docstrings](standards/code-comment-taxonomy.md)
-- [Tuân thủ bản quyền & Clean-Room](standards/compliance-and-ip.md)
-- [Đồng thời & Quản lý khóa](standards/concurrency-and-locking.md)
-- [Cơ sở dữ liệu & Migrations](standards/database-and-migrations.md)
-- [Thuật ngữ miền](standards/domain-docs.md)
-- [Quy trình Git & Ma trận PR](standards/git-flow-and-pr-matrix.md)
-- [Theo dõi vấn đề & Tickets](standards/issue-tracker.md)
-- [Bảo mật & Mật mã học](standards/security-and-cryptography.md)
-- [Kiểm thử & Fixtures](standards/testing-and-fixtures.md)
+- [API Design & Error Handling](standards/api-design-and-error-handling.md)
+- [Comment & Docstring Taxonomy](standards/code-comment-taxonomy.md)
+- [Compliance, IP & Clean-Room](standards/compliance-and-ip.md)
+- [Concurrency & Locking](standards/concurrency-and-locking.md)
+- [Database & Migrations](standards/database-and-migrations.md)
+- [Domain Glossary](standards/domain-docs.md)
+- [Git Flow & PR Matrix](standards/git-flow-and-pr-matrix.md)
+- [Issue Tracking & Tickets](standards/issue-tracker.md)
+- [Security & Cryptography](standards/security-and-cryptography.md)
+- [Testing & Fixtures](standards/testing-and-fixtures.md)

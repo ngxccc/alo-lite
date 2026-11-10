@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+use crate::protocol::wire::WireData;
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct ReactionSummary {
     pub emoji: String,
@@ -15,7 +16,7 @@ pub struct ReactionSummary {
     pub reactor_counts: BTreeMap<String, u64>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct ReactionEvent {
     pub message_id: String,
@@ -31,7 +32,7 @@ pub struct ReactionEvent {
 }
 
 /// Persisted per-reactor ledger. IDs deduplicate replay; chronological replay handles old pages.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct ReactionVersion {
     pub ts: i64,
@@ -251,6 +252,186 @@ fn add(
     }
 }
 
+/// Legacy reaction list entry (`reacts: [ { "rIcon": "/-heart", "count": 2 } ]`).
+///
+/// # Wire Response Example
+/// ```json
+/// { "rIcon": "/-heart", "count": 2 }
+/// ```
+///
+/// # Core Transformation
+/// The legacy shape encoded unique icons with an optional count, never exact multiplicity.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LegacyReactionWireData {
+    #[serde(rename = "rIcon")]
+    pub r_icon: Option<Value>,
+    #[serde(rename = "count")]
+    pub count: Option<Value>,
+}
+
+impl LegacyReactionWireData {
+    /// Reaction icon (a `/‑strong`-style token or an emoji).
+    pub fn icon(&self) -> Option<&str> {
+        self.r_icon.as_ref().and_then(Value::as_str)
+    }
+
+    /// Shipped count; absent means a single reaction.
+    pub fn count(&self) -> (u64, bool) {
+        self.count.as_ref().and_then(count).unwrap_or((1, false))
+    }
+}
+
+/// Target message of a reaction (`content.rMsg` entry).
+///
+/// # Wire Response Example
+/// ```json
+/// { "gMsgID": "1731215399000_9", "cMsgID": "8888" }
+/// ```
+///
+/// # Core Transformation
+/// Both ids are kept because either may be the only one the local store can match.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ReactionTargetWireData {
+    #[serde(rename = "gMsgID")]
+    pub global_msg_id: Option<Value>,
+    #[serde(rename = "cMsgID")]
+    pub client_msg_id: Option<Value>,
+}
+
+impl ReactionTargetWireData {
+    /// Server-side message id (`gMsgID`).
+    pub fn message_id(&self) -> String {
+        id(self.global_msg_id.as_ref())
+    }
+
+    /// Client-side message id (`cMsgID`).
+    pub fn client_message_id(&self) -> String {
+        id(self.client_msg_id.as_ref())
+    }
+}
+
+/// Reaction content (`content`, or `content.params` when nested).
+///
+/// # Wire Response Example
+/// ```json
+/// { "rType": 5, "rMsg": [ { "gMsgID": "1731215399000_9" } ] }
+/// ```
+///
+/// # Core Transformation
+/// `rType == -1` is a clear; every other non-negative value is an add.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ReactionContentWireData {
+    #[serde(rename = "rType")]
+    pub r_type: Option<Value>,
+    #[serde(rename = "rMsg")]
+    pub r_msg: Option<Vec<Value>>,
+}
+
+impl ReactionContentWireData {
+    /// Reaction type; `None` when absent, non-numeric, or outside `i32`.
+    pub fn r_type(&self) -> Option<i32> {
+        self.r_type
+            .as_ref()
+            .and_then(Value::as_i64)
+            .and_then(|n| i32::try_from(n).ok())
+    }
+
+    /// Raw target entries.
+    pub fn targets(&self) -> &[Value] {
+        self.r_msg.as_deref().unwrap_or_default()
+    }
+}
+
+/// Socket `chat.reaction` envelope, or one item of a reaction batch.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "uidFrom": "1234567890",
+///   "msgKey": "1234567890",
+///   "msgId": "1731215400000_1",
+///   "cliMsgId": "9999",
+///   "ts": 1731215400000,
+///   "content": { "rType": 3, "rMsg": [ { "gMsgID": "1731215399000_9" } ] }
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Resolves the thread id (nested `content.params` selects `msgKey`, otherwise `idTo`),
+/// requires a sender and at least one target, and emits one [`ReactionEvent`] per target.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ReactionEventWireData {
+    #[serde(rename = "uidFrom")]
+    pub uid_from: Option<Value>,
+    #[serde(rename = "msgKey")]
+    pub msg_key: Option<Value>,
+    #[serde(rename = "idTo")]
+    pub id_to: Option<Value>,
+    #[serde(rename = "msgId")]
+    pub msg_id: Option<Value>,
+    #[serde(rename = "cliMsgId")]
+    pub cli_msg_id: Option<Value>,
+    #[serde(rename = "ts")]
+    pub ts: Option<Value>,
+    #[serde(rename = "content")]
+    pub content: Option<Value>,
+    #[serde(rename = "reacts")]
+    pub reacts: Option<Vec<Value>>,
+    #[serde(rename = "reactGroups")]
+    pub react_groups: Option<Vec<Value>>,
+    #[serde(rename = "reactions")]
+    pub reactions: Option<Vec<Value>>,
+    #[serde(rename = "messages")]
+    pub messages: Option<Vec<Value>>,
+}
+
+impl ReactionEventWireData {
+    /// Sender id (`uidFrom`), empty when absent.
+    pub fn sender_id(&self) -> String {
+        id(self.uid_from.as_ref())
+    }
+
+    /// Event timestamp accepting a number or a numeric string.
+    pub fn timestamp(&self) -> i64 {
+        self.ts
+            .as_ref()
+            .and_then(|v| v.as_i64().or_else(|| v.as_str()?.trim().parse().ok()))
+            .unwrap_or(0)
+    }
+
+    /// Thread id: `msgKey` when `content` is nested under `params`, else `idTo`.
+    pub fn thread_id(&self) -> String {
+        if self.has_nested_params() {
+            id(self.msg_key.as_ref())
+        } else {
+            id(self.id_to.as_ref())
+        }
+    }
+
+    /// Whether `content.params` exists (the nested-envelope form).
+    pub fn has_nested_params(&self) -> bool {
+        self.content
+            .as_ref()
+            .and_then(|c| c.get("params"))
+            .is_some()
+    }
+
+    /// Reaction content, decoded from a JSON string when the wire sends one.
+    pub fn reaction_content(&self) -> Option<ReactionContentWireData> {
+        let outer = self.content.as_ref()?;
+        let value = outer.get("params").unwrap_or(outer);
+        let value = match value {
+            Value::String(s) => serde_json::from_str::<Value>(s).ok()?,
+            other => other.clone(),
+        };
+        Some(ReactionContentWireData::from_value(&value))
+    }
+}
+
 /// Parse shipped per-user/per-type counts, plus the application's legacy icon list.
 /// An absent/null payload is not an authoritative clear; callers must preserve that distinction.
 pub fn parse_reactions(value: &Value) -> Vec<ReactionSummary> {
@@ -295,15 +476,13 @@ pub fn parse_reactions(value: &Value) -> Vec<ReactionSummary> {
         }
     } else if let Some(items) = payload.as_array() {
         for item in items {
-            let icon = item
-                .as_str()
-                .or_else(|| item.get("rIcon").and_then(Value::as_str));
+            let wire = LegacyReactionWireData::from_value(item);
+            let icon = item.as_str().or_else(|| wire.icon());
             let Some(icon) = icon else { continue };
             let kind = type_for_icon(icon);
             let emoji = kind.map(emoji_for_type).unwrap_or(icon).to_owned();
-            // Legacy Vec<String> represented unique icons, never exact multiplicity.
-            let n = item.get("count").and_then(count).unwrap_or((1, false));
-            add(&mut out, kind, emoji, n.0, n.1, None);
+            let (n, lower) = wire.count();
+            add(&mut out, kind, emoji, n, lower, None);
         }
     }
     out.sort_by(|a, b| {
@@ -367,22 +546,15 @@ pub fn parse_reaction_events(value: &Value) -> Vec<ReactionEvent> {
     if let Some(items) = value.as_array() {
         return items.iter().flat_map(parse_reaction_events).collect();
     }
-    if value.get("reacts").and_then(Value::as_array).is_some()
-        || value.get("reactGroups").and_then(Value::as_array).is_some()
-    {
-        let mut events: Vec<_> = value
-            .get("reacts")
-            .and_then(Value::as_array)
-            .into_iter()
+    let wire = ReactionEventWireData::from_value(value);
+    if wire.reacts.is_some() || wire.react_groups.is_some() {
+        let mut events: Vec<_> = wire
+            .reacts
+            .iter()
             .flatten()
             .flat_map(parse_reaction_events)
             .collect();
-        for item in value
-            .get("reactGroups")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-        {
+        for item in wire.react_groups.iter().flatten() {
             let mut item = item.clone();
             let group_id = id(item.get("idTo"));
             if group_id.is_empty() {
@@ -393,63 +565,43 @@ pub fn parse_reaction_events(value: &Value) -> Vec<ReactionEvent> {
         }
         return events;
     }
-    if let Some(items) = value.get("reactions").and_then(Value::as_array) {
+    if let Some(items) = &wire.reactions {
         return items.iter().flat_map(parse_reaction_events).collect();
     }
-    if let Some(items) = value.get("messages").and_then(Value::as_array) {
+    if let Some(items) = &wire.messages {
         return items
             .iter()
             .filter(|item| item.get("msgType").and_then(Value::as_str) == Some("chat.reaction"))
             .flat_map(parse_reaction_events)
             .collect();
     }
-    let decoded;
-    let outer_content = value.get("content");
-    let nested = outer_content.and_then(|c| c.get("params"));
-    let content = match nested.or(outer_content) {
-        Some(Value::String(s)) => {
-            let Ok(v) = serde_json::from_str::<Value>(s) else {
-                return Vec::new();
-            };
-            decoded = v;
-            &decoded
-        }
-        Some(v) => v,
-        None => return Vec::new(),
+    let Some(content) = wire.reaction_content() else {
+        return Vec::new();
     };
-    let Some(r_type) = content
-        .get("rType")
-        .and_then(Value::as_i64)
-        .and_then(|n| i32::try_from(n).ok())
-    else {
+    let Some(r_type) = content.r_type() else {
         return Vec::new();
     };
     if r_type < -1 {
         return Vec::new();
     }
-    let Some(targets) = content.get("rMsg").and_then(Value::as_array) else {
-        return Vec::new();
-    };
-    let sender_id = id(value.get("uidFrom"));
+    let sender_id = wire.sender_id();
     if sender_id.is_empty() {
         return Vec::new();
     }
-    let mut thread_id = id(if nested.is_some() {
-        value.get("msgKey")
-    } else {
-        value.get("idTo")
-    });
+    let mut thread_id = wire.thread_id();
     if thread_id == "0" {
         thread_id = sender_id.clone();
     }
     if thread_id.is_empty() {
         return Vec::new();
     }
-    targets
+    content
+        .targets()
         .iter()
         .filter_map(|target| {
-            let mut message_id = id(target.get("gMsgID"));
-            let client_message_id = id(target.get("cMsgID"));
+            let target = ReactionTargetWireData::from_value(target);
+            let mut message_id = target.message_id();
+            let client_message_id = target.client_message_id();
             if message_id == "0" {
                 message_id.clear();
             }
@@ -461,15 +613,12 @@ pub fn parse_reaction_events(value: &Value) -> Vec<ReactionEvent> {
                 client_message_id,
                 thread_id: thread_id.clone(),
                 sender_id: sender_id.clone(),
-                event_id: id(value.get("msgId")),
-                client_event_id: id(value.get("cliMsgId")),
+                event_id: id(wire.msg_id.as_ref()),
+                client_event_id: id(wire.cli_msg_id.as_ref()),
                 r_type,
                 emoji: emoji_for_type(r_type).into(),
                 historical: false,
-                ts: value
-                    .get("ts")
-                    .and_then(|v| v.as_i64().or_else(|| v.as_str()?.parse().ok()))
-                    .unwrap_or(0),
+                ts: wire.timestamp(),
             })
         })
         .collect()
@@ -613,7 +762,7 @@ mod tests {
 }
 
 /// Persist source and capture watermark independently of the transient network-fresh bit.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct ReactionSnapshotProvenance {
     pub source: String,

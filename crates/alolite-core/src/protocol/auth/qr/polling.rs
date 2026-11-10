@@ -3,24 +3,126 @@
 use std::time::Duration;
 
 use anyhow::{bail, Result};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::types::{extract_zpw_sek, CompanionState, QrConfirmResult, QrLogin, QrScannedProfile};
+use crate::protocol::wire::{ErrorEnvelopeWireData, WireData};
 use crate::session::{urlencode, Session};
+
+/// `link_data` object carried by the QR scan payload (trusted-device linking proofs).
+///
+/// # Wire Response Example
+/// ```json
+/// { "enc_link_data": "<base64>", "enc_link_hmac": "<base64>" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct QrLinkDataWireData {
+    #[serde(rename = "enc_link_data")]
+    pub enc_link_data_snake: Option<Value>,
+    #[serde(rename = "encLinkData")]
+    pub enc_link_data_camel: Option<Value>,
+    #[serde(rename = "enc_link_hmac")]
+    pub enc_link_hmac_snake: Option<Value>,
+    #[serde(rename = "encLinkHmac")]
+    pub enc_link_hmac_camel: Option<Value>,
+}
+
+impl QrLinkDataWireData {
+    /// Base64 linking payload (`enc_link_data` > `encLinkData`).
+    pub fn enc_link_data(&self) -> Option<&str> {
+        self.enc_link_data_snake
+            .as_ref()
+            .or(self.enc_link_data_camel.as_ref())
+            .and_then(Value::as_str)
+    }
+
+    /// Base64 HMAC over the linking payload (`enc_link_hmac` > `encLinkHmac`).
+    pub fn enc_link_hmac(&self) -> Option<&str> {
+        self.enc_link_hmac_snake
+            .as_ref()
+            .or(self.enc_link_hmac_camel.as_ref())
+            .and_then(Value::as_str)
+    }
+}
+
+/// Scan-result payload (`data`) of the QR `waiting-scan` poll.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "display_name": "Ngọc Trần",
+///   "avatar": "https://avatar.example/240",
+///   "link_data": { "enc_link_data": "<base64>", "enc_link_hmac": "<base64>" }
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Yields the [`QrScannedProfile`] shown while the user confirms on the phone, plus the
+/// companion-linking proof material consumed by `process_companion_link_data`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct QrScannedUserWireData {
+    #[serde(rename = "display_name")]
+    pub display_name_snake: Option<Value>,
+    #[serde(rename = "displayName")]
+    pub display_name_camel: Option<Value>,
+    #[serde(rename = "avatar")]
+    pub avatar_url: Option<Value>,
+    #[serde(rename = "avatar_url")]
+    pub avatar_url_snake: Option<Value>,
+    #[serde(rename = "thumb")]
+    pub thumb: Option<Value>,
+    #[serde(rename = "avt")]
+    pub avt: Option<Value>,
+    #[serde(rename = "link_data")]
+    pub link_data: Option<Value>,
+}
+
+impl QrScannedUserWireData {
+    /// Display name, defaulting to `Zalo User` when the account hides it.
+    pub fn display_name(&self) -> String {
+        self.display_name_snake
+            .as_ref()
+            .or(self.display_name_camel.as_ref())
+            .and_then(Value::as_str)
+            .unwrap_or("Zalo User")
+            .to_string()
+    }
+
+    /// Avatar URL (`avatar` > `avatar_url` > `thumb` > `avt`); empty values are dropped.
+    pub fn avatar(&self) -> Option<String> {
+        [
+            &self.avatar_url,
+            &self.avatar_url_snake,
+            &self.thumb,
+            &self.avt,
+        ]
+        .into_iter()
+        .find_map(|v| v.as_ref().and_then(Value::as_str))
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+    }
+
+    /// Companion linking proof material, if the payload carries any.
+    pub fn link_data(&self) -> QrLinkDataWireData {
+        self.link_data
+            .as_ref()
+            .map(QrLinkDataWireData::from_value)
+            .unwrap_or_default()
+    }
+}
 
 /// Long-poll the scan endpoint until the phone reports the scan.
 ///
-/// [O] The client appends `&lang=<code>` and loops with `qr_timeout` / `qr_retry`.
+/// \[O\] The client appends `&lang=<code>` and loops with `qr_timeout` / `qr_retry`.
 /// While nobody has scanned, the endpoint answers **HTTP 408** — that is the
 /// "still waiting" signal, not a failure.
 pub(crate) fn process_companion_link_data(cs: &mut CompanionState, data: &Value) -> Result<()> {
-    let link_data = data.get("link_data");
-    let enc_data_str = link_data
-        .and_then(|ld| ld.get("enc_link_data").or_else(|| ld.get("encLinkData")))
-        .and_then(Value::as_str);
-    let enc_hmac_str = link_data
-        .and_then(|ld| ld.get("enc_link_hmac").or_else(|| ld.get("encLinkHmac")))
-        .and_then(Value::as_str);
+    let link = QrScannedUserWireData::from_value(data).link_data();
+    let enc_data_str = link.enc_link_data();
+    let enc_hmac_str = link.enc_link_hmac();
 
     if let (Some(enc_data), Some(enc_hmac)) = (enc_data_str, enc_hmac_str) {
         if !enc_data.is_empty() && !enc_hmac.is_empty() {
@@ -81,44 +183,30 @@ pub async fn wait_for_scan(s: &Session, q: &mut QrLogin) -> Result<QrScannedProf
             }
             200 => {
                 let v: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
-                let code = v.get("error_code").and_then(Value::as_i64).unwrap_or(0);
-                if code == 0 {
-                    if let Some(data) = v.get("data") {
-                        if !data.is_null() {
-                            if let Some(cs) = &mut q.companion_state {
-                                if let Err(e) = process_companion_link_data(cs, data) {
-                                    if s.verbose {
-                                        eprintln!(
-                                            "[QR] Lỗi xử lý chứng thực liên kết companion: {e}"
-                                        );
-                                    }
+                let env = ErrorEnvelopeWireData::parse(&v);
+                if env.code() == 0 {
+                    if let Some(data) = v.get("data").filter(|d| !d.is_null()) {
+                        if let Some(cs) = &mut q.companion_state {
+                            if let Err(e) = process_companion_link_data(cs, data) {
+                                if s.verbose {
+                                    eprintln!("[QR] Lỗi xử lý chứng thực liên kết companion: {e}");
                                 }
                             }
-                            let display_name = data
-                                .get("display_name")
-                                .or_else(|| data.get("displayName"))
-                                .and_then(Value::as_str)
-                                .unwrap_or("Zalo User")
-                                .to_string();
-                            let avatar = data
-                                .get("avatar")
-                                .or_else(|| data.get("avatar_url"))
-                                .or_else(|| data.get("thumb"))
-                                .or_else(|| data.get("avt"))
-                                .and_then(Value::as_str)
-                                .filter(|s| !s.is_empty())
-                                .map(str::to_string);
-                            return Ok(QrScannedProfile {
-                                display_name,
-                                avatar,
-                            });
                         }
+                        let scanned = QrScannedUserWireData::from_value(data);
+                        return Ok(QrScannedProfile {
+                            display_name: scanned.display_name(),
+                            avatar: scanned.avatar(),
+                        });
                     }
                 } else {
                     attempts += 1;
                     if attempts > q.qr_retry.max(1) {
-                        let msg = v.get("error_message").and_then(Value::as_str).unwrap_or("");
-                        bail!("waiting scan: server error {code}: {msg}");
+                        bail!(
+                            "waiting scan: server error {}: {}",
+                            env.code(),
+                            env.message()
+                        );
                     }
                 }
                 tokio::time::sleep(Duration::from_millis(800)).await;
@@ -174,7 +262,8 @@ pub async fn confirm(s: &Session, q: &QrLogin) -> Result<QrConfirmResult> {
                 crate::session::truncate(&text, 200)
             )
         })?;
-        let code = v.get("error_code").and_then(Value::as_i64);
+        let env = ErrorEnvelopeWireData::parse(&v);
+        let code = env.code_opt();
         if code == Some(0) {
             if let Some(ref sek) = cookie_sek {
                 if let Some(d) = v.get_mut("data").and_then(Value::as_object_mut) {
@@ -197,8 +286,7 @@ pub async fn confirm(s: &Session, q: &QrLogin) -> Result<QrConfirmResult> {
             tokio::time::sleep(Duration::from_millis(800)).await;
             continue;
         } else if let Some(err_code) = code {
-            let msg = v.get("error_message").and_then(Value::as_str).unwrap_or("");
-            bail!("pc-status: server error {err_code}: {msg}");
+            bail!("pc-status: server error {err_code}: {}", env.message());
         } else {
             tokio::time::sleep(Duration::from_millis(800)).await;
             continue;

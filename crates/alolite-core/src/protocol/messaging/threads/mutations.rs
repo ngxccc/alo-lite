@@ -1,11 +1,65 @@
 //! Server mutations for conversation threads: pin/unpin, hide/unhide, and delete conversation history.
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::clock::now_ms;
 use crate::protocol::session::Session;
-use crate::protocol::wire::{pick_str, require_login, strip_group_prefix, unwrap_data, ActionAck};
+use crate::protocol::wire::{require_login, strip_group_prefix, unwrap_data, ActionAck, WireData};
+
+/// `/api/pinconvers/list` (cmd `12120`) payload: the pinned conversation list.
+///
+/// # Wire Response Example
+/// ```json
+/// { "conversations": [ "1234567890", { "id": "g9876543210" } ] }
+/// ```
+///
+/// # Core Transformation
+/// Accepts both the wrapped `conversations` array and a bare array root, matching the shipped
+/// client's two response shapes.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PinnedConversationsWireData {
+    #[serde(rename = "conversations")]
+    pub conversations: Option<Vec<Value>>,
+}
+
+impl PinnedConversationsWireData {
+    /// Pinned entries from `conversations`, falling back to a bare array `root`.
+    pub fn entries(&self, root: &Value) -> Vec<Value> {
+        self.conversations
+            .clone()
+            .or_else(|| root.as_array().cloned())
+            .unwrap_or_default()
+    }
+}
+
+/// One pinned conversation entry: a bare id string or an object carrying an id field.
+///
+/// # Wire Response Example
+/// ```json
+/// { "id": "g9876543210" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PinnedConversationWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "threadId")]
+    pub thread_id_camel: Option<Value>,
+    #[serde(rename = "thread_id")]
+    pub thread_id_snake: Option<Value>,
+}
+
+impl PinnedConversationWireData {
+    /// Thread id (`id` > `threadId` > `thread_id`).
+    pub fn thread_id(&self) -> Option<String> {
+        crate::protocol::wire::field_str(self.id.as_ref())
+            .or_else(|| crate::protocol::wire::field_str(self.thread_id_camel.as_ref()))
+            .or_else(|| crate::protocol::wire::field_str(self.thread_id_snake.as_ref()))
+    }
+}
 
 /// `GET /api/pinconvers/list` (cmd `12120`) — fetch pinned thread IDs.
 ///
@@ -20,18 +74,14 @@ pub async fn get_pinned(s: &Session) -> Result<Vec<String>> {
     );
     let resp = s.get(&url).await?;
     let data = unwrap_data(&resp);
-    let arr = data
-        .get("conversations")
-        .and_then(Value::as_array)
-        .or_else(|| data.as_array())
-        .cloned()
-        .unwrap_or_default();
-    Ok(arr
+    let wire = PinnedConversationsWireData::from_value(data);
+    Ok(wire
+        .entries(data)
         .into_iter()
         .filter_map(|item| {
             item.as_str()
                 .map(str::to_string)
-                .or_else(|| pick_str(&item, &["id", "threadId", "thread_id"]))
+                .or_else(|| PinnedConversationWireData::from_value(&item).thread_id())
         })
         .collect())
 }

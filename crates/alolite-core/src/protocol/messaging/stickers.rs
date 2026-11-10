@@ -12,11 +12,11 @@ use serde_json::{json, Value};
 use crate::crypto::{encode_aes, md5_hex};
 use crate::protocol::session::{urlencode, Session, SessionError};
 use crate::protocol::wire::{
-    chat_send_host, domain_or, next_client_message_id, obj, require_login, strip_group_prefix,
-    strip_vn_diacritics, SendMessageReceipt,
+    chat_send_host, domain_or, error_text, next_client_message_id, obj, require_login,
+    strip_group_prefix, strip_vn_diacritics, SendMessageReceipt, WireData,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct StickerPackInfo {
     pub id: u64,
     pub name: String,
@@ -24,7 +24,7 @@ pub struct StickerPackInfo {
     pub icon_url: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct StickerItem {
     pub sticker_id: u64,
     pub cate_id: u64,
@@ -110,13 +110,10 @@ pub async fn send_sticker_with_client_id(
     let params = s.encoded_params(&body)?;
     let resp = s.post_form(&url, format!("params={params}")).await?;
     let resp = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-    if let Some(code) = resp.get("error_code").and_then(Value::as_i64) {
+    let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&resp);
+    if let Some(code) = env.code_opt() {
         if code != 0 {
-            let msg = resp
-                .get("error_message")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown");
-            return Err(SessionError::new(code, msg).into());
+            return Err(SessionError::new(code, error_text(env.message())).into());
         }
     }
     Ok(SendMessageReceipt::from_wire(&resp))
@@ -125,6 +122,225 @@ pub async fn send_sticker_with_client_id(
 fn default_sticker_host(s: &Session) -> &str {
     let fallback = crate::endpoints::service("sticker").unwrap_or_default();
     domain_or(&s.domains.sticker, fallback)
+}
+
+/// `data` array of a sticker endpoint, falling back to a bare array root.
+fn data_array(dec: &Value) -> Vec<Value> {
+    dec.get("data")
+        .and_then(Value::as_array)
+        .or_else(|| dec.as_array())
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// `data` object of `getStickerCatsV2` (cmd `11283` catalog bootstrap).
+///
+/// # Wire Response Example
+/// ```json
+/// { "exCateIds": [12, 34], "dataUrl": "http://sticker.zdn.vn/all_cate.json" }
+/// ```
+///
+/// # Core Transformation
+/// `exCateIds` hides excluded/hidden packs; `dataUrl` points at the gzipped CDN catalog and is
+/// upgraded to HTTPS before the fetch.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StickerCatalogWireData {
+    #[serde(rename = "exCateIds")]
+    pub ex_cate_ids: Option<Value>,
+    #[serde(rename = "dataUrl")]
+    pub data_url: Option<Value>,
+}
+
+impl StickerCatalogWireData {
+    /// Category ids excluded from the store listing.
+    pub fn excluded_ids(&self) -> HashSet<u64> {
+        self.ex_cate_ids
+            .as_ref()
+            .and_then(Value::as_array)
+            .map(|arr| arr.iter().filter_map(Value::as_u64).collect())
+            .unwrap_or_default()
+    }
+
+    /// CDN URL of the full catalog, defaulting to the bundled endpoint (HTTPS-forced).
+    pub fn data_url(&self) -> String {
+        self.data_url
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or(crate::endpoints::STICKER_CDN_ALL_CATE)
+            .replace("http://", "https://")
+    }
+}
+
+/// One pack of the CDN `getAllCate` catalog array.
+///
+/// # Wire Response Example
+/// ```json
+/// { "id": 1234, "name": "Củ hành", "totalImage": 24, "iconUrl": "http://s.zdn.vn/1.png" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StickerPackWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "name")]
+    pub name: Option<Value>,
+    #[serde(rename = "totalImage")]
+    pub total_image: Option<Value>,
+    #[serde(rename = "iconUrl")]
+    pub icon_url: Option<Value>,
+    #[serde(rename = "thumbImg")]
+    pub thumb_img: Option<Value>,
+}
+
+impl StickerPackWireData {
+    /// Pack id; a missing or zero id excludes the pack.
+    pub fn id(&self) -> Option<u64> {
+        self.id.as_ref().and_then(Value::as_u64)
+    }
+
+    /// Trimmed pack name.
+    pub fn name(&self) -> String {
+        self.name
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_string()
+    }
+
+    /// Sticker count in the pack (default `16`).
+    pub fn total_image(&self) -> u32 {
+        self.total_image
+            .as_ref()
+            .and_then(Value::as_u64)
+            .unwrap_or(16) as u32
+    }
+
+    /// Pack icon URL (`iconUrl` > `thumbImg`), HTTPS-forced.
+    pub fn icon_url(&self) -> String {
+        self.icon_url
+            .as_ref()
+            .or(self.thumb_img.as_ref())
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .replace("http://", "https://")
+    }
+}
+
+/// One sticker entry from `getStickerCategoryDetail` (cmd `11284`), `suggest/stickers`, or `search`.
+///
+/// # Wire Response Example
+/// ```json
+/// { "sticker_id": 12345, "cate_id": 1234, "type": 7 }
+/// ```
+///
+/// # Core Transformation
+/// `id`/`stickerId` and `cateId`/`cate_id` are both accepted because the catalog and the
+/// suggest/search endpoints spell them differently.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StickerItemWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "stickerId")]
+    pub sticker_id_camel: Option<Value>,
+    #[serde(rename = "sticker_id")]
+    pub sticker_id_snake: Option<Value>,
+    #[serde(rename = "cateId")]
+    pub cate_id_camel: Option<Value>,
+    #[serde(rename = "cate_id")]
+    pub cate_id_snake: Option<Value>,
+    #[serde(rename = "type")]
+    pub sticker_type: Option<Value>,
+}
+
+impl StickerItemWireData {
+    /// Catalog sticker id (`id` > `stickerId`).
+    pub fn id(&self) -> Option<u64> {
+        self.id
+            .as_ref()
+            .or(self.sticker_id_camel.as_ref())
+            .and_then(Value::as_u64)
+    }
+
+    /// Suggest/search sticker id (`sticker_id` > `id`).
+    pub fn sticker_id(&self) -> Option<u64> {
+        self.sticker_id_snake
+            .as_ref()
+            .or(self.id.as_ref())
+            .and_then(Value::as_u64)
+    }
+
+    /// Category id (`cateId`), falling back to the requested category.
+    pub fn cate_id(&self, default: u64) -> u64 {
+        self.cate_id_camel
+            .as_ref()
+            .and_then(Value::as_u64)
+            .unwrap_or(default)
+    }
+
+    /// Category id for suggest/search (`cate_id` > `cateId`), defaulting to `0`.
+    pub fn cate_id_snake(&self) -> u64 {
+        self.cate_id_snake
+            .as_ref()
+            .or(self.cate_id_camel.as_ref())
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+    }
+
+    /// Sticker type (`type`), default `7` (static PNG).
+    pub fn sticker_type(&self) -> u32 {
+        self.sticker_type
+            .as_ref()
+            .and_then(Value::as_u64)
+            .unwrap_or(7) as u32
+    }
+}
+
+/// `suggest/keywords` payload: the searchable Vietnamese keyword list.
+///
+/// # Wire Response Example
+/// ```json
+/// { "keywords": ["củ hành", "zkwd_hidden", "mèo"] }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StickerKeywordsWireData {
+    #[serde(rename = "keywords")]
+    pub keywords: Option<Vec<Value>>,
+}
+
+impl StickerKeywordsWireData {
+    /// Raw keyword strings in wire order.
+    pub fn keyword_strings(&self) -> Vec<&str> {
+        self.keywords
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(Value::as_str)
+            .collect()
+    }
+}
+
+/// `suggest/stickers` payload (`data.sugg_sticker`).
+///
+/// # Wire Response Example
+/// ```json
+/// { "sugg_sticker": [ { "sticker_id": 12345, "cate_id": 1234, "type": 7 } ] }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StickerSuggestWireData {
+    #[serde(rename = "sugg_sticker")]
+    pub sugg_sticker: Option<Vec<Value>>,
+}
+
+impl StickerSuggestWireData {
+    /// Raw suggest entries.
+    pub fn entries(&self) -> &[Value] {
+        self.sugg_sticker.as_deref().unwrap_or_default()
+    }
 }
 
 /// Fetch the complete Zalo Sticker Store catalog (`getStickerCatsV2` -> `getAllCate`).
@@ -156,19 +372,10 @@ pub async fn fetch_sticker_store_packs(s: &Session) -> Result<Vec<StickerPackInf
     );
     let resp = s.get(&list_url).await?;
     let dec = s.maybe_decrypt(resp, key).await;
-    let data = dec.get("data").unwrap_or(&dec);
+    let catalog = StickerCatalogWireData::from_value(dec.get("data").unwrap_or(&dec));
 
-    let ex_ids: HashSet<u64> = data
-        .get("exCateIds")
-        .and_then(Value::as_array)
-        .map(|arr| arr.iter().filter_map(Value::as_u64).collect())
-        .unwrap_or_default();
-
-    let data_url = data
-        .get("dataUrl")
-        .and_then(Value::as_str)
-        .unwrap_or(crate::endpoints::STICKER_CDN_ALL_CATE)
-        .replace("http://", "https://");
+    let ex_ids: HashSet<u64> = catalog.excluded_ids();
+    let data_url = catalog.data_url();
 
     let cdn_resp = s.http.get(&data_url).send().await?;
     let raw_bytes = cdn_resp.bytes().await?;
@@ -184,33 +391,22 @@ pub async fn fetch_sticker_store_packs(s: &Session) -> Result<Vec<StickerPackInf
     let arr: Vec<Value> = serde_json::from_str(&json_text)?;
     let mut packs = Vec::with_capacity(arr.len());
     for item in arr {
-        let Some(id) = item.get("id").and_then(Value::as_u64) else {
+        let pack = StickerPackWireData::from_value(&item);
+        let Some(id) = pack.id() else {
             continue;
         };
         if id == 0 || ex_ids.contains(&id) {
             continue;
         }
-        let name = item
-            .get("name")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .trim()
-            .to_string();
+        let name = pack.name();
         if name.is_empty() || name.to_lowercase().contains("test") {
             continue;
         }
-        let total_image = item.get("totalImage").and_then(Value::as_u64).unwrap_or(16) as u32;
-        let icon_url = item
-            .get("iconUrl")
-            .or_else(|| item.get("thumbImg"))
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .replace("http://", "https://");
         packs.push(StickerPackInfo {
             id,
             name,
-            total_image,
-            icon_url,
+            total_image: pack.total_image(),
+            icon_url: pack.icon_url(),
         });
     }
 
@@ -261,28 +457,18 @@ pub async fn fetch_sticker_pack_items(
     );
     let resp = s.get(&url).await?;
     let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-    let arr = dec
-        .get("data")
-        .and_then(Value::as_array)
-        .or_else(|| dec.as_array())
-        .cloned()
-        .unwrap_or_default();
+    let arr = data_array(&dec);
 
     let mut items = Vec::with_capacity(arr.len());
     for (idx, it) in arr.iter().enumerate() {
-        let Some(sid) = it
-            .get("id")
-            .or_else(|| it.get("stickerId"))
-            .and_then(Value::as_u64)
-        else {
+        let wire = StickerItemWireData::from_value(it);
+        let Some(sid) = wire.id() else {
             continue;
         };
-        let cid = it.get("cateId").and_then(Value::as_u64).unwrap_or(cate_id);
-        let stype = it.get("type").and_then(Value::as_u64).unwrap_or(7) as u32;
         items.push(StickerItem {
             sticker_id: sid,
-            cate_id: cid,
-            sticker_type: stype,
+            cate_id: wire.cate_id(cate_id),
+            sticker_type: wire.sticker_type(),
             label: format!("{pack_name} #{}", idx + 1),
         });
     }
@@ -423,27 +609,18 @@ pub async fn fetch_sticker_suggest_keywords(s: &Session) -> Result<Vec<String>> 
     let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
     let mut seen = HashSet::new();
     let mut kws: Vec<String> = Vec::new();
-    if let Some(arr) = dec
-        .get("data")
-        .or(Some(&dec))
-        .and_then(|d| d.get("keywords"))
-        .and_then(Value::as_array)
-    {
-        for raw_v in arr {
-            let Some(raw_str) = raw_v.as_str() else {
-                continue;
-            };
-            let norm = normalize_sticker_keyword(raw_str);
-            if norm.is_empty() || norm.starts_with("zkwd_") {
-                continue;
-            }
-            if seen.insert(norm.clone()) {
-                kws.push(norm.clone());
-            }
-            let stripped = strip_vn_for_sticker_kw(&norm);
-            if !stripped.is_empty() && seen.insert(stripped.clone()) {
-                kws.push(stripped);
-            }
+    let keywords = StickerKeywordsWireData::from_value(dec.get("data").unwrap_or(&dec));
+    for raw_str in keywords.keyword_strings() {
+        let norm = normalize_sticker_keyword(raw_str);
+        if norm.is_empty() || norm.starts_with("zkwd_") {
+            continue;
+        }
+        if seen.insert(norm.clone()) {
+            kws.push(norm.clone());
+        }
+        let stripped = strip_vn_for_sticker_kw(&norm);
+        if !stripped.is_empty() && seen.insert(stripped.clone()) {
+            kws.push(stripped);
         }
     }
     if !kws.is_empty() {
@@ -478,26 +655,18 @@ async fn query_sticker_endpoints_once(
                     return Vec::new();
                 };
                 let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-                let arr = dec
-                    .get("data")
-                    .or(Some(&dec))
-                    .and_then(|d| d.get("sugg_sticker"))
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
-                arr.into_iter()
+                let sugg = StickerSuggestWireData::from_value(dec.get("data").unwrap_or(&dec));
+                sugg.entries()
+                    .iter()
                     .filter_map(|it| {
-                        let sid = it
-                            .get("sticker_id")
-                            .or_else(|| it.get("id"))
-                            .and_then(Value::as_u64)?;
-                        let cid = it
-                            .get("cate_id")
-                            .or_else(|| it.get("cateId"))
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0);
-                        let stype = it.get("type").and_then(Value::as_u64).unwrap_or(7) as u32;
-                        Some((cid, sid, stype, if is_primary { 3u8 } else { 2u8 }))
+                        let wire = StickerItemWireData::from_value(it);
+                        let sid = wire.sticker_id()?;
+                        Some((
+                            wire.cate_id_snake(),
+                            sid,
+                            wire.sticker_type(),
+                            if is_primary { 3u8 } else { 2u8 },
+                        ))
                     })
                     .collect::<Vec<_>>()
             });
@@ -523,25 +692,17 @@ async fn query_sticker_endpoints_once(
                     return Vec::new();
                 };
                 let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-                let arr = dec
-                    .get("data")
-                    .and_then(Value::as_array)
-                    .or_else(|| dec.as_array())
-                    .cloned()
-                    .unwrap_or_default();
+                let arr = data_array(&dec);
                 arr.into_iter()
                     .filter_map(|it| {
-                        let sid = it
-                            .get("sticker_id")
-                            .or_else(|| it.get("id"))
-                            .and_then(Value::as_u64)?;
-                        let cid = it
-                            .get("cate_id")
-                            .or_else(|| it.get("cateId"))
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0);
-                        let stype = it.get("type").and_then(Value::as_u64).unwrap_or(7) as u32;
-                        Some((cid, sid, stype, if is_primary { 3u8 } else { 2u8 }))
+                        let wire = StickerItemWireData::from_value(&it);
+                        let sid = wire.sticker_id()?;
+                        Some((
+                            wire.cate_id_snake(),
+                            sid,
+                            wire.sticker_type(),
+                            if is_primary { 3u8 } else { 2u8 },
+                        ))
                     })
                     .collect::<Vec<_>>()
             });

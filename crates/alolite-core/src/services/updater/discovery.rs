@@ -2,6 +2,194 @@
 
 use std::time::Duration;
 
+use crate::protocol::wire::{opt_str, WireData};
+use serde::{Deserialize, Serialize};
+
+/// GitHub Releases API object (`/repos/{owner}/{repo}/releases/latest`) or a `latest.json` manifest.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "tag_name": "v0.4.2",
+///   "name": "alolite v0.4.2",
+///   "body": "Ghi chú phát hành",
+///   "html_url": "https://github.com/ngxccc/alolite/releases/tag/v0.4.2",
+///   "published_at": "2026-11-10T03:32:08Z",
+///   "assets": [
+///     {
+///       "name": "alolite-0.4.2-x86_64.AppImage",
+///       "browser_download_url": "https://github.com/ngxc/…/alolite-0.4.2-x86_64.AppImage",
+///       "size": 18432000,
+///       "digest": "sha256:<redacted>"
+///     }
+///   ],
+///   "draft": false
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Feeds [`GitHubReleaseMetadata`]: `tag_name` > `version`, `body` > `notes`, `html_url` >
+/// `release_url`; a manifest may instead carry a single `sha256` with no `assets`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GitHubReleaseWireData {
+    #[serde(rename = "tag_name")]
+    pub tag_name: Option<serde_json::Value>,
+    #[serde(rename = "version")]
+    pub version: Option<serde_json::Value>,
+    #[serde(rename = "name")]
+    pub name: Option<serde_json::Value>,
+    #[serde(rename = "body")]
+    pub body: Option<serde_json::Value>,
+    #[serde(rename = "notes")]
+    pub notes: Option<serde_json::Value>,
+    #[serde(rename = "html_url")]
+    pub html_url: Option<serde_json::Value>,
+    #[serde(rename = "release_url")]
+    pub release_url: Option<serde_json::Value>,
+    #[serde(rename = "published_at")]
+    pub published_at: Option<serde_json::Value>,
+    #[serde(rename = "sha256")]
+    pub sha256: Option<serde_json::Value>,
+    #[serde(rename = "draft")]
+    pub draft: Option<serde_json::Value>,
+    #[serde(rename = "assets")]
+    pub assets: Option<Vec<serde_json::Value>>,
+}
+
+impl GitHubReleaseWireData {
+    /// Release tag (`tag_name` > `version`).
+    pub fn tag(&self) -> Option<&str> {
+        opt_str(self.tag_name.as_ref()).or_else(|| opt_str(self.version.as_ref()))
+    }
+
+    /// Release title (`name`), when non-empty after trimming.
+    pub fn title(&self) -> Option<&str> {
+        opt_str(self.name.as_ref()).filter(|s| !s.trim().is_empty())
+    }
+
+    /// Release notes (`body` > `notes`), trimmed.
+    pub fn notes(&self) -> &str {
+        opt_str(self.body.as_ref())
+            .or_else(|| opt_str(self.notes.as_ref()))
+            .unwrap_or("")
+            .trim()
+    }
+
+    /// Human URL (`html_url` > `release_url`), when non-empty.
+    pub fn html_url(&self) -> Option<&str> {
+        opt_str(self.html_url.as_ref())
+            .or_else(|| opt_str(self.release_url.as_ref()))
+            .filter(|s| !s.is_empty())
+    }
+
+    /// Date part of `published_at`.
+    pub fn published_date(&self) -> &str {
+        opt_str(self.published_at.as_ref())
+            .unwrap_or("")
+            .split('T')
+            .next()
+            .unwrap_or("")
+    }
+
+    /// Whether the release is a draft.
+    pub fn is_draft(&self) -> bool {
+        self.draft
+            .as_ref()
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// Release assets.
+    pub fn assets(&self) -> &[serde_json::Value] {
+        self.assets.as_deref().unwrap_or_default()
+    }
+
+    /// Whether the payload carried an `assets` key at all (even an empty array).
+    pub fn has_assets_key(&self) -> bool {
+        self.assets.is_some()
+    }
+
+    /// Manifest-level `sha256`, validated as 64 hex digits and lower-cased.
+    pub fn manifest_sha256(&self) -> Option<String> {
+        opt_str(self.sha256.as_ref())
+            .filter(|h| h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+            .map(|h| h.to_ascii_lowercase())
+    }
+}
+
+/// One asset of a GitHub release.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "name": "alolite-0.4.2-x86_64.AppImage",
+///   "browser_download_url": "https://github.com/ngxc/…/alolite-0.4.2-x86_64.AppImage",
+///   "size": 18432000,
+///   "digest": "sha256:<redacted>",
+///   "sha256": "<redacted>"
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Yields the best-scoring platform asset plus its checksum; `sha256` (manifest form) wins over
+/// the API's `digest: "sha256:…"` form.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GitHubAssetWireData {
+    #[serde(rename = "name")]
+    pub name: Option<serde_json::Value>,
+    #[serde(rename = "browser_download_url")]
+    pub browser_download_url: Option<serde_json::Value>,
+    #[serde(rename = "size")]
+    pub size: Option<serde_json::Value>,
+    #[serde(rename = "digest")]
+    pub digest: Option<serde_json::Value>,
+    #[serde(rename = "sha256")]
+    pub sha256: Option<serde_json::Value>,
+}
+
+impl GitHubAssetWireData {
+    /// Asset file name (empty when absent).
+    pub fn name(&self) -> &str {
+        self.name
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+    }
+
+    /// Download URL (empty when absent).
+    pub fn download_url(&self) -> &str {
+        self.browser_download_url
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+    }
+
+    /// Asset size in bytes.
+    pub fn size(&self) -> u64 {
+        self.size
+            .as_ref()
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0)
+    }
+
+    /// Checksum (`sha256` > `digest` without its `sha256:` prefix), validated as 64 hex digits.
+    pub fn sha256(&self) -> Option<String> {
+        self.sha256
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .or_else(|| {
+                self.digest
+                    .as_ref()
+                    .and_then(serde_json::Value::as_str)
+                    .and_then(|d| d.strip_prefix("sha256:"))
+            })
+            .filter(|h| h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+            .map(|h| h.to_ascii_lowercase())
+    }
+}
+
 /// Metadata parsed from GitHub Releases REST API (`/repos/{owner}/{repo}/releases/latest`)
 /// or the static `latest.json` release manifest.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,7 +209,7 @@ pub struct GitHubReleaseMetadata {
 }
 
 /// UI-agnostic update metadata returned by [`fetch_github_latest_release`].
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
 pub struct UpdateCheckResult {
     pub current_version: String,
     pub latest_version: String,
@@ -142,45 +330,24 @@ pub fn parse_github_release_value(
     target_os: &str,
     target_arch: &str,
 ) -> GitHubReleaseMetadata {
-    let raw_tag = rel
-        .get("tag_name")
-        .or_else(|| rel.get("version"))
-        .and_then(|v| v.as_str())
-        .unwrap_or(current_ver);
+    let release = GitHubReleaseWireData::from_value(rel);
+    let raw_tag = release.tag().unwrap_or(current_ver);
     let latest_ver = raw_tag.trim().trim_start_matches(['v', 'V']).to_string();
     let has_update = is_newer_semver(&latest_ver, current_ver);
 
-    let release_title = rel
-        .get("name")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.trim().is_empty())
+    let release_title = release
+        .title()
         .map(str::to_string)
         .unwrap_or_else(|| format!("alolite v{latest_ver}"));
 
-    let release_notes = rel
-        .get("body")
-        .or_else(|| rel.get("notes"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .trim()
-        .to_string();
+    let release_notes = release.notes().to_string();
 
-    let html_url = rel
-        .get("html_url")
-        .or_else(|| rel.get("release_url"))
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty())
+    let html_url = release
+        .html_url()
         .map(str::to_string)
         .unwrap_or_else(|| format!("https://github.com/{repo_slug}/releases/tag/v{latest_ver}"));
 
-    let published_at = rel
-        .get("published_at")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .split('T')
-        .next()
-        .unwrap_or("")
-        .to_string();
+    let published_at = release.published_date().to_string();
 
     let mut best_url: Option<String> = None;
     let mut best_name: Option<String> = None;
@@ -189,44 +356,29 @@ pub fn parse_github_release_value(
     let mut best_score: i32 = 0;
     let mut sha256sums_url: Option<String> = None;
 
-    if let Some(assets) = rel.get("assets").and_then(|v| v.as_array()) {
-        for a in assets {
-            let name = a.get("name").and_then(|v| v.as_str()).unwrap_or("");
-            let dl = a
-                .get("browser_download_url")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let sz = a.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
-            if name.eq_ignore_ascii_case("SHA256SUMS.txt") && !dl.is_empty() {
-                sha256sums_url = Some(dl.to_string());
-                continue;
-            }
-            if name.is_empty() || dl.is_empty() {
-                continue;
-            }
-            let score = select_platform_asset_score(name, target_os, target_arch);
-            if score > best_score {
-                best_score = score;
-                best_url = Some(dl.to_string());
-                best_name = Some(name.to_string());
-                best_size = sz;
-                // Extract SHA-256 from `latest.json` (`sha256`) or GitHub API asset (`digest: "sha256:..."`)
-                best_sha256 = a
-                    .get("sha256")
-                    .and_then(|v| v.as_str())
-                    .or_else(|| {
-                        a.get("digest")
-                            .and_then(|v| v.as_str())
-                            .and_then(|d| d.strip_prefix("sha256:"))
-                    })
-                    .filter(|h| h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
-                    .map(|h| h.to_ascii_lowercase());
-            }
+    for raw in release.assets() {
+        let asset = GitHubAssetWireData::from_value(raw);
+        let name = asset.name();
+        let dl = asset.download_url();
+        if name.eq_ignore_ascii_case("SHA256SUMS.txt") && !dl.is_empty() {
+            sha256sums_url = Some(dl.to_string());
+            continue;
+        }
+        if name.is_empty() || dl.is_empty() {
+            continue;
+        }
+        let score = select_platform_asset_score(name, target_os, target_arch);
+        if score > best_score {
+            best_score = score;
+            best_url = Some(dl.to_string());
+            best_name = Some(name.to_string());
+            best_size = asset.size();
+            best_sha256 = asset.sha256();
         }
     }
 
     // Legacy single-asset `latest.json` fallback when `assets` array is absent
-    if best_url.is_none() && rel.get("assets").is_none() {
+    if best_url.is_none() && !release.has_assets_key() {
         let fallback_name = match target_os {
             "windows" => format!("alolite-{latest_ver}-portable-windows-x86_64.exe"),
             "macos" => match target_arch {
@@ -240,11 +392,7 @@ pub fn parse_github_release_value(
             "https://github.com/{repo_slug}/releases/download/v{latest_ver}/{fallback_name}"
         ));
         best_name = Some(fallback_name);
-        best_sha256 = rel
-            .get("sha256")
-            .and_then(|v| v.as_str())
-            .filter(|h| h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
-            .map(|h| h.to_ascii_lowercase());
+        best_sha256 = release.manifest_sha256();
     }
 
     GitHubReleaseMetadata {
@@ -304,9 +452,7 @@ pub async fn fetch_github_latest_release() -> Result<UpdateCheckResult, String> 
                         .as_array()
                         .and_then(|a| {
                             a.iter()
-                                .find(|r| {
-                                    !r.get("draft").and_then(|v| v.as_bool()).unwrap_or(false)
-                                })
+                                .find(|r| !GitHubReleaseWireData::from_value(r).is_draft())
                                 .or_else(|| a.first())
                         })
                         .cloned()

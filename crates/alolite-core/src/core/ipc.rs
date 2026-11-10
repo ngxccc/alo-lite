@@ -18,21 +18,21 @@ use crate::protocol::social::{FriendshipStatus, PhoneLookupResult};
 use crate::services::account_manager::AccountProfile;
 use crate::services::updater::UpdateCheckResult;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct PinnedPackMeta {
     pub cate_id: u64,
     pub name: String,
     pub items: Vec<StickerItem>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct ImportSummaryDto {
     pub threads_imported: usize,
     pub messages_imported: usize,
     pub source_path: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct DevCryptoInfo {
     pub zpw_ver: &'static str,
     pub zpw_type: &'static str,
@@ -41,7 +41,7 @@ pub struct DevCryptoInfo {
     pub param_cipher_key_len: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct DevDiagnosticsSnapshot {
     pub dev_mode: bool,
     pub logs: Vec<LogEntry>,
@@ -50,7 +50,7 @@ pub struct DevDiagnosticsSnapshot {
 }
 
 /// Complete initial state loaded once when an external UI (Tauri WebView) mounts.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct CoreBootstrapSnapshot {
     pub app_version: &'static str,
     pub dev_mode: bool,
@@ -119,7 +119,7 @@ pub fn detect_inline_video_support() -> (bool, Option<String>) {
     (true, None)
 }
 /// JSON-serializable projection of [`CoreEvent`] for Tauri WebView IPC.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(tag = "type", content = "payload")]
 pub enum CoreEventDto {
     NotificationAuthorization {

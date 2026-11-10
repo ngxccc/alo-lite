@@ -1,16 +1,17 @@
 //! Text/RTF messaging, quoted replies, forwarding, delete-for-me, recall, and typing indicators.
 
+use crate::protocol::wire::{
+    chat_send_host, error_text, next_client_message_id, obj, require_login, strip_group_prefix,
+    ActionAck, SendMessageReceipt, WireData,
+};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::stickers::send_sticker_with_client_id;
 use super::threads::ChatMessage;
 use crate::clock::now_ms;
 use crate::protocol::session::{Session, SessionError};
-use crate::protocol::wire::{
-    chat_send_host, next_client_message_id, obj, require_login, strip_group_prefix, ActionAck,
-    SendMessageReceipt,
-};
 
 /// Convert inline Markdown (`**bold**`, `__underline__`, `~~strikethrough~~`, `*italic*`) and
 /// line-prefix styles (`## `, `- `, `1. `) into Zalo PC's native `(clean_text, Option<textProperties>)`.
@@ -108,14 +109,67 @@ pub fn extract_zalo_rtf_text_properties(raw: &str) -> (String, Option<String>) {
     }
 }
 
+/// Incoming `rtf` rich-text payload, sent as a JSON-encoded `params` string.
+///
+/// # Wire Response Example
+/// ```json
+/// { "styles": [ { "start": 0, "len": 4, "st": "b" } ], "ver": 0 }
+/// ```
+///
+/// # Core Transformation
+/// Style spans are measured in UTF-16 code units, matching Zalo's `title` indexing.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RtfParamsWireData {
+    #[serde(rename = "styles")]
+    pub styles: Option<Vec<Value>>,
+}
+
+impl RtfParamsWireData {
+    /// Decode the JSON-encoded `params` string; `None` when it is not an object.
+    pub fn parse(params_str: &str) -> Option<Self> {
+        serde_json::from_str(params_str.trim()).ok()
+    }
+
+    /// Raw style spans in wire order.
+    pub fn styles(&self) -> &[Value] {
+        self.styles.as_deref().unwrap_or_default()
+    }
+}
+
+/// One `styles` span of an incoming `rtf` payload.
+///
+/// # Wire Response Example
+/// ```json
+/// { "start": 0, "len": 4, "st": "b" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RtfStyleWireData {
+    #[serde(rename = "start")]
+    pub start: Option<Value>,
+    #[serde(rename = "len")]
+    pub len: Option<Value>,
+    #[serde(rename = "st")]
+    pub style: Option<Value>,
+}
+
+impl RtfStyleWireData {
+    /// `(start, end, style)` when all three fields are present and well-typed.
+    pub fn span(&self) -> Option<(usize, usize, String)> {
+        let start = self.start.as_ref()?.as_u64()? as usize;
+        let len = self.len.as_ref()?.as_u64()? as usize;
+        let style = self.style.as_ref()?.as_str()?.to_string();
+        Some((start, len, style))
+    }
+}
+
 /// Reconstruct Markdown markers from Zalo's incoming `rtf` rich-text payload.
 pub(super) fn format_incoming_zalo_rtf(title: &str, params_str: &str) -> String {
-    let Ok(p_val) = serde_json::from_str::<Value>(params_str.trim()) else {
+    let Some(params) = RtfParamsWireData::parse(params_str) else {
         return title.to_string();
     };
-    let Some(styles) = p_val.get("styles").and_then(Value::as_array) else {
-        return title.to_string();
-    };
+    let styles = params.styles();
     if styles.is_empty() {
         return title.to_string();
     }
@@ -123,9 +177,7 @@ pub(super) fn format_incoming_zalo_rtf(title: &str, params_str: &str) -> String 
     let mut spans: Vec<(usize, usize, String)> = styles
         .iter()
         .filter_map(|s| {
-            let start = s.get("start")?.as_u64()? as usize;
-            let len = s.get("len")?.as_u64()? as usize;
-            let st = s.get("st")?.as_str()?.to_string();
+            let (start, len, st) = RtfStyleWireData::from_value(s).span()?;
             (len > 0 && start + len <= u16_units.len()).then_some((start, start + len, st))
         })
         .collect();
@@ -171,13 +223,10 @@ pub(super) fn format_incoming_zalo_rtf(title: &str, params_str: &str) -> String 
 }
 
 fn check_session_error(resp: &Value) -> Result<()> {
-    if let Some(code) = resp.get("error_code").and_then(Value::as_i64) {
+    let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(resp);
+    if let Some(code) = env.code_opt() {
         if code != 0 {
-            let msg = resp
-                .get("error_message")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown");
-            return Err(SessionError::new(code, msg).into());
+            return Err(SessionError::new(code, error_text(env.message())).into());
         }
     }
     Ok(())
@@ -345,7 +394,7 @@ pub async fn send_quote_message_with_client_id(
             let url = format!("{}/api/group/quote?{}", s.domains.group, s.common_params());
             let resp = s.post_form(&url, format!("params={params}")).await?;
             let resp = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-            if resp.get("error_code").and_then(Value::as_i64).unwrap_or(0) != 0 {
+            if crate::protocol::wire::ErrorEnvelopeWireData::parse(&resp).code() != 0 {
                 anyhow::bail!("quote error");
             }
             Ok(resp)
@@ -375,7 +424,7 @@ pub async fn send_quote_message_with_client_id(
             );
             let resp = s.post_form(&url, format!("params={params}")).await?;
             let resp = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-            if resp.get("error_code").and_then(Value::as_i64).unwrap_or(0) != 0 {
+            if crate::protocol::wire::ErrorEnvelopeWireData::parse(&resp).code() != 0 {
                 anyhow::bail!("quote error");
             }
             Ok(resp)

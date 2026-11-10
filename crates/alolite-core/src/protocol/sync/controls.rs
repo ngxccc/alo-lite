@@ -2,14 +2,17 @@
 
 use std::collections::HashMap;
 
+use crate::protocol::wire::{
+    opt_text, require_login, val_i64, ActionAck, ErrorEnvelopeWireData, WireData,
+};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::latest_mobile_temp_key;
 use super::v2_proto::{generate_sync_v2_ed25519_public_key, generate_sync_v2_keys};
 use crate::protocol::registry;
 use crate::protocol::session::Session;
-use crate::protocol::wire::{require_login, val_i64, ActionAck};
 
 /// Request mobile message sync (`pullMobileMsg`, cmd `12000`, #68, #73).
 ///
@@ -43,7 +46,7 @@ pub async fn request_phone_sync_with_temp_key(
         .api_get(registry::sync::PULL_MOBILE_MSG, Some(&body))
         .await
     {
-        if dec.get("error_code").and_then(Value::as_i64) == Some(0) {
+        if ErrorEnvelopeWireData::parse(&dec).code_opt() == Some(0) {
             return Ok(ActionAck::from_wire(&dec));
         }
     }
@@ -214,7 +217,7 @@ pub async fn resolve_znoise_ids(
             .api_post(registry::sync::ZNOISE, Some(&body))
             .await
             .unwrap_or(Value::Null);
-        if dec.get("error_code").and_then(Value::as_i64) != Some(0) {
+        if ErrorEnvelopeWireData::parse(&dec).code_opt() != Some(0) {
             if let Ok(fallback_dec) = s
                 .api_post(registry::sync::ZNOISE_PROFILE_FALLBACK, Some(&body))
                 .await
@@ -224,18 +227,15 @@ pub async fn resolve_znoise_ids(
         }
 
         let data_node = crate::protocol::wire::unwrap_data(&dec);
-        if let Some(arr) = data_node.get("fids").and_then(Value::as_array) {
-            for (&fid, mapped) in f_batch.iter().zip(arr.iter()) {
-                if let Some(uid) = mapped.as_str().map(str::trim).filter(|u| !u.is_empty()) {
-                    fid_map.insert(fid, uid.to_string());
-                }
+        let resolved = ZnoiseProfileWireData::from_value(data_node);
+        for (&fid, mapped) in f_batch.iter().zip(resolved.fids().iter()) {
+            if let Some(uid) = mapped_uid(mapped) {
+                fid_map.insert(fid, uid.to_string());
             }
         }
-        if let Some(arr) = data_node.get("gids").and_then(Value::as_array) {
-            for (&gid, mapped) in g_batch.iter().zip(arr.iter()) {
-                if let Some(tid) = mapped.as_str().map(str::trim).filter(|u| !u.is_empty()) {
-                    gid_map.insert(gid, tid.to_string());
-                }
+        for (&gid, mapped) in g_batch.iter().zip(resolved.gids().iter()) {
+            if let Some(tid) = mapped_uid(mapped) {
+                gid_map.insert(gid, tid.to_string());
             }
         }
     }
@@ -274,45 +274,226 @@ pub enum MobileSyncControlEvent {
     },
 }
 
+/// Trimmed non-empty uid from one `/api/znoise` mapping entry.
+fn mapped_uid(v: &Value) -> Option<&str> {
+    v.as_str().map(str::trim).filter(|u| !u.is_empty())
+}
+
+/// `/api/znoise` (cmd `12006`) profile-resolution payload.
+///
+/// # Wire Response Example
+/// ```json
+/// { "fids": [ "1234567890" ], "gids": [ "g9876543210" ] }
+/// ```
+///
+/// # Core Transformation
+/// Entries are positional: they map one-to-one onto the requested `fids` / `gids` batches, so
+/// they are zipped rather than keyed.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ZnoiseProfileWireData {
+    #[serde(rename = "fids")]
+    pub fids: Option<Vec<Value>>,
+    #[serde(rename = "gids")]
+    pub gids: Option<Vec<Value>>,
+}
+
+impl ZnoiseProfileWireData {
+    /// Resolved friend uids, positionally aligned with the request.
+    pub fn fids(&self) -> &[Value] {
+        self.fids.as_deref().unwrap_or_default()
+    }
+
+    /// Resolved group ids, positionally aligned with the request.
+    pub fn gids(&self) -> &[Value] {
+        self.gids.as_deref().unwrap_or_default()
+    }
+}
+
+/// Control item head of a mobile-sync event.
+///
+/// # Wire Response Example
+/// ```json
+/// { "act_type": "transfer_msg", "act": "user_confirm", "data": "{\"user_action\":1}" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MobileSyncControlWireData {
+    #[serde(rename = "act_type")]
+    pub act_type: Option<Value>,
+    #[serde(rename = "act")]
+    pub act: Option<Value>,
+    #[serde(rename = "data")]
+    pub data: Option<Value>,
+}
+
+impl MobileSyncControlWireData {
+    /// `act_type` as sent.
+    pub fn act_type(&self) -> &str {
+        self.act_type
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+    }
+
+    /// `act` as sent.
+    pub fn act(&self) -> &str {
+        self.act
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+    }
+
+    /// `data` decoded from its JSON-string form when needed.
+    pub fn parsed_data(&self) -> MobileSyncDataWireData {
+        MobileSyncDataWireData::from_value(&crate::protocol::wire::parse_control_data(
+            self.data.as_ref(),
+        ))
+    }
+}
+
+/// `data` object of a mobile-sync control item.
+///
+/// # Wire Response Example
+/// ```json
+/// { "syncId": "sync_v2_batch", "msgUrl": "https://s3.example/batch", "batchType": 1, "isLast": 1 }
+/// ```
+///
+/// # Core Transformation
+/// Every field is optional across the `transfer_msg` / `syncmsgmb` / `transfer_sync2` variants,
+/// so accessors carry the per-branch defaults instead of the caller.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MobileSyncDataWireData {
+    #[serde(rename = "temp_key")]
+    pub temp_key: Option<Value>,
+    #[serde(rename = "user_action")]
+    pub user_action: Option<Value>,
+    #[serde(rename = "status")]
+    pub status: Option<Value>,
+    #[serde(rename = "syncId")]
+    pub sync_id: Option<Value>,
+    #[serde(rename = "msgUrl")]
+    pub msg_url: Option<Value>,
+    #[serde(rename = "url")]
+    pub url: Option<Value>,
+    #[serde(rename = "batchType")]
+    pub batch_type: Option<Value>,
+    #[serde(rename = "isLast")]
+    pub is_last: Option<Value>,
+    #[serde(rename = "file_name")]
+    pub file_name: Option<Value>,
+    #[serde(rename = "encrypted_key")]
+    pub encrypted_key: Option<Value>,
+    #[serde(rename = "checksum_code")]
+    pub checksum_code: Option<Value>,
+    #[serde(rename = "checksum")]
+    pub checksum: Option<Value>,
+    #[serde(rename = "uid")]
+    pub uid: Option<Value>,
+}
+
+impl MobileSyncDataWireData {
+    /// Trimmed non-empty `temp_key`.
+    pub fn temp_key(&self) -> Option<&str> {
+        self.temp_key
+            .as_ref()
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+    }
+
+    /// `user_action` as an integer (`-1` when absent).
+    pub fn user_action(&self) -> i64 {
+        val_i64(self.user_action.as_ref()).unwrap_or(-1)
+    }
+
+    /// Transfer `status` as an integer (`-1` when absent).
+    pub fn status(&self) -> i64 {
+        val_i64(self.status.as_ref()).unwrap_or(-1)
+    }
+
+    /// `syncId`, falling back to `default`.
+    pub fn sync_id(&self, default: &str) -> String {
+        self.sync_id
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or(default)
+            .to_string()
+    }
+
+    /// Batch URL (`msgUrl` > `url`).
+    pub fn batch_url(&self) -> String {
+        opt_text(self.msg_url.as_ref().or(self.url.as_ref())).to_string()
+    }
+
+    /// Plain `url`.
+    pub fn url(&self) -> String {
+        opt_text(self.url.as_ref()).to_string()
+    }
+
+    /// `batchType` as a byte.
+    pub fn batch_type(&self) -> u8 {
+        self.batch_type
+            .as_ref()
+            .and_then(Value::as_i64)
+            .unwrap_or(0) as u8
+    }
+
+    /// Whether `isLast` is `1`.
+    pub fn is_last(&self) -> bool {
+        self.is_last.as_ref().and_then(Value::as_i64).unwrap_or(0) == 1
+    }
+
+    /// Backup file name.
+    pub fn file_name(&self) -> String {
+        opt_text(self.file_name.as_ref()).to_string()
+    }
+
+    /// Backup file encryption key.
+    pub fn encrypted_key(&self) -> String {
+        opt_text(self.encrypted_key.as_ref()).to_string()
+    }
+
+    /// Checksum (`checksum_code` > `checksum`).
+    pub fn checksum(&self) -> String {
+        opt_text(self.checksum_code.as_ref().or(self.checksum.as_ref())).to_string()
+    }
+
+    /// Positive account `uid`.
+    pub fn raw_uid(&self) -> Option<i64> {
+        val_i64(self.uid.as_ref()).filter(|&n| n > 0)
+    }
+}
+
 /// Extract `transfer_msg` / `syncmsgmb` / `transfer_sync2` events from a control payload.
 pub fn extract_mobile_sync_controls(data_node: &Value) -> Vec<MobileSyncControlEvent> {
     let mut out = Vec::new();
     for c in crate::protocol::wire::iter_control_items(data_node) {
-        let act_type = c
-            .get("act_type")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
+        let control = MobileSyncControlWireData::from_value(c);
+        let act_type = control.act_type();
         if !matches!(act_type, "transfer_msg" | "syncmsgmb" | "transfer_sync2") {
             continue;
         }
-        let act = c.get("act").and_then(Value::as_str).unwrap_or_default();
-        let parsed_data = crate::protocol::wire::parse_control_data(c.get("data"));
+        let act = control.act();
+        let parsed_data = control.parsed_data();
         match act {
             "transfer_after_login" => {
-                if let Some(tk) = parsed_data
-                    .get("temp_key")
-                    .and_then(Value::as_str)
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                {
+                if let Some(tk) = parsed_data.temp_key() {
                     out.push(MobileSyncControlEvent::TransferAfterLogin {
                         temp_key: tk.to_string(),
                     });
                 }
             }
-            "user_confirm" => match val_i64(parsed_data.get("user_action")).unwrap_or(-1) {
+            "user_confirm" => match parsed_data.user_action() {
                 1 | 3 => out.push(MobileSyncControlEvent::UserConfirmed),
                 2 => out.push(MobileSyncControlEvent::MobileBusyRestoring),
                 0 => out.push(MobileSyncControlEvent::UserRejected),
                 _ => {}
             },
             "transfer_status" => {
-                let st = val_i64(parsed_data.get("status")).unwrap_or(-1);
-                let sid = parsed_data
-                    .get("syncId")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
+                let st = parsed_data.status();
+                let sid = parsed_data.sync_id("");
                 match st {
                     3 => out.push(MobileSyncControlEvent::WaitingConfirmOnPhone { sync_id: sid }),
                     4 | 5 => out.push(MobileSyncControlEvent::UserConfirmed),
@@ -322,67 +503,27 @@ pub fn extract_mobile_sync_controls(data_node: &Value) -> Vec<MobileSyncControlE
                 }
             }
             "upload_batch" => {
-                let url = parsed_data
-                    .get("msgUrl")
-                    .or_else(|| parsed_data.get("url"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                let sid = parsed_data
-                    .get("syncId")
-                    .and_then(Value::as_str)
-                    .unwrap_or("sync_v2_batch")
-                    .to_string();
-                let batch_type = parsed_data
-                    .get("batchType")
-                    .and_then(Value::as_i64)
-                    .unwrap_or(0) as u8;
-                let is_last = parsed_data
-                    .get("isLast")
-                    .and_then(Value::as_i64)
-                    .unwrap_or(0)
-                    == 1;
+                let url = parsed_data.batch_url();
                 if !url.is_empty() {
                     out.push(MobileSyncControlEvent::SyncV2Batch {
                         url,
-                        sync_id: sid,
-                        batch_type,
-                        is_last,
+                        sync_id: parsed_data.sync_id("sync_v2_batch"),
+                        batch_type: parsed_data.batch_type(),
+                        is_last: parsed_data.is_last(),
                     });
                 } else {
                     out.push(MobileSyncControlEvent::MobileBusyRestoring);
                 }
             }
             "syncmsg_info" => {
-                let url = parsed_data
-                    .get("url")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                let file_name = parsed_data
-                    .get("file_name")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                let encrypted_key = parsed_data
-                    .get("encrypted_key")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                let checksum = parsed_data
-                    .get("checksum_code")
-                    .or_else(|| parsed_data.get("checksum"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                let raw_uid = val_i64(parsed_data.get("uid")).filter(|&n| n > 0);
+                let url = parsed_data.url();
                 if !url.is_empty() {
                     out.push(MobileSyncControlEvent::BackupReady {
                         url,
-                        file_name,
-                        encrypted_key,
-                        checksum,
-                        raw_uid,
+                        file_name: parsed_data.file_name(),
+                        encrypted_key: parsed_data.encrypted_key(),
+                        checksum: parsed_data.checksum(),
+                        raw_uid: parsed_data.raw_uid(),
                     });
                 }
             }

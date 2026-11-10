@@ -1,9 +1,106 @@
 //! Mute metadata, mute API endpoints, mute control events, and snapshots.
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::marks::string;
 use crate::protocol::messaging::threads::Thread;
+
+use crate::protocol::wire::WireData;
+/// String-or-numeric coercion mirroring `string` for an already-selected value.
+fn value_string(v: Option<&Value>) -> Option<String> {
+    v.and_then(|v| {
+        v.as_str()
+            .map(str::to_owned)
+            .or_else(|| v.as_u64().map(|n| n.to_string()))
+    })
+}
+
+/// One mute entry inside a `getmute` payload (`chatEntries` / `groupChatEntries`, cmd `11280`).
+///
+/// # Wire Response Example
+/// ```json
+/// { "id": "g1234567890", "muteMode": 1, "duration": 3600, "startTime": 1731215400 }
+/// ```
+///
+/// # Core Transformation
+/// Feeds `Thread::unread.muted` / `muted_until` and `AppSettings::muted_threads` (`-1` = indefinite).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MuteEntryWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "muteMode")]
+    pub mute_mode: Option<Value>,
+    #[serde(rename = "duration")]
+    pub duration: Option<Value>,
+    #[serde(rename = "startTime")]
+    pub start_time: Option<Value>,
+    #[serde(rename = "systemTime")]
+    pub system_time: Option<Value>,
+}
+
+impl MuteEntryWireData {
+    /// Entry id (`id`), accepting string or numeric wire forms.
+    pub fn id(&self) -> Option<String> {
+        value_string(self.id.as_ref())
+    }
+
+    /// `muteMode` as an integer.
+    pub fn mute_mode(&self) -> Option<i64> {
+        self.mute_mode.as_ref().and_then(Value::as_i64)
+    }
+
+    /// Mute `duration` in seconds (`-1` means indefinite).
+    pub fn duration(&self) -> Option<i64> {
+        self.duration.as_ref().and_then(Value::as_i64)
+    }
+
+    /// `startTime`, falling back to `systemTime`.
+    pub fn start_time(&self) -> Option<i64> {
+        self.start_time
+            .as_ref()
+            .and_then(Value::as_i64)
+            .or_else(|| self.system_time.as_ref().and_then(Value::as_i64))
+    }
+}
+
+/// Payload of `/api/social/profile/getmute` (cmd `11280`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "chatEntries": [ { "id": "1234567890", "muteMode": 1, "duration": -1 } ],
+///   "groupChatEntries": [ { "id": "g1234567890", "muteMode": 1, "duration": 3600 } ]
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Each entry becomes a [`MuteEntryWireData`]; a missing list stays `None` so callers can skip
+/// the payload entirely (matching the shipped client).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MuteSnapshotWireData {
+    #[serde(rename = "chatEntries")]
+    pub chat_entries: Option<Vec<Value>>,
+    #[serde(rename = "groupChatEntries")]
+    pub group_chat_entries: Option<Vec<Value>>,
+}
+
+impl MuteSnapshotWireData {
+    /// Peer (1-1) entries, or `None` when `chatEntries` is absent.
+    pub fn peers(&self) -> Option<Vec<MuteEntryWireData>> {
+        self.chat_entries
+            .as_ref()
+            .map(|arr| arr.iter().map(MuteEntryWireData::from_value).collect())
+    }
+
+    /// Group entries, or `None` when `groupChatEntries` is absent.
+    pub fn groups(&self) -> Option<Vec<MuteEntryWireData>> {
+        self.group_chat_entries
+            .as_ref()
+            .map(|arr| arr.iter().map(MuteEntryWireData::from_value).collect())
+    }
+}
 
 fn unwrap_mute_payload<'a>(data: &'a Value, decoded: &'a mut Option<Value>) -> &'a Value {
     let raw = data.get("data").unwrap_or(data);
@@ -22,36 +119,27 @@ fn unwrap_mute_payload<'a>(data: &'a Value, decoded: &'a mut Option<Value>) -> &
 pub fn merge_mute_metadata(threads: &mut [Thread], data: &Value) {
     let mut decoded = None;
     let payload = unwrap_mute_payload(data, &mut decoded);
-    let (Some(peers), Some(groups)) = (
-        payload.get("chatEntries").and_then(Value::as_array),
-        payload.get("groupChatEntries").and_then(Value::as_array),
-    ) else {
+    let wire = MuteSnapshotWireData::from_value(payload);
+    let (Some(peers), Some(groups)) = (wire.peers(), wire.groups()) else {
         return;
     };
     for thread in threads {
-        let entries = if thread.is_group { groups } else { peers };
+        let entries = if thread.is_group { &groups } else { &peers };
         let clean_tid = thread
             .id
             .trim_start_matches("group_")
             .trim_start_matches('g')
             .trim_start_matches('G');
-        let entry = entries
-            .iter()
-            .find(|e| string(e, "id").is_some_and(|id| id.trim_start_matches('g') == clean_tid));
-        let mode = entry
-            .and_then(|e| e.get("muteMode"))
-            .and_then(Value::as_i64);
+        let entry = entries.iter().find(|e| {
+            e.id()
+                .is_some_and(|id| id.trim_start_matches('g') == clean_tid)
+        });
+        let mode = entry.and_then(|e| e.mute_mode());
         if mode.is_some_and(|m| m != 0 && m != 1) {
             continue;
         }
-        let duration = entry
-            .and_then(|e| e.get("duration"))
-            .and_then(Value::as_i64);
-        let start = entry.and_then(|e| {
-            e.get("startTime")
-                .or_else(|| e.get("systemTime"))
-                .and_then(Value::as_i64)
-        });
+        let duration = entry.and_then(|e| e.duration());
+        let start = entry.and_then(|e| e.start_time());
         let until = start.zip(duration).and_then(|(start, duration)| {
             if duration >= 0 {
                 start.checked_add(duration)
@@ -80,31 +168,25 @@ pub fn extract_mute_map(
 ) -> Option<std::collections::HashMap<String, i64>> {
     let mut decoded = None;
     let payload = unwrap_mute_payload(data, &mut decoded);
-    let (Some(peers), Some(groups)) = (
-        payload.get("chatEntries").and_then(Value::as_array),
-        payload.get("groupChatEntries").and_then(Value::as_array),
-    ) else {
+    let wire = MuteSnapshotWireData::from_value(payload);
+    let (Some(peers), Some(groups)) = (wire.peers(), wire.groups()) else {
         return None;
     };
     let mut map = std::collections::HashMap::new();
-    for (entries, is_group) in [(peers, false), (groups, true)] {
+    for (entries, is_group) in [(&peers, false), (&groups, true)] {
         for entry in entries {
-            let Some(raw_id) = string(entry, "id").filter(|s| !s.is_empty() && s != "0") else {
+            let Some(raw_id) = entry.id().filter(|s| !s.is_empty() && s != "0") else {
                 continue;
             };
-            let mode = entry.get("muteMode").and_then(Value::as_i64).unwrap_or(1);
+            let mode = entry.mute_mode().unwrap_or(1);
             if mode != 1 {
                 continue;
             }
-            let duration = entry.get("duration").and_then(Value::as_i64).unwrap_or(-1);
+            let duration = entry.duration().unwrap_or(-1);
             if duration == 0 {
                 continue;
             }
-            let start = entry
-                .get("startTime")
-                .or_else(|| entry.get("systemTime"))
-                .and_then(Value::as_i64)
-                .unwrap_or(now_unix);
+            let start = entry.start_time().unwrap_or(now_unix);
             let until = if duration < 0 {
                 -1
             } else {
@@ -204,7 +286,7 @@ pub async fn get_mute_snapshot(
 }
 
 /// Real-time mute/unmute control notification (`act_type: "mute"`, `act: "set" | "unset"`, `#67`).
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
 pub struct MuteControlEvent {
     pub thread_id: String,
     pub is_group: bool,

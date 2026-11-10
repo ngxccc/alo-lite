@@ -1,6 +1,6 @@
 //! Ephemeral RSA-2048 Sync V1 keypair and `ZDB4.0` AES-256-CBC + XZ/LZMA container unpacker.
 //!
-//! Pure byte-to-byte cryptographic and container parser (`re-notes/12_message_sync_and_e2ee_protocol.md` §3.2).
+//! Pure byte-to-byte cryptographic and container parser (`re-notes/12-message-sync-and-e2ee-protocol.md` §3.2).
 
 use std::io::Cursor;
 use std::sync::Mutex;

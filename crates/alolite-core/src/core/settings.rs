@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(default)]
 pub struct AppSettings {
     // 1. Cài đặt chung

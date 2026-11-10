@@ -36,7 +36,9 @@ book/
 
 # Local agent, IDE & environment configs
 .claude/
-.omp/
+.omp/*
+!.omp/commands/
+!.omp/prompts/
 .agents/
 .opencode/
 .scratch/

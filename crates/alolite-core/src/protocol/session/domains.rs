@@ -81,7 +81,7 @@ pub(super) fn default_sticker() -> String {
         .into()
 }
 
-/// [O] `re-notes/02_chat_data.md`: `zpw_ws` = `wss://ws{1..8}-msg.chat.zalo.me`.
+/// \[O\] `re-notes/02-chat-data.md`: `zpw_ws` = `wss://ws{1..8}-msg.chat.zalo.me`.
 pub(super) fn default_ws() -> Vec<String> {
     crate::endpoints::default_ws_endpoints()
 }

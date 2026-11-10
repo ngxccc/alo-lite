@@ -105,7 +105,9 @@ impl ZaloClient {
     pub async fn get_mini_profiles(
         &self,
         user_ids: &[String],
-    ) -> Result<serde_json::Map<String, Value>> {
+    ) -> Result<
+        std::collections::BTreeMap<String, crate::protocol::social::groups::MiniProfileWireData>,
+    > {
         let s = self.session.lock().await.clone();
         crate::protocol::social::groups::get_mini_profiles(&s, user_ids).await
     }
@@ -155,7 +157,7 @@ impl ZaloClient {
         &self,
         group_ids: &[String],
     ) -> Result<(
-        serde_json::Map<String, Value>,
+        std::collections::BTreeMap<String, crate::protocol::social::groups::GroupInfoWireData>,
         std::collections::HashSet<String>,
     )> {
         let s = self.session.lock().await.clone();

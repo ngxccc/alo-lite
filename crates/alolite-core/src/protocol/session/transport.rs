@@ -258,9 +258,11 @@ impl Session {
             return Ok(serde_json::json!({ "error_code": 0, "data": null }));
         }
         let v: Value = serde_json::from_str(&text).unwrap_or_else(|_| Value::String(text.clone()));
-        let code = v.get("error_code").and_then(Value::as_i64).unwrap_or(0);
-        if code != 0 {
-            let msg = v.get("error_message").and_then(Value::as_str).unwrap_or("");
+        let env: crate::protocol::wire::ErrorEnvelopeWireData =
+            serde_json::from_value(v.clone()).unwrap_or_default();
+        if env.code() != 0 {
+            let code = env.code();
+            let msg = env.message();
             crate::logger::log_request(
                 &method,
                 url,

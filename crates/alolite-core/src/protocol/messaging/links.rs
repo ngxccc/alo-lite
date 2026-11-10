@@ -1,5 +1,9 @@
 //! URL detection, `/api/message/parselink` resolution, safe OpenGraph HTML fallback, and link message sending.
 
+use crate::protocol::wire::{
+    chat_send_host, next_client_message_id, obj, opt_str, require_login, strip_group_prefix,
+    unwrap_data, SendMessageReceipt, WireData,
+};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -7,12 +11,8 @@ use serde_json::{json, Value};
 use super::send::{send_group_message_with_client_id, send_message_with_client_id};
 use crate::protocol::registry;
 use crate::protocol::session::Session;
-use crate::protocol::wire::{
-    chat_send_host, next_client_message_id, obj, require_login, strip_group_prefix, unwrap_data,
-    SendMessageReceipt,
-};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 pub struct LinkMetadata {
     pub url: String,
     pub title: String,
@@ -233,6 +233,55 @@ fn is_placeholder_zalo_thumb(thumb: &str) -> bool {
         || thumb.contains("aHR0cHM6Ly9yZXMtemFsby56YWRuLnZuL3VwbG9hZC9tZWRpYS8yMDE5LzEwLzE1L2ZlZWRfdGh1bWJfbGlua19fMV9fMTU3MTEzMzEyMjc3OF85Mzc4MC5wbmc=")
 }
 
+/// `data` object of `/api/message/parselink` (cmd `11285`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "title": "Zalo",
+///   "desc": "Ứng dụng nhắn tin",
+///   "thumb": "https://thumb.example/1",
+///   "src": "zalo.me"
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Fills [`LinkMetadata`]; values equal to the URL itself and placeholder thumbs are rejected by
+/// the caller rather than here.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LinkMetaWireData {
+    #[serde(rename = "title")]
+    pub title: Option<Value>,
+    #[serde(rename = "desc")]
+    pub desc: Option<Value>,
+    #[serde(rename = "thumb")]
+    pub thumb: Option<Value>,
+    #[serde(rename = "src")]
+    pub src: Option<Value>,
+}
+
+impl LinkMetaWireData {
+    pub fn title(&self) -> Option<&str> {
+        opt_str(self.title.as_ref()).map(str::trim)
+    }
+
+    /// Trimmed page description.
+    pub fn desc(&self) -> Option<&str> {
+        opt_str(self.desc.as_ref()).map(str::trim)
+    }
+
+    /// Trimmed thumbnail URL.
+    pub fn thumb(&self) -> Option<&str> {
+        opt_str(self.thumb.as_ref()).map(str::trim)
+    }
+
+    /// Trimmed source host.
+    pub fn src(&self) -> Option<&str> {
+        opt_str(self.src.as_ref()).map(str::trim)
+    }
+}
+
 /// Parse rich link metadata via `/api/message/parselink` (`cmd 11285`) with OpenGraph HTML fallback.
 ///
 /// # Errors
@@ -260,23 +309,23 @@ pub async fn parse_link_metadata(s: &Session, raw_url: &str) -> Result<LinkMetad
             ("imei", json!(s.imei)),
         ]);
         if let Ok(dec) = s.api_get(registry::message::PARSE_LINK, Some(&body)).await {
-            let d = unwrap_data(&dec);
-            if let Some(t) = d.get("title").and_then(Value::as_str).map(str::trim) {
+            let d = LinkMetaWireData::from_value(unwrap_data(&dec));
+            if let Some(t) = d.title() {
                 if !t.is_empty() && t != url {
                     meta.title = t.to_string();
                 }
             }
-            if let Some(ds) = d.get("desc").and_then(Value::as_str).map(str::trim) {
+            if let Some(ds) = d.desc() {
                 if !ds.is_empty() && ds != url {
                     meta.desc = ds.to_string();
                 }
             }
-            if let Some(th) = d.get("thumb").and_then(Value::as_str).map(str::trim) {
+            if let Some(th) = d.thumb() {
                 if !is_placeholder_zalo_thumb(th) {
                     meta.thumb = th.to_string();
                 }
             }
-            if let Some(sr) = d.get("src").and_then(Value::as_str).map(str::trim) {
+            if let Some(sr) = d.src() {
                 if !sr.is_empty() {
                     meta.src = sr.to_string();
                 }

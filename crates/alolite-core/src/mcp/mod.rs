@@ -4,6 +4,7 @@
 //! to query threads/messages, search local history, send messages, and configure auto-reply
 //! rules over `127.0.0.1` or `stdio`, sharing a single [`CoreEngine`].
 
+use crate::protocol::wire::{opt_str, WireData};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -93,16 +94,209 @@ pub fn match_autoreply_rule(
     None
 }
 
+/// MCP JSON-RPC 2.0 request envelope.
+///
+/// # Wire Response Example
+/// ```json
+/// { "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "zalo_list_threads" } }
+/// ```
+///
+/// # Core Transformation
+/// `id` is echoed back verbatim; a request without `id` is a notification and produces no response.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct McpRequestWireData {
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "method")]
+    pub method: Option<Value>,
+    #[serde(rename = "params")]
+    pub params: Option<Value>,
+}
+
+impl McpRequestWireData {
+    /// Request id, echoed into the response.
+    pub fn id(&self) -> Option<Value> {
+        self.id.clone()
+    }
+
+    /// Request method name (empty when absent).
+    pub fn method(&self) -> &str {
+        self.method.as_ref().and_then(Value::as_str).unwrap_or("")
+    }
+
+    /// Request params object (empty object when absent).
+    pub fn params(&self) -> Value {
+        self.params.clone().unwrap_or_else(|| json!({}))
+    }
+}
+
+/// MCP `params` object for resource and tool-call requests.
+///
+/// # Wire Response Example
+/// ```json
+/// { "uri": "zalo://threads" }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct McpParamsWireData {
+    #[serde(rename = "uri")]
+    pub uri: Option<Value>,
+    #[serde(rename = "name")]
+    pub name: Option<Value>,
+    #[serde(rename = "arguments")]
+    pub arguments: Option<Value>,
+}
+
+impl McpParamsWireData {
+    /// Resource URI (empty when absent).
+    pub fn uri(&self) -> &str {
+        self.uri.as_ref().and_then(Value::as_str).unwrap_or("")
+    }
+
+    /// Tool name for `tools/call` (empty when absent).
+    pub fn tool_name(&self) -> &str {
+        self.name.as_ref().and_then(Value::as_str).unwrap_or("")
+    }
+
+    /// Tool arguments object (empty object when absent).
+    pub fn arguments(&self) -> Value {
+        self.arguments.clone().unwrap_or_else(|| json!({}))
+    }
+}
+
+/// Tool-call `arguments` object shared by every `zalo_*` MCP tool.
+///
+/// # Wire Response Example
+/// ```json
+/// { "thread_id": "1234567890", "limit": 50, "query": "hoá đơn" }
+/// ```
+///
+/// # Core Transformation
+/// Supplies the per-tool arguments; each accessor carries that tool's default and clamp so the
+/// handlers stay free of ad-hoc coercion.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ToolArgsWireData {
+    #[serde(rename = "limit")]
+    pub limit: Option<Value>,
+    #[serde(rename = "thread_id")]
+    pub thread_id: Option<Value>,
+    #[serde(rename = "query")]
+    pub query: Option<Value>,
+    #[serde(rename = "to_id")]
+    pub to_id: Option<Value>,
+    #[serde(rename = "text")]
+    pub text: Option<Value>,
+    #[serde(rename = "is_group")]
+    pub is_group: Option<Value>,
+    #[serde(rename = "action")]
+    pub action: Option<Value>,
+    #[serde(rename = "keyword")]
+    pub keyword: Option<Value>,
+    #[serde(rename = "reply_text")]
+    pub reply_text: Option<Value>,
+    #[serde(rename = "match_mode")]
+    pub match_mode: Option<Value>,
+}
+
+impl ToolArgsWireData {
+    /// `limit` clamped to `max`, defaulting to `default`.
+    pub fn limit(&self, default: u64, max: u64) -> usize {
+        self.limit
+            .as_ref()
+            .and_then(Value::as_u64)
+            .unwrap_or(default)
+            .min(max) as usize
+    }
+
+    /// Required `thread_id`.
+    pub fn thread_id(&self) -> Option<&str> {
+        opt_str(self.thread_id.as_ref())
+    }
+
+    /// Required search `query`.
+    pub fn query(&self) -> Option<&str> {
+        opt_str(self.query.as_ref())
+    }
+
+    /// Required send target.
+    pub fn to_id(&self) -> Option<&str> {
+        opt_str(self.to_id.as_ref())
+    }
+
+    /// Required send body.
+    pub fn text(&self) -> Option<&str> {
+        opt_str(self.text.as_ref())
+    }
+
+    /// Whether the send target is a group (default `false`).
+    pub fn is_group(&self) -> bool {
+        self.is_group
+            .as_ref()
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// Auto-reply action, defaulting to `list`.
+    pub fn action(&self) -> &str {
+        opt_str(self.action.as_ref()).unwrap_or("list")
+    }
+
+    /// Trimmed `keyword` for `action = "add"`.
+    pub fn keyword(&self) -> &str {
+        match opt_str(self.keyword.as_ref()) {
+            Some(k) => k.trim(),
+            None => "",
+        }
+    }
+
+    /// Trimmed `reply_text` for `action = "add"`.
+    pub fn reply_text(&self) -> &str {
+        match opt_str(self.reply_text.as_ref()) {
+            Some(r) => r.trim(),
+            None => "",
+        }
+    }
+
+    /// Match mode, defaulting to `contains`.
+    pub fn match_mode(&self) -> &str {
+        opt_str(self.match_mode.as_ref()).unwrap_or("contains")
+    }
+}
+
+/// Body of `POST /api/v1/autoreply`: the rule list to persist.
+///
+/// # Wire Response Example
+/// ```json
+/// { "rules": [ { "id": "rule_1", "keyword": "giá", "match_mode": "contains", "reply_text": "…" } ] }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AutoReplyPayloadWireData {
+    #[serde(rename = "rules")]
+    pub rules: Option<Vec<Value>>,
+}
+
+impl AutoReplyPayloadWireData {
+    /// Raw rule objects.
+    pub fn rules(&self) -> &[Value] {
+        self.rules.as_deref().unwrap_or_default()
+    }
+}
+
 /// Handle a single MCP JSON-RPC 2.0 request object and return the JSON-RPC response (`None` for notifications).
 pub async fn handle_mcp_request(engine: &CoreEngine, req: &Value) -> Option<Value> {
-    let id = req.get("id").cloned();
-    let method = req.get("method").and_then(Value::as_str).unwrap_or("");
-    let params = req.get("params").cloned().unwrap_or_else(|| json!({}));
+    let request = McpRequestWireData::from_value(req);
+    let params = request.params();
+    let params_wire = McpParamsWireData::from_value(&params);
 
-    if id.is_none() || method.starts_with("notifications/") {
+    if request.id().is_none() || request.method().starts_with("notifications/") {
         return None;
     }
-    let req_id = id.unwrap_or(Value::Null);
+    let req_id = request.id().unwrap_or(Value::Null);
+
+    let method = request.method();
 
     match method {
         "initialize" => Some(json!({
@@ -146,7 +340,7 @@ pub async fn handle_mcp_request(engine: &CoreEngine, req: &Value) -> Option<Valu
             }
         })),
         "resources/read" => {
-            let uri = params.get("uri").and_then(Value::as_str).unwrap_or("");
+            let uri = params_wire.uri();
             let content = match uri {
                 "zalo://threads" => {
                     let threads = engine.list_threads(20).await;
@@ -248,11 +442,8 @@ pub async fn handle_mcp_request(engine: &CoreEngine, req: &Value) -> Option<Valu
             }
         })),
         "tools/call" => {
-            let name = params.get("name").and_then(Value::as_str).unwrap_or("");
-            let args = params
-                .get("arguments")
-                .cloned()
-                .unwrap_or_else(|| json!({}));
+            let name = params_wire.tool_name();
+            let args = params_wire.arguments();
             let (is_err, payload) = execute_tool_call(engine, name, &args).await;
             Some(json!({
                 "jsonrpc": "2.0",
@@ -278,6 +469,7 @@ pub async fn handle_mcp_request(engine: &CoreEngine, req: &Value) -> Option<Valu
 }
 
 async fn execute_tool_call(engine: &CoreEngine, name: &str, args: &Value) -> (bool, Value) {
+    let tool_args = ToolArgsWireData::from_value(args);
     match name {
         "zalo_status" => {
             let st = engine.status().await;
@@ -295,11 +487,7 @@ async fn execute_tool_call(engine: &CoreEngine, name: &str, args: &Value) -> (bo
             )
         }
         "zalo_list_threads" => {
-            let limit = args
-                .get("limit")
-                .and_then(Value::as_u64)
-                .unwrap_or(50)
-                .min(500) as usize;
+            let limit = tool_args.limit(50, 500);
             let threads = engine.list_threads(5).await;
             let items: Vec<Value> = threads
                 .into_iter()
@@ -318,47 +506,36 @@ async fn execute_tool_call(engine: &CoreEngine, name: &str, args: &Value) -> (bo
             (false, json!({ "threads": items }))
         }
         "zalo_get_messages" => {
-            let Some(tid) = args.get("thread_id").and_then(Value::as_str) else {
+            let Some(tid) = tool_args.thread_id() else {
                 return (
                     true,
                     json!({ "error": "Missing required argument: thread_id" }),
                 );
             };
-            let limit = args
-                .get("limit")
-                .and_then(Value::as_u64)
-                .unwrap_or(50)
-                .min(500) as usize;
+            let limit = tool_args.limit(50, 500);
             match engine.get_messages(tid, limit).await {
                 Ok(msgs) => (false, json!({ "thread_id": tid, "messages": msgs })),
                 Err(e) => (true, json!({ "error": e.to_string() })),
             }
         }
         "zalo_search_messages" => {
-            let Some(q) = args.get("query").and_then(Value::as_str) else {
+            let Some(q) = tool_args.query() else {
                 return (true, json!({ "error": "Missing required argument: query" }));
             };
-            let limit = args
-                .get("limit")
-                .and_then(Value::as_u64)
-                .unwrap_or(50)
-                .min(200) as usize;
+            let limit = tool_args.limit(50, 200);
             match engine.search_messages(q, limit).await {
                 Ok(hits) => (false, json!({ "query": q, "results": hits })),
                 Err(e) => (true, json!({ "error": e.to_string() })),
             }
         }
         "zalo_send_message" => {
-            let Some(to_id) = args.get("to_id").and_then(Value::as_str) else {
+            let Some(to_id) = tool_args.to_id() else {
                 return (true, json!({ "error": "Missing required argument: to_id" }));
             };
-            let Some(text) = args.get("text").and_then(Value::as_str) else {
+            let Some(text) = tool_args.text() else {
                 return (true, json!({ "error": "Missing required argument: text" }));
             };
-            let is_group = args
-                .get("is_group")
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
+            let is_group = tool_args.is_group();
             match engine.send_text(to_id, text, is_group).await {
                 Ok(receipt) => (
                     !receipt.is_ok(),
@@ -368,7 +545,7 @@ async fn execute_tool_call(engine: &CoreEngine, name: &str, args: &Value) -> (bo
             }
         }
         "zalo_configure_autoreply" => {
-            let action = args.get("action").and_then(Value::as_str).unwrap_or("list");
+            let action = tool_args.action();
             let mut rules = load_autoreply_rules();
             match action {
                 "list" => (false, json!({ "rules": rules })),
@@ -378,27 +555,15 @@ async fn execute_tool_call(engine: &CoreEngine, name: &str, args: &Value) -> (bo
                     (false, json!({ "ok": true, "rules": rules }))
                 }
                 "add" => {
-                    let kw = args
-                        .get("keyword")
-                        .and_then(Value::as_str)
-                        .unwrap_or("")
-                        .trim();
-                    let reply = args
-                        .get("reply_text")
-                        .and_then(Value::as_str)
-                        .unwrap_or("")
-                        .trim();
+                    let kw = tool_args.keyword();
+                    let reply = tool_args.reply_text();
                     if kw.is_empty() || reply.is_empty() {
                         return (
                             true,
                             json!({ "error": "Cần cung cấp cả keyword và reply_text" }),
                         );
                     }
-                    let mode = args
-                        .get("match_mode")
-                        .and_then(Value::as_str)
-                        .unwrap_or("contains")
-                        .to_string();
+                    let mode = tool_args.match_mode().to_string();
                     let rule = AutoReplyRule {
                         id: format!("rule_{}", rules.len() + 1),
                         keyword: kw.to_string(),
@@ -530,8 +695,10 @@ pub async fn handle_rest_request(
         }
         ("POST", "/api/v1/autoreply") => {
             let payload: Value = serde_json::from_str(body).unwrap_or_else(|_| json!({}));
-            if let Some(arr) = payload.get("rules").and_then(Value::as_array) {
-                let rules: Vec<AutoReplyRule> = arr
+            let rules_payload = AutoReplyPayloadWireData::from_value(&payload);
+            if rules_payload.rules.is_some() {
+                let rules: Vec<AutoReplyRule> = rules_payload
+                    .rules()
                     .iter()
                     .filter_map(|v| serde_json::from_value(v.clone()).ok())
                     .collect();
