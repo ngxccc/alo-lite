@@ -133,7 +133,7 @@ pub fn fallback_host(key: &str) -> Option<&'static str> {
     })
 }
 
-/// Default `wss://ws{1..8}-msg.chat.zalo.me` WebSocket shard list (`re-notes/02_chat_data.md`).
+/// Default `wss://ws{1..8}-msg.chat.zalo.me` WebSocket shard list (`re-notes/02-chat-data.md`).
 pub fn default_ws_endpoints() -> Vec<String> {
     (1..=8)
         .map(|n| format!("wss://ws{n}-msg.chat.zalo.me"))

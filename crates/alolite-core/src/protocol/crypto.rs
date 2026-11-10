@@ -1,6 +1,6 @@
 //! Crypto primitives, ported from the Zalo PC 26.10.11 bundles.
 //!
-//! See `re-notes/01_login.md` and `re-notes/02_chat_data.md` for evidence.
+//! See `re-notes/01-login.md` and `re-notes/02-chat-data.md` for evidence.
 
 use aes::{Aes128, Aes256};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};

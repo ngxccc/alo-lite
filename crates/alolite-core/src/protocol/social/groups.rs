@@ -1,8 +1,9 @@
 //! Group listing, `getmg-v2` profiles, mini member profiles, history fetch, and display-name resolution.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::protocol::messaging::threads::{
@@ -10,8 +11,139 @@ use crate::protocol::messaging::threads::{
 };
 use crate::protocol::session::Session;
 use crate::protocol::wire::{
-    obj, pick_str, require_login, strip_group_prefix, strip_vn_diacritics, unwrap_data,
+    obj, require_login, strip_group_prefix, strip_vn_diacritics, unwrap_data,
 };
+
+/// Coerce a raw JSON scalar to `String`, mirroring `wire::pick_str` for a single value:
+/// non-empty string first, then integer forms. Empty strings and non-scalars yield `None`.
+fn value_str(v: &Value) -> Option<String> {
+    if let Some(s) = v.as_str() {
+        if !s.is_empty() {
+            return Some(s.to_string());
+        }
+    }
+    if let Some(n) = v.as_i64() {
+        return Some(n.to_string());
+    }
+    if let Some(n) = v.as_u64() {
+        return Some(n.to_string());
+    }
+    None
+}
+
+/// One per-group metadata object inside `gridInfoMap` of `GET /api/group/getmg-v2` (cmd `12028`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "name": "Team AloLite",
+///   "fullAvt": "https://s120-ava-group.zadn.vn/group.jpg",
+///   "totalMember": 12,
+///   "creatorId": "1234567890",
+///   "adminIds": ["1234567890"],
+///   "memVerList": ["1234567890_0", "9876543210_0"]
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Supplies `name`, `fullAvt`, and `totalMember` to [`Thread`] sidebar metadata, and feeds the
+/// member-id ordering used by `extract_all_group_member_ids` (creator, then admins, then the
+/// remaining `memVerList` entries).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GroupInfoWireData {
+    #[serde(alias = "groupName", alias = "displayName")]
+    pub name: Option<Value>,
+    #[serde(rename = "fullAvt", alias = "avt", alias = "avatar")]
+    pub full_avt: Option<Value>,
+    #[serde(rename = "totalMember")]
+    pub total_member: Option<Value>,
+    #[serde(rename = "memVerList")]
+    pub mem_ver_list: Vec<Value>,
+    #[serde(rename = "creatorId")]
+    pub creator_id: Option<Value>,
+    #[serde(rename = "adminIds")]
+    pub admin_ids: Vec<Value>,
+}
+
+impl GroupInfoWireData {
+    /// Group display name (`name` / `groupName` / `displayName`).
+    pub fn display_name(&self) -> Option<String> {
+        self.name
+            .as_ref()
+            .and_then(value_str)
+            .filter(|s| !s.is_empty())
+    }
+
+    /// Group avatar URL, ignoring upstream `/default` placeholders.
+    pub fn avatar(&self) -> Option<String> {
+        self.full_avt
+            .as_ref()
+            .and_then(value_str)
+            .filter(|u| !u.ends_with("/default"))
+    }
+
+    /// Server-reported total member count (`0` when absent).
+    pub fn total_member(&self) -> usize {
+        self.total_member
+            .as_ref()
+            .and_then(Value::as_u64)
+            .map(|n| n as usize)
+            .unwrap_or(0)
+    }
+}
+
+/// Minimal user profile returned by `POST /api/social/group/members` (cmd `12030`).
+///
+/// # Wire Response Example
+/// ```json
+/// { "zaloName": "Ngọc Trần", "avatar": "https://s120-ava-talk.zadn.vn/a.jpg" }
+/// ```
+///
+/// # Core Transformation
+/// Resolves placeholder thread names and avatars in [`resolve_thread_names`]. Field priority for
+/// the name mirrors the shipped client: `zaloName` > `displayName` > `name` > `display_name`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MiniProfileWireData {
+    #[serde(rename = "zaloName")]
+    pub zalo_name: Option<Value>,
+    #[serde(rename = "displayName")]
+    pub display_name: Option<Value>,
+    #[serde(rename = "name")]
+    pub name: Option<Value>,
+    #[serde(rename = "display_name")]
+    pub display_name_snake: Option<Value>,
+    #[serde(rename = "avatar")]
+    pub avatar_url: Option<Value>,
+    #[serde(rename = "avt")]
+    pub avt: Option<Value>,
+    #[serde(rename = "profile_avatar")]
+    pub profile_avatar: Option<Value>,
+}
+
+impl MiniProfileWireData {
+    /// Preferred display name across the shipped-client key priority.
+    pub fn display_name(&self) -> Option<String> {
+        [
+            &self.zalo_name,
+            &self.display_name,
+            &self.name,
+            &self.display_name_snake,
+        ]
+        .into_iter()
+        .find_map(|v| v.as_ref().and_then(value_str))
+        .filter(|s| !s.is_empty())
+    }
+
+    /// Avatar URL, ignoring upstream `/default` placeholders.
+    pub fn avatar(&self) -> Option<String> {
+        [&self.avatar_url, &self.avt, &self.profile_avatar]
+            .into_iter()
+            .find_map(|v| v.as_ref().and_then(value_str))
+            .filter(|u| !u.is_empty() && !u.ends_with("/default"))
+    }
+}
 
 /// `GET /api/group/history` (cmd `11240`) — group message history.
 ///
@@ -70,6 +202,55 @@ pub async fn get_group_history_raw(s: &Session, grid: &str, count: u32) -> Resul
     Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
 }
 
+/// Envelope of `POST /api/group/getmg-v2` (cmd `12028`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "error_code": 0,
+///   "data": {
+///     "gridInfoMap": { "1234567890": { "name": "Team AloLite", "totalMember": 12 } },
+///     "removedsGroup": ["9876543210"]
+///   }
+/// }
+/// ```
+///
+/// # Core Transformation
+/// `gridInfoMap` entries become [`GroupInfoWireData`] via [`Self::typed_info_map`];
+/// `removedsGroup` becomes a set of group ids removed from the user's list.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GroupProfilesWireData {
+    #[serde(rename = "gridInfoMap")]
+    pub grid_info_map: Map<String, Value>,
+    #[serde(rename = "removedsGroup")]
+    pub removeds_group: Vec<Value>,
+}
+
+impl GroupProfilesWireData {
+    /// Typed view of `gridInfoMap`; non-object entries degrade to `Default` instead of dropping.
+    pub fn typed_info_map(&self) -> BTreeMap<String, GroupInfoWireData> {
+        self.grid_info_map
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    serde_json::from_value::<GroupInfoWireData>(v.clone()).unwrap_or_default(),
+                )
+            })
+            .collect()
+    }
+
+    /// Removed group ids (`removedsGroup`), keeping string entries only.
+    pub fn removed_ids(&self) -> HashSet<String> {
+        self.removeds_group
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect()
+    }
+}
+
 /// Fetch group metadata (`name`, `avt`, `totalMember`, `removedsGroup`) from `POST /api/group/getmg-v2`.
 ///
 /// # Errors
@@ -77,9 +258,9 @@ pub async fn get_group_history_raw(s: &Session, grid: &str, count: u32) -> Resul
 pub async fn fetch_group_profiles(
     s: &Session,
     group_ids: &[String],
-) -> Result<(Map<String, Value>, HashSet<String>)> {
+) -> Result<(BTreeMap<String, GroupInfoWireData>, HashSet<String>)> {
     if s.login.is_none() || group_ids.is_empty() {
-        return Ok((Map::new(), HashSet::new()));
+        return Ok((BTreeMap::new(), HashSet::new()));
     }
     let mut gv_zero = Map::new();
     for gid in group_ids {
@@ -104,55 +285,31 @@ pub async fn fetch_group_profiles(
         }
     }
     let data_node = unwrap_data(&mg_dec);
-    let info_map = data_node
-        .get("gridInfoMap")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
-    let removed: HashSet<String> = data_node
-        .get("removedsGroup")
-        .and_then(Value::as_array)
-        .map(|arr| {
-            arr.iter()
-                .filter_map(Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok((info_map, removed))
+    let wire: GroupProfilesWireData = serde_json::from_value(data_node.clone()).unwrap_or_default();
+    Ok((wire.typed_info_map(), wire.removed_ids()))
 }
 
-fn extract_all_group_member_ids(info: &Value) -> (Vec<String>, usize) {
+fn extract_all_group_member_ids(info: &GroupInfoWireData) -> (Vec<String>, usize) {
     let mut raw_ids: Vec<String> = Vec::new();
-    if let Some(arr) = info.get("memVerList").and_then(Value::as_array) {
-        for item in arr {
-            if let Some(s) = item.as_str() {
-                let uid = s.split('_').next().unwrap_or("").trim();
-                if !uid.is_empty() && !raw_ids.iter().any(|x| x == uid) {
-                    raw_ids.push(uid.to_string());
-                }
+    for item in &info.mem_ver_list {
+        if let Some(s) = item.as_str() {
+            let uid = s.split('_').next().unwrap_or("").trim();
+            if !uid.is_empty() && !raw_ids.iter().any(|x| x == uid) {
+                raw_ids.push(uid.to_string());
             }
         }
     }
     let mut sorted: Vec<String> = Vec::new();
-    if let Some(creator) = pick_str(info, &["creatorId"]) {
+    if let Some(creator) = info.creator_id.as_ref().and_then(value_str) {
         if raw_ids.iter().any(|x| x == &creator) {
             sorted.push(creator);
         }
     }
-    if let Some(admins) = info.get("adminIds").and_then(Value::as_array) {
-        for a in admins {
-            let aid = a
-                .as_str()
-                .map(str::to_string)
-                .or_else(|| a.as_u64().map(|n| n.to_string()))
-                .unwrap_or_default();
-            if !aid.is_empty()
-                && raw_ids.iter().any(|x| x == &aid)
-                && !sorted.iter().any(|x| x == &aid)
-            {
-                sorted.push(aid);
-            }
+    for a in &info.admin_ids {
+        let aid = value_str(a).unwrap_or_default();
+        if !aid.is_empty() && raw_ids.iter().any(|x| x == &aid) && !sorted.iter().any(|x| x == &aid)
+        {
+            sorted.push(aid);
         }
     }
     for uid in &raw_ids {
@@ -160,17 +317,12 @@ fn extract_all_group_member_ids(info: &Value) -> (Vec<String>, usize) {
             sorted.push(uid.clone());
         }
     }
-    let total = info
-        .get("totalMember")
-        .and_then(Value::as_u64)
-        .map(|n| n as usize)
-        .unwrap_or_else(|| sorted.len())
-        .max(sorted.len());
+    let total = info.total_member().max(sorted.len());
     sorted.truncate(100);
     (sorted, total)
 }
 
-fn extract_group_member_ids(info: &Value) -> (Vec<String>, usize) {
+fn extract_group_member_ids(info: &GroupInfoWireData) -> (Vec<String>, usize) {
     let (mut sorted, total) = extract_all_group_member_ids(info);
     sorted.truncate(4);
     (sorted, total)
@@ -180,7 +332,7 @@ fn format_multi_group_avatar(
     group_name: &str,
     mem_ids: &[String],
     total_members: usize,
-    profiles: &Map<String, Value>,
+    profiles: &BTreeMap<String, MiniProfileWireData>,
 ) -> Option<String> {
     let fallback_names: Vec<&str> = group_name
         .split(',')
@@ -196,12 +348,12 @@ fn format_multi_group_avatar(
             .to_string();
         let mut m_ava = String::new();
         if let Some(p) = profiles.get(uid) {
-            if let Some(n) = pick_str(p, &["zaloName", "displayName", "name", "display_name"]) {
+            if let Some(n) = p.display_name() {
                 if !n.is_empty() {
                     m_name = n;
                 }
             }
-            if let Some(a) = pick_str(p, &["avatar", "avt", "profile_avatar"]) {
+            if let Some(a) = p.avatar() {
                 if !a.is_empty() && !a.ends_with("/default") {
                     m_ava = a;
                 }
@@ -272,12 +424,10 @@ pub async fn get_groups(s: &Session) -> Result<Vec<Thread>> {
                 let mut need_mem_uids: Vec<String> = Vec::new();
                 for g in &mut groups {
                     if let Some(info) = info_map.get(&g.id) {
-                        if let Some(name) = pick_str(info, &["name", "groupName", "displayName"]) {
+                        if let Some(name) = info.display_name() {
                             g.name = name;
                         }
-                        if let Some(avt) = pick_str(info, &["fullAvt", "avt", "avatar"])
-                            .filter(|u| !u.is_empty() && !u.ends_with("/default"))
-                        {
+                        if let Some(avt) = info.avatar() {
                             g.avatar = Some(avt);
                         } else {
                             let (mids, _) = extract_group_member_ids(info);
@@ -288,16 +438,15 @@ pub async fn get_groups(s: &Session) -> Result<Vec<Thread>> {
                             }
                         }
                         if g.preview.is_empty() {
-                            if let Some(n_mem) = info.get("totalMember").and_then(Value::as_u64) {
-                                if n_mem > 0 {
-                                    g.preview = format!("Nhóm · {n_mem} thành viên");
-                                }
+                            let n_mem = info.total_member();
+                            if n_mem > 0 {
+                                g.preview = format!("Nhóm · {n_mem} thành viên");
                             }
                         }
                     }
                 }
                 if !need_mem_uids.is_empty() {
-                    let mut all_profiles = Map::new();
+                    let mut all_profiles: BTreeMap<String, MiniProfileWireData> = BTreeMap::new();
                     for chunk in need_mem_uids.chunks(50) {
                         if let Ok(mp) = get_mini_profiles(s, chunk).await {
                             for (k, v) in mp {
@@ -326,11 +475,32 @@ pub async fn get_groups(s: &Session) -> Result<Vec<Thread>> {
 
 /// `POST /api/social/group/members` (cmd `12030`) — fetch member display names and avatars.
 ///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "error_code": 0,
+///   "data": {
+///     "profiles": {
+///       "1234567890": { "zaloName": "Ngọc Trần", "avatar": "https://s120-ava-talk.zadn.vn/a.jpg" }
+///     }
+///   }
+/// }
+/// ```
+/// `data` may nest `{"data": {"data": {...}}}` or hold the profile map directly; both shapes are
+/// normalised with [`unwrap_data`].
+///
+/// # Core Transformation
+/// Returns a map of user id → [`MiniProfileWireData`] used to resolve placeholder thread names
+/// and avatars. Non-object entries degrade to `Default` instead of dropping the whole batch.
+///
 /// # Errors
 /// Returns an error if encryption or the HTTP request fails.
-pub async fn get_mini_profiles(s: &Session, user_ids: &[String]) -> Result<Map<String, Value>> {
+pub async fn get_mini_profiles(
+    s: &Session,
+    user_ids: &[String],
+) -> Result<BTreeMap<String, MiniProfileWireData>> {
     if s.login.is_none() || user_ids.is_empty() {
-        return Ok(Map::new());
+        return Ok(BTreeMap::new());
     }
     let versioned_ids: Vec<String> = user_ids
         .iter()
@@ -357,15 +527,21 @@ pub async fn get_mini_profiles(s: &Session, user_ids: &[String]) -> Result<Map<S
             resp["data"] = parsed;
         }
     }
-    if let Some(profiles) = resp
-        .pointer("/data/profiles")
-        .or_else(|| resp.pointer("/data/data/profiles"))
-        .or_else(|| resp.get("data"))
-        .and_then(Value::as_object)
-    {
-        return Ok(profiles.clone());
+    if resp.get("data").is_none() {
+        return Ok(BTreeMap::new());
     }
-    Ok(Map::new())
+    let inner = unwrap_data(&resp);
+    let node = inner.get("profiles").unwrap_or(inner);
+    let raw = node.as_object().cloned().unwrap_or_default();
+    Ok(raw
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                serde_json::from_value::<MiniProfileWireData>(v.clone()).unwrap_or_default(),
+            )
+        })
+        .collect())
 }
 
 /// Resolve real display names and avatars for 1-1 and group threads with placeholder names.
@@ -388,15 +564,13 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
                 for t in threads.iter_mut() {
                     if let Some(p) = profiles.get(&t.id) {
                         if t.name.starts_with("Người dùng ") || t.name.is_empty() {
-                            if let Some(name) =
-                                pick_str(p, &["zaloName", "displayName", "name", "display_name"])
-                            {
+                            if let Some(name) = p.display_name() {
                                 if !name.is_empty() {
                                     t.name = name;
                                 }
                             }
                         }
-                        if let Some(ava) = pick_str(p, &["avatar", "avt", "profile_avatar"]) {
+                        if let Some(ava) = p.avatar() {
                             if !ava.is_empty() {
                                 t.avatar = Some(ava);
                             }
@@ -424,15 +598,16 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
         .map(|t| t.id.clone())
         .collect();
 
-    let mut all_profiles = Map::new();
+    let mut all_profiles: BTreeMap<String, MiniProfileWireData> = BTreeMap::new();
     if let Some(login) = s.login.as_ref() {
         if !login.uin.is_empty() && !login.display_name.is_empty() {
             all_profiles.insert(
                 login.uin.clone(),
-                json!({
-                    "displayName": login.display_name,
-                    "avatar": login.avatar,
-                }),
+                MiniProfileWireData {
+                    display_name: Some(Value::String(login.display_name.clone())),
+                    avatar_url: Some(Value::String(login.avatar.clone())),
+                    ..Default::default()
+                },
             );
         }
     }
@@ -461,7 +636,7 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
         }
     }
 
-    let mut group_info_map = Map::new();
+    let mut group_info_map: BTreeMap<String, GroupInfoWireData> = BTreeMap::new();
     if !unknown_group_ids.is_empty() {
         for chunk in unknown_group_ids.chunks(50) {
             if let Ok((info_map, _)) = fetch_group_profiles(s, chunk).await {
@@ -495,14 +670,12 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
                 .get(&t.id)
                 .or_else(|| group_info_map.get(&clean_id))
             {
-                if let Some(name) = pick_str(info, &["name", "groupName", "displayName"]) {
+                if let Some(name) = info.display_name() {
                     if !name.is_empty() {
                         t.name = name;
                     }
                 }
-                if let Some(avt) = pick_str(info, &["fullAvt", "avt", "avatar"])
-                    .filter(|u| !u.is_empty() && !u.ends_with("/default"))
-                {
+                if let Some(avt) = info.avatar() {
                     t.avatar = Some(avt);
                 } else {
                     let cur = t.avatar.as_deref().unwrap_or("");
@@ -526,11 +699,8 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
                 }
                 for uid in all_mids {
                     if let Some(p) = all_profiles.get(&uid) {
-                        let name =
-                            pick_str(p, &["zaloName", "displayName", "name", "display_name"])
-                                .unwrap_or_else(|| uid.clone());
-                        let avatar = pick_str(p, &["avatar", "avt", "profile_avatar"])
-                            .filter(|u| !u.is_empty() && !u.ends_with("/default"));
+                        let name = p.display_name().unwrap_or_else(|| uid.clone());
+                        let avatar = p.avatar();
                         if let Some(existing_mem) =
                             t.presentation.members.iter_mut().find(|m| m.id == uid)
                         {
@@ -563,14 +733,11 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
                     m.sender_id = Some(uid.clone());
                 }
                 if let Some(p) = all_profiles.get(&uid) {
-                    if let Some(name) =
-                        pick_str(p, &["zaloName", "displayName", "name", "display_name"])
-                    {
+                    if let Some(name) = p.display_name() {
                         if !name.is_empty() {
                             m.sender = name.clone();
                         }
-                        let avatar = pick_str(p, &["avatar", "avt", "profile_avatar"])
-                            .filter(|u| !u.is_empty() && !u.ends_with("/default"));
+                        let avatar = p.avatar();
                         if t.is_group && !t.presentation.members.iter().any(|mem| mem.id == uid) {
                             t.presentation.members.push(SidebarMember {
                                 id: uid,
@@ -588,9 +755,7 @@ pub async fn resolve_thread_names(s: &Session, threads: &mut [Thread]) {
             if let Some(rs) = m.reply_to_sender.clone() {
                 if is_numeric_uid(&rs) {
                     if let Some(p) = all_profiles.get(rs.trim()) {
-                        if let Some(name) =
-                            pick_str(p, &["zaloName", "displayName", "name", "display_name"])
-                        {
+                        if let Some(name) = p.display_name() {
                             if !name.is_empty() {
                                 m.reply_to_sender = Some(name);
                             }

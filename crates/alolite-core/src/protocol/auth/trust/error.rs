@@ -1,7 +1,7 @@
 //! Error type for the trusted-device protocol.
 //!
 //! Numeric codes and message formats are part of the observable contract of the
-//! reference client (see `re-notes/11_trusted_device_protocol.md`), so callers
+//! reference client (see `re-notes/11-trusted-device-protocol.md`), so callers
 //! may match on [`ErrorCode`] exactly as the reference JavaScript layer does.
 
 use std::fmt;

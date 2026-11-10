@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// Normalized message content type across Zalo protocol variants (live push, poll, cloud archive).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum MessageKind {
     Text,
@@ -135,57 +136,66 @@ impl MessageKind {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct WireMessageRef {
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub server_id: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub client_id: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub sender: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub destination: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub original_type: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub cmd: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub st: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub at: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -216,16 +226,17 @@ impl WireMessageRef {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct UnreadPolicy {
     pub params_ext_present: bool,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_present_value"
     )]
     pub count_unread: Option<Value>,
+    #[specta(type = Option<serde_json::Value>)]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -259,8 +270,8 @@ impl UnreadPolicy {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+/// Outbound message transmission lifecycle state.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum DeliveryState {
     #[default]
     Unknown,

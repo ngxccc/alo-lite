@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::protocol::session::urlencode;
-use crate::protocol::wire::pick_str;
+use crate::protocol::wire::{field_str, pick_str, WireData};
 
 /// Per-queue cursor for `getChatFromPolling` (`MultiQueueId` in `sync-v2-sub-worker`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -25,6 +25,37 @@ fn max_action_id(a: &str, b: &str) -> String {
         a.to_string()
     } else {
         "1".into()
+    }
+}
+
+/// One `queueStatus` entry of a long-poll response.
+///
+/// # Wire Response Example
+/// ```json
+/// { "lastId": "1731215400000", "ids": [ "1731215399000" ] }
+/// ```
+///
+/// # Core Transformation
+/// Advances the local per-queue cursor and merges the confirmed message ids, which are
+/// clamped to `lastId` so a stale queue cannot jump the cursor.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct QueueStatusEntryWireData {
+    #[serde(rename = "lastId")]
+    pub last_id: Option<Value>,
+    #[serde(rename = "ids")]
+    pub ids: Option<Vec<Value>>,
+}
+
+impl QueueStatusEntryWireData {
+    /// Cursor from `lastId` (string or numeric form).
+    pub fn last_id(&self) -> Option<String> {
+        field_str(self.last_id.as_ref())
+    }
+
+    /// Raw `ids` entries.
+    pub fn ids(&self) -> &[Value] {
+        self.ids.as_deref().unwrap_or_default()
     }
 }
 
@@ -99,12 +130,14 @@ impl PollState {
                 let Some(entry) = self.queues.get_mut(qid) else {
                     continue;
                 };
-                if let Some(lid) = pick_str(qval, &["lastId"]) {
+                let wire = QueueStatusEntryWireData::from_value(qval);
+                if let Some(lid) = wire.last_id() {
                     if lid != "0" {
                         entry.last_id = max_action_id(&entry.last_id, &lid);
                     }
                 }
-                if let Some(ids_arr) = qval.get("ids").and_then(Value::as_array) {
+                let ids_arr = wire.ids();
+                if !ids_arr.is_empty() {
                     let max_lid = entry.last_id.parse::<u128>().unwrap_or(u128::MAX);
                     let mut new_ids: Vec<String> = ids_arr
                         .iter()

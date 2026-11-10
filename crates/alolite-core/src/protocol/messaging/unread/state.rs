@@ -8,7 +8,7 @@ use super::mentions::{classify_message_mention, MentionDetection};
 use crate::protocol::messaging::model::MessageKind;
 use crate::protocol::messaging::threads::ChatMessage;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct UnreadState {
     /// None means that no authoritative read point has been received.
     pub last_seen_id: Option<String>,

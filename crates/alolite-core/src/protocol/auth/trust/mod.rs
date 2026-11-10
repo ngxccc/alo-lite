@@ -6,7 +6,7 @@
 //!
 //! Everything here is pure computation (no I/O); callers supply the clock.
 //! Wire formats, message layouts and verification order are documented in
-//! `re-notes/11_trusted_device_protocol.md`.
+//! `re-notes/11-trusted-device-protocol.md`.
 //!
 //! Timestamps are Unix milliseconds. All 33-byte public keys use the Curve25519
 //! type byte `0x05`.

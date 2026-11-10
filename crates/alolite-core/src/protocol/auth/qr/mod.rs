@@ -1,6 +1,6 @@
 //! QR login — `GET /api/login/reqqr` → render → wait for scan → confirm.
 //!
-//! Evidence: `re-notes/01_login.md` §5.2, plus the live capture in the tests below.
+//! Evidence: `re-notes/01-login.md` §5.2, plus the live capture in the tests below.
 //! The owner of this analysis is the maker of the client on this machine (Zalo PC
 //! 26.10.11, extracted to `asar_extracted/`).
 

@@ -9,7 +9,7 @@ use crate::session::{urlencode, Session};
 
 /// Build the request parameters for `/api/login/reqqr`.
 ///
-/// [O] `getQRCode(imei, logged_uids, language, self_g, qr_form)`:
+/// \[O\] `getQRCode(imei, logged_uids, language, self_g, qr_form)`:
 ///
 /// ```text
 /// { language, client_time, imei, computer_name, logged_uids, self_g, qr_form }
@@ -111,10 +111,10 @@ async fn reqqr(s: &Session, params: Map<String, Value>, tag: &str) -> Result<QrL
         )
     })?;
     let v = s.maybe_decrypt(v, cipher.key().as_bytes()).await;
-    let code = v.get("error_code").and_then(Value::as_i64).unwrap_or(0);
+    let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&v);
+    let code = env.code();
     if code != 0 {
-        let msg = v.get("error_message").and_then(Value::as_str).unwrap_or("");
-        bail!("{tag}: server error {code}: {msg}");
+        bail!("{tag}: server error {code}: {}", env.message());
     }
     QrLogin::from_data(
         v.get("data")

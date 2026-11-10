@@ -1,10 +1,127 @@
 //! Domain data structures for QR authentication tickets, profiles, and results.
 
+use crate::protocol::wire::{opt_text, WireData};
 use anyhow::{bail, Result};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::login;
 use crate::session::Session;
+
+/// `data` object of a `reqqr` reply: the QR ticket plus long-poll cursors.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "token_id": "<redacted>",
+///   "qr_cnt": "http://zaloapp.com/qr/l?tk=<redacted>",
+///   "base64_qr": "iVBORw0KGgo...",
+///   "chk_wait_scan": "https://wpa.chat.zalo.me/api/login/qr/waiting-scan?...",
+///   "chk_wait_cfirm": "https://wpa.chat.zalo.me/api/login/qr/pc-status?...",
+///   "qr_timeout": 180,
+///   "qr_retry": 3
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Fills [`QrLogin`]; `chk_wait_scan` is mandatory and `qr_cnt`/`base64_qr` must supply at least
+/// one renderable QR payload.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct QrRequestWireData {
+    #[serde(rename = "token_id")]
+    pub token_id: Option<Value>,
+    #[serde(rename = "qr_cnt")]
+    pub qr_cnt: Option<Value>,
+    #[serde(rename = "base64_qr")]
+    pub base64_qr: Option<Value>,
+    #[serde(rename = "chk_wait_scan")]
+    pub chk_wait_scan: Option<Value>,
+    #[serde(rename = "chk_wait_cfirm")]
+    pub chk_wait_cfirm: Option<Value>,
+    #[serde(rename = "qr_timeout")]
+    pub qr_timeout: Option<Value>,
+    #[serde(rename = "qr_retry")]
+    pub qr_retry: Option<Value>,
+}
+
+impl QrRequestWireData {
+    /// Ticket id (`token_id`).
+    pub fn token_id(&self) -> String {
+        opt_text(self.token_id.as_ref()).to_string()
+    }
+
+    /// Deep-link QR payload (`qr_cnt`).
+    pub fn qr_cnt(&self) -> String {
+        opt_text(self.qr_cnt.as_ref()).to_string()
+    }
+
+    /// Server-rendered QR PNG (`base64_qr`), when the plain flow was requested.
+    pub fn base64_png(&self) -> Option<String> {
+        self.base64_qr
+            .as_ref()
+            .and_then(Value::as_str)
+            .filter(|v| !v.is_empty())
+            .map(str::to_string)
+    }
+
+    /// Long-poll URL awaiting the phone's scan (`chk_wait_scan`).
+    pub fn chk_wait_scan(&self) -> String {
+        opt_text(self.chk_wait_scan.as_ref()).to_string()
+    }
+
+    /// Long-poll URL awaiting the phone's confirm (`chk_wait_cfirm`).
+    pub fn chk_wait_cfirm(&self) -> String {
+        opt_text(self.chk_wait_cfirm.as_ref()).to_string()
+    }
+
+    /// Seconds the ticket stays valid (default `180`).
+    pub fn qr_timeout(&self) -> u64 {
+        self.qr_timeout
+            .as_ref()
+            .and_then(Value::as_u64)
+            .unwrap_or(180)
+    }
+
+    /// Re-poll budget (default `3`).
+    pub fn qr_retry(&self) -> u32 {
+        self.qr_retry.as_ref().and_then(Value::as_u64).unwrap_or(3) as u32
+    }
+}
+
+/// Session-token aliases probed at the envelope root, under `data`, and under `data.account`.
+///
+/// # Wire Response Example
+/// ```json
+/// { "zpw_sek": "<redacted>", "data": { "account": { "zpw_kt": "<redacted>" } } }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SessionTokenWireData {
+    #[serde(rename = "zpw_sek")]
+    pub zpw_sek: Option<Value>,
+    #[serde(rename = "zpw_kt")]
+    pub zpw_kt: Option<Value>,
+    #[serde(rename = "zpw_wpsk")]
+    pub zpw_wpsk: Option<Value>,
+    #[serde(rename = "token")]
+    pub token: Option<Value>,
+    #[serde(rename = "session_key")]
+    pub session_key: Option<Value>,
+}
+
+impl SessionTokenWireData {
+    /// Alias strings in probe order (`zpw_sek`, `zpw_kt`, `zpw_wpsk`, `token`, `session_key`).
+    fn aliases(&self) -> [Option<&str>; 5] {
+        [
+            self.zpw_sek.as_ref().and_then(Value::as_str),
+            self.zpw_kt.as_ref().and_then(Value::as_str),
+            self.zpw_wpsk.as_ref().and_then(Value::as_str),
+            self.token.as_ref().and_then(Value::as_str),
+            self.session_key.as_ref().and_then(Value::as_str),
+        ]
+    }
+}
 
 /// Cryptographic companion identity and state when using Trusted Companion Device flow (QR2).
 #[derive(Debug, Clone)]
@@ -43,21 +160,16 @@ pub struct QrLogin {
 impl QrLogin {
     /// Parse the `data` object of a `reqqr` reply.
     pub fn from_data(d: &Value) -> Result<Self> {
-        let s = |k: &str| d.get(k).and_then(Value::as_str).unwrap_or("").to_string();
-        let png = d
-            .get("base64_qr")
-            .and_then(Value::as_str)
-            .filter(|v| !v.is_empty())
-            .map(str::to_string);
+        let wire = QrRequestWireData::from_value(d);
 
         let out = Self {
-            token_id: s("token_id"),
-            qr_payload: s("qr_cnt"),
-            base64_png: png,
-            chk_wait_scan: s("chk_wait_scan"),
-            chk_wait_cfirm: s("chk_wait_cfirm"),
-            qr_timeout: d.get("qr_timeout").and_then(Value::as_u64).unwrap_or(180),
-            qr_retry: d.get("qr_retry").and_then(Value::as_u64).unwrap_or(3) as u32,
+            token_id: wire.token_id(),
+            qr_payload: wire.qr_cnt(),
+            base64_png: wire.base64_png(),
+            chk_wait_scan: wire.chk_wait_scan(),
+            chk_wait_cfirm: wire.chk_wait_cfirm(),
+            qr_timeout: wire.qr_timeout(),
+            qr_retry: wire.qr_retry(),
             companion_state: None,
         };
 
@@ -154,34 +266,24 @@ impl QrConfirmResult {
             }
         }
         if let Some(data) = self.raw_resp.get("data") {
-            login::apply_login_config(s, data);
+            let cfg = login::LoginConfigWireData::from_value(data);
+            login::apply_login_config(s, &cfg);
         }
     }
 }
 
+/// Probe the known session-token aliases at the envelope root, under `data`, and under
+/// `data.account`, returning the first non-empty, non-`EXPIRED` value.
 pub fn extract_zpw_sek(v: &Value) -> Option<String> {
-    for key in ["zpw_sek", "zpw_kt", "zpw_wpsk", "token", "session_key"] {
-        if let Some(s) = v.get(key).and_then(Value::as_str) {
-            if !s.is_empty() && s != "EXPIRED" {
-                return Some(s.to_string());
-            }
-        }
-        if let Some(s) = v
-            .get("data")
-            .and_then(|d| d.get(key))
-            .and_then(Value::as_str)
-        {
-            if !s.is_empty() && s != "EXPIRED" {
-                return Some(s.to_string());
-            }
-        }
-        if let Some(s) = v
-            .get("data")
-            .and_then(|d| d.get("account"))
-            .and_then(|a| a.get(key))
-            .and_then(Value::as_str)
-        {
-            if !s.is_empty() && s != "EXPIRED" {
+    let data = v.get("data");
+    let root = SessionTokenWireData::from_value(v);
+    let nested = SessionTokenWireData::from_value(data.unwrap_or(&Value::Null));
+    let account = SessionTokenWireData::from_value(
+        data.and_then(|d| d.get("account")).unwrap_or(&Value::Null),
+    );
+    for index in 0..5 {
+        for scope in [&root, &nested, &account] {
+            if let Some(s) = scope.aliases()[index].filter(|s| !s.is_empty() && *s != "EXPIRED") {
                 return Some(s.to_string());
             }
         }

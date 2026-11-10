@@ -9,10 +9,11 @@ use crate::clock::{message_time, unix_now};
 use crate::protocol::messaging::threads::{merge_thread_into, Thread};
 use crate::protocol::session::Session;
 use crate::protocol::wire::{
-    domain_or, is_group_flag, obj, pick_str, require_login, unwrap_data, val_i64, ActionAck,
+    domain_or, is_group_flag, obj, require_login, unwrap_data, val_i64, ActionAck, WireData,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// Friendship status between current account and target user.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, specta::Type)]
 pub enum FriendshipStatus {
     #[default]
     Unknown,
@@ -22,7 +23,25 @@ pub enum FriendshipStatus {
     Stranger,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of a user profile lookup by phone number (`/api/friend/profile/get`, cmd `11003`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "error_code": 0,
+///   "error_message": "Successful",
+///   "data": {
+///     "userId": "123456789012345",
+///     "displayName": "Ngọc Trần",
+///     "zaloName": "ngoctran",
+///     "phoneNumber": "+84901234567",
+///     "avatar": "https://s120-ava-talk.zadn.vn/avatar.jpg",
+///     "status": "Hello AloLite",
+///     "isFriend": 1
+///   }
+/// }
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct PhoneLookupResult {
     pub user_id: String,
     pub display_name: String,
@@ -44,19 +63,187 @@ fn default_profile_host(s: &Session) -> &str {
     domain_or(&s.domains.profile, fallback)
 }
 
-pub(crate) fn parse_thread(v: &Value) -> Option<Thread> {
-    let id = pick_str(v, &["userId", "uid", "id", "friendId", "globalId"])?;
-    let name = pick_str(v, &["displayName", "zaloName", "display_name", "name"])
+/// Ordered alias lookup over optional wire fields, mirroring [`crate::protocol::wire::pick_str`] semantics.
+fn pick_alias(fields: &[&Option<Value>]) -> Option<String> {
+    fields
+        .iter()
+        .find_map(|field| crate::protocol::wire::field_str(field.as_ref()))
+}
+
+/// One contact entry of `/api/social/friend/getfriends` (cmd `11137`).
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "userId": "1234567890",
+///   "displayName": "Ngọc Trần",
+///   "zaloName": "ngoctran",
+///   "avatar": "https://avatar.example/240",
+///   "lastActionTime": 1731215400000,
+///   "isGroup": 0
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Produces a [`Thread`] for the friend roster; group entries are detected separately by
+/// [`is_group_flag`] because the flag has several wire spellings.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FriendWireData {
+    #[serde(rename = "userId")]
+    pub user_id: Option<Value>,
+    #[serde(rename = "uid")]
+    pub uid: Option<Value>,
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "friendId")]
+    pub friend_id: Option<Value>,
+    #[serde(rename = "globalId")]
+    pub global_id: Option<Value>,
+    #[serde(rename = "displayName")]
+    pub display_name_camel: Option<Value>,
+    #[serde(rename = "zaloName")]
+    pub zalo_name: Option<Value>,
+    #[serde(rename = "display_name")]
+    pub display_name_snake: Option<Value>,
+    #[serde(rename = "name")]
+    pub name: Option<Value>,
+    #[serde(rename = "profile_displayName")]
+    pub profile_display_name: Option<Value>,
+    #[serde(rename = "profile")]
+    pub profile: Option<Value>,
+    #[serde(rename = "avatar")]
+    pub avatar_url: Option<Value>,
+    #[serde(rename = "avt")]
+    pub avt: Option<Value>,
+    #[serde(rename = "profile_avatar")]
+    pub profile_avatar: Option<Value>,
+    #[serde(rename = "lastActionTime")]
+    pub last_action_time: Option<Value>,
+}
+
+impl FriendWireData {
+    /// Contact id (`userId` > `uid` > `id` > `friendId` > `globalId`).
+    pub fn id(&self) -> Option<String> {
+        pick_alias(&[
+            &self.user_id,
+            &self.uid,
+            &self.id,
+            &self.friend_id,
+            &self.global_id,
+        ])
+    }
+
+    /// Display name, falling back to `profile_displayName` / `profile.displayName`.
+    pub fn display_name(&self) -> Option<String> {
+        pick_alias(&[
+            &self.display_name_camel,
+            &self.zalo_name,
+            &self.display_name_snake,
+            &self.name,
+        ])
         .or_else(|| {
-            v.get("profile_displayName")
-                .or_else(|| v.get("profile").and_then(|p| p.get("displayName")))
+            self.profile_display_name
+                .as_ref()
+                .or_else(|| self.profile.as_ref().and_then(|p| p.get("displayName")))
                 .and_then(Value::as_str)
                 .map(str::to_string)
         })
-        .unwrap_or_else(|| id.clone());
-    let avatar = pick_str(v, &["avatar", "avt", "profile_avatar"]);
+    }
+
+    /// Avatar URL (`avatar` > `avt` > `profile_avatar`).
+    pub fn avatar(&self) -> Option<String> {
+        pick_alias(&[&self.avatar_url, &self.avt, &self.profile_avatar])
+    }
+}
+
+/// Contact profile returned by `/api/friend/profile/get` (cmd `12004`) for phone lookup.
+///
+/// # Wire Response Example
+/// ```json
+/// {
+///   "uid": "1234567890",
+///   "display_name": "Ngọc Trần",
+///   "zalo_name": "ngoctran",
+///   "avatar": "https://avatar.example/240",
+///   "status": "Hello"
+/// }
+/// ```
+///
+/// # Core Transformation
+/// Fills [`PhoneLookupResult`]; the lookup aborts when `uid` is absent, because the caller
+/// cannot build a thread without it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhoneProfileWireData {
+    #[serde(rename = "uid")]
+    pub uid: Option<Value>,
+    #[serde(rename = "userId")]
+    pub user_id: Option<Value>,
+    #[serde(rename = "id")]
+    pub id: Option<Value>,
+    #[serde(rename = "globalId")]
+    pub global_id: Option<Value>,
+    #[serde(rename = "display_name")]
+    pub display_name_snake: Option<Value>,
+    #[serde(rename = "displayName")]
+    pub display_name_camel: Option<Value>,
+    #[serde(rename = "zalo_name")]
+    pub zalo_name_snake: Option<Value>,
+    #[serde(rename = "zaloName")]
+    pub zalo_name_camel: Option<Value>,
+    #[serde(rename = "avatar")]
+    pub avatar_url: Option<Value>,
+    #[serde(rename = "avt")]
+    pub avt: Option<Value>,
+    #[serde(rename = "status")]
+    pub status: Option<Value>,
+}
+
+impl PhoneProfileWireData {
+    /// Contact id (`uid` > `userId` > `id` > `globalId`).
+    pub fn uid(&self) -> Option<String> {
+        pick_alias(&[&self.uid, &self.user_id, &self.id, &self.global_id])
+    }
+
+    /// Display name (`display_name` > `displayName` > `zalo_name` > `zaloName`).
+    pub fn display_name(&self) -> Option<String> {
+        pick_alias(&[
+            &self.display_name_snake,
+            &self.display_name_camel,
+            &self.zalo_name_snake,
+            &self.zalo_name_camel,
+        ])
+    }
+
+    /// Zalo name (`zalo_name` > `zaloName` > `display_name` > `displayName`).
+    pub fn zalo_name(&self) -> Option<String> {
+        pick_alias(&[
+            &self.zalo_name_snake,
+            &self.zalo_name_camel,
+            &self.display_name_snake,
+            &self.display_name_camel,
+        ])
+    }
+
+    /// Avatar URL (`avatar` > `avt`).
+    pub fn avatar(&self) -> String {
+        pick_alias(&[&self.avatar_url, &self.avt]).unwrap_or_default()
+    }
+
+    /// Free-form presence status string.
+    pub fn status(&self) -> String {
+        pick_alias(&[&self.status]).unwrap_or_default()
+    }
+}
+
+pub(crate) fn parse_thread(v: &Value) -> Option<Thread> {
+    let wire = FriendWireData::from_value(v);
+    let id = wire.id()?;
+    let name = wire.display_name().unwrap_or_else(|| id.clone());
+    let avatar = wire.avatar();
     let is_group = is_group_flag(v);
-    let time = val_i64(v.get("lastActionTime"))
+    let time = val_i64(wire.last_action_time.as_ref())
         .map(message_time)
         .unwrap_or_default();
 
@@ -163,27 +350,57 @@ where
     Ok(threads)
 }
 
+/// Raw wire payload returned by Zalo for `cmd 11430` (`/api/friend/reqstatus`).
+///
+/// # Wire Response Schema
+/// ```json
+/// {
+///   "error_code": 0,
+///   "error_message": "Successful",
+///   "data": {
+///     "isFriend": 0,
+///     "isRequesting": 1,
+///     "isRequested": 0
+///   }
+/// }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FriendReqStatusWireData {
+    #[serde(alias = "is_friend")]
+    pub is_friend: Option<Value>,
+    #[serde(alias = "is_requesting")]
+    pub is_requesting: Option<Value>,
+    #[serde(alias = "is_requested")]
+    pub is_requested: Option<Value>,
+}
+
+impl FriendReqStatusWireData {
+    pub fn to_status(&self) -> FriendshipStatus {
+        let flag = |v: Option<&Value>| {
+            v.and_then(|val| {
+                val.as_i64()
+                    .or_else(|| val.as_bool().map(|b| if b { 1 } else { 0 }))
+            })
+            .unwrap_or(0)
+        };
+        if flag(self.is_friend.as_ref()) == 1 {
+            FriendshipStatus::Friend
+        } else if flag(self.is_requesting.as_ref()) == 1 {
+            FriendshipStatus::IncomingPending
+        } else if flag(self.is_requested.as_ref()) == 1 {
+            FriendshipStatus::OutgoingPending
+        } else {
+            FriendshipStatus::Stranger
+        }
+    }
+}
+
 /// Parse `/api/friend/reqstatus` (`cmd 11430`) JSON into [`FriendshipStatus`].
 pub fn parse_friendship_status_response(resp: &Value) -> FriendshipStatus {
     let d = unwrap_data(resp);
-    let read_flag = |k1: &str, k2: &str| {
-        d.get(k1)
-            .or_else(|| d.get(k2))
-            .and_then(|v| {
-                v.as_i64()
-                    .or_else(|| v.as_bool().map(|b| if b { 1 } else { 0 }))
-            })
-            .unwrap_or(0)
-    };
-    if read_flag("is_friend", "isFriend") == 1 {
-        FriendshipStatus::Friend
-    } else if read_flag("is_requesting", "isRequesting") == 1 {
-        FriendshipStatus::IncomingPending
-    } else if read_flag("is_requested", "isRequested") == 1 {
-        FriendshipStatus::OutgoingPending
-    } else {
-        FriendshipStatus::Stranger
-    }
+    let wire: FriendReqStatusWireData = serde_json::from_value(d.clone()).unwrap_or_default();
+    wire.to_status()
 }
 
 /// Query `/api/friend/reqstatus` (`cmd 11430`) and return typed [`FriendshipStatus`].
@@ -212,10 +429,88 @@ pub async fn get_friend_request_status(s: &Session, fid: &str) -> Result<Value> 
     Ok(s.maybe_decrypt(resp, s.session_key_bytes()).await)
 }
 
-/// Query `/api/social/profile/lastOnline` (`cmd 12090`) and return `(is_online, label)`.
+/// Upstream user privacy settings returned in profile responses.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
+pub struct UserProfilePrivacySettings {
+    pub show_online_status: bool,
+}
+
+/// Raw wire payload returned by Zalo for `cmd 12090` (`/api/social/profile/lastOnline`).
+///
+/// # Raw JSON Envelope
+/// ```json
+/// {
+///   "error_code": 0,
+///   "error_message": "Successful",
+///   "data": {
+///     "lastOnline": 1731215400000,
+///     "settings": {
+///       "show_online_status": true
+///     }
+///   }
+/// }
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LastOnlineWireData {
+    #[serde(rename = "lastOnline")]
+    pub last_online: Option<Value>,
+    pub settings: Option<UserProfilePrivacySettings>,
+}
+
+impl LastOnlineWireData {
+    /// Return the raw millisecond epoch timestamp.
+    pub fn last_online_ms(&self) -> i64 {
+        val_i64(self.last_online.as_ref()).unwrap_or(0)
+    }
+
+    /// Return whether the user allows their online status to be shown.
+    pub fn is_visible(&self) -> bool {
+        self.settings
+            .as_ref()
+            .map(|s| s.show_online_status)
+            .unwrap_or(true)
+    }
+}
+
+/// Query user presence status and format a human-readable relative activity label.
+///
+/// # Zalo HTTP Wire Request
+/// - **Method / Path**: `GET /api/social/profile/lastOnline` (cmd `12090`)
+/// - **Host Domain**: `profile` (`https://profile.chat.zalo.me`)
+/// - **Transport**: Encrypted with `ParamCipher v2` + session cookie `zpw_sek`
+/// - **Params Payload**:
+///   ```json
+///   { "uid": "<target_user_id>", "conv_type": 1, "imei": "<device_imei>" }
+///   ```
+///
+/// # Raw Upstream Response (`error_code: 0`)
+/// Wrapped in standard [`crate::protocol::wire::ZaloWireEnvelope`]:
+/// ```json
+/// {
+///   "error_code": 0,
+///   "error_message": "Successful",
+///   "data": {
+///     "lastOnline": 1731215400000,
+///     "settings": {
+///       "show_online_status": true
+///     }
+///   }
+/// }
+/// ```
+///
+/// # Core Normalization & Transformation Logic
+/// 1. Deserializes raw `data` into [`LastOnlineWireData`].
+/// 2. Evaluates `settings.show_online_status`. If the user hid their presence, returns `(false, "")`.
+/// 3. Normalizes epoch milliseconds to seconds and compares against current unix clock:
+///    - `diff <= 300s` (5 minutes) -> `(true, "Vừa mới truy cập")`
+///    - `diff < 3600s` (1 hour)    -> `(false, "Truy cập x phút trước")`
+///    - `diff < 86400s` (24 hours) -> `(false, "Truy cập x giờ trước")`
+///    - `diff < 7 days`            -> `(false, "Truy cập x ngày trước")`
 ///
 /// # Errors
-/// Returns an error if the HTTP request fails.
+/// Returns an error if the HTTP request fails or parameter encryption fails.
 pub async fn get_user_online_status(s: &Session, uid: &str) -> Result<(bool, String)> {
     if s.login.is_none() || uid.trim().is_empty() {
         return Ok((false, String::new()));
@@ -239,14 +534,11 @@ pub async fn get_user_online_status(s: &Session, uid: &str) -> Result<(bool, Str
         }
     }
     let d = unwrap_data(&dec);
-    let show_online = d
-        .pointer("/settings/show_online_status")
-        .and_then(|v| v.as_bool().or_else(|| v.as_i64().map(|n| n != 0)))
-        .unwrap_or(true);
-    if !show_online {
+    let wire_data: LastOnlineWireData = serde_json::from_value(d.clone()).unwrap_or_default();
+    if !wire_data.is_visible() {
         return Ok((false, String::new()));
     }
-    let last_onl_raw = val_i64(d.get("lastOnline")).unwrap_or(0);
+    let last_onl_raw = wire_data.last_online_ms();
     if last_onl_raw <= 0 {
         return Ok((false, String::new()));
     }
@@ -368,37 +660,31 @@ pub async fn find_user_by_phone(s: &Session, raw_phone: &str) -> Result<PhoneLoo
     );
     let resp = s.get(&url).await?;
     let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-    if let Some(code) = dec.get("error_code").and_then(Value::as_i64) {
-        if code != 0 {
-            if code == 216 {
-                anyhow::bail!(
-                    "Số điện thoại chưa đăng ký Zalo hoặc người dùng đã chặn tìm kiếm qua SĐT (mã 216)"
-                );
-            }
-            let err_msg = dec
-                .get("error_message")
-                .and_then(Value::as_str)
-                .unwrap_or("Không tìm thấy tài khoản");
-            anyhow::bail!("{err_msg} (mã {code})");
+    let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&dec);
+    let code = env.code();
+    if code != 0 {
+        if code == 216 {
+            anyhow::bail!(
+                "Số điện thoại chưa đăng ký Zalo hoặc người dùng đã chặn tìm kiếm qua SĐT (mã 216)"
+            );
         }
+        let err_msg = match env.message() {
+            "" => "Không tìm thấy tài khoản",
+            msg => msg,
+        };
+        anyhow::bail!("{err_msg} (mã {code})");
     }
 
-    let data = dec.get("data").unwrap_or(&dec);
-    let Some(uid) = pick_str(data, &["uid", "userId", "id", "globalId"]) else {
+    let wire = PhoneProfileWireData::from_value(dec.get("data").unwrap_or(&dec));
+    let Some(uid) = wire.uid() else {
         anyhow::bail!("Không tìm thấy tài khoản Zalo ứng với số điện thoại này");
     };
-    let display_name = pick_str(
-        data,
-        &["display_name", "displayName", "zalo_name", "zaloName"],
-    )
-    .unwrap_or_else(|| raw_phone.trim().to_string());
-    let zalo_name = pick_str(
-        data,
-        &["zalo_name", "zaloName", "display_name", "displayName"],
-    )
-    .unwrap_or_else(|| display_name.clone());
-    let avatar = pick_str(data, &["avatar", "avt"]).unwrap_or_default();
-    let status = pick_str(data, &["status"]).unwrap_or_default();
+    let display_name = wire
+        .display_name()
+        .unwrap_or_else(|| raw_phone.trim().to_string());
+    let zalo_name = wire.zalo_name().unwrap_or_else(|| display_name.clone());
+    let avatar = wire.avatar();
+    let status = wire.status();
 
     let friendship = check_friendship_status(s, &uid)
         .await

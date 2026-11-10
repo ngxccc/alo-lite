@@ -1,6 +1,6 @@
 //! `ChatContent.BinNet` binary TLV decoder for attachments (`0x06`), quotes (`0x07`), and mentions (`0x08`).
 //!
-//! Pure byte-slice wire decoder (`re-notes/12_message_sync_and_e2ee_protocol.md` §3.2.4).
+//! Pure byte-slice wire decoder (`re-notes/12-message-sync-and-e2ee-protocol.md` §3.2.4).
 
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
