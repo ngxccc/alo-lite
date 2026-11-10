@@ -14,7 +14,6 @@ export type AccountProfile = {
 };
 
 export type AppSettings = {
-
 	show_all_contacts: boolean,
 	language: string,
 	autostart_on_boot: boolean,

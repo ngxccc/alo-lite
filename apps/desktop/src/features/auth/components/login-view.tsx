@@ -43,8 +43,7 @@ function formatAuthErrorMessage(error: string): { title: string; detail: string 
   if (raw.includes("mạng") || raw.includes("timeout") || raw.includes("connect")) {
     return {
       title: "Lỗi kết nối mạng",
-      detail:
-        "Không thể kết nối đến máy chủ Zalo. Vui lòng kiểm tra đường truyền Internet.",
+      detail: "Không thể kết nối đến máy chủ Zalo. Vui lòng kiểm tra đường truyền Internet.",
     };
   }
   if (raw.includes("sai") || raw.includes("mật khẩu") || raw.includes("tài khoản")) {
@@ -132,7 +131,6 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
                 <div className="mt-1 text-sm text-muted-foreground">Đăng nhập tài khoản Zalo</div>
               </div>
             </div>
-
           </div>
 
           {/* ── Auth Tabs ── */}
@@ -434,7 +432,6 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
             </div>
           ) : null}
         </div>
-
       </div>
     </TooltipProvider>
   );
