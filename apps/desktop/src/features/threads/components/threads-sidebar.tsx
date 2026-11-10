@@ -37,6 +37,8 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { matchesVnQuery } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
+import { useChatStore } from "@/stores/use-chat-store";
 import {
   isThreadMuted,
   threadMemberCount,
@@ -44,31 +46,44 @@ import {
 } from "@/features/threads/utils/threads";
 
 interface ThreadsSidebarProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
+export function ThreadsSidebar({
+  state: propState,
+  dispatch: propDispatch,
+}: ThreadsSidebarProps = {}) {
+  const chat = useChatStore();
+  const appStore = useAppStore();
+  const dispatch = propDispatch ?? appStore.dispatch;
 
-export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
+  const threads = propState?.threads ?? chat.threads;
+  const selectedThreadId = propState?.selectedThreadId ?? chat.selectedThreadId;
+  const threadFilter = propState?.threadFilter ?? chat.threadFilter;
+  const searchQuery = propState?.searchQuery ?? chat.searchQuery;
+  const unreadCounts = propState?.unreadCounts ?? chat.unreadCounts;
+  const settings = propState?.settings ?? chat.settings;
+  const mediaCache = propState?.mediaCache ?? appStore.mediaCache;
+
   const listRef = useRef<HTMLDivElement>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const settings = state.settings;
 
   const hiddenSet = new Set(settings?.hidden_threads ?? []);
   const pinnedSet = new Set(settings?.pinned_threads ?? []);
 
-  const visibleThreads = state.threads.filter((t) => {
+  const visibleThreads = threads.filter((t) => {
     if (hiddenSet.has(t.id) || t.presentation.hidden) return false;
-    if (state.threadFilter === "direct" && t.is_group) return false;
-    if (state.threadFilter === "groups" && !t.is_group) return false;
+    if (threadFilter === "direct" && t.is_group) return false;
+    if (threadFilter === "groups" && !t.is_group) return false;
     if (unreadOnly) {
-      const unread = threadUnreadCount(t, state.unreadCounts);
+      const unread = threadUnreadCount(t, unreadCounts);
       if (unread === 0 && !t.unread.marked_unread) return false;
     }
-    if (!state.searchQuery.trim()) return true;
+    if (!searchQuery.trim()) return true;
     return (
-      matchesVnQuery(t.name, state.searchQuery) ||
-      matchesVnQuery(t.preview, state.searchQuery) ||
-      t.messages.some((m) => matchesVnQuery(m.text, state.searchQuery))
+      matchesVnQuery(t.name, searchQuery) ||
+      matchesVnQuery(t.preview, searchQuery) ||
+      t.messages.some((m) => matchesVnQuery(m.text, searchQuery))
     );
   });
 
@@ -80,11 +95,11 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
   });
   const handleSearchKeyDown = (key: string) => {
     if (key !== "Enter") return;
-    const digits = state.searchQuery.replace(/\D/g, "");
+    const digits = searchQuery.replace(/\D/g, "");
     if (digits.length >= 8) {
       dispatch({ type: "SET_PHONE_MODAL", open: true });
       dispatch({ type: "START_PHONE_LOOKUP" });
-      void ipc.lookupPhone(state.searchQuery.trim());
+      void ipc.lookupPhone(searchQuery.trim());
     }
   };
 
@@ -131,13 +146,13 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             type="text"
-            value={state.searchQuery}
+            value={searchQuery}
             onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
             onKeyDown={(e) => handleSearchKeyDown(e.key)}
             placeholder="Tìm kiếm"
             className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
-          {state.searchQuery ? (
+          {searchQuery ? (
             <button
               type="button"
               onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
@@ -207,9 +222,9 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                 className="inline-flex cursor-pointer items-center gap-0.5 text-[13px] text-muted-foreground transition hover:text-foreground"
               >
                 <span>
-                  {state.threadFilter === "direct"
+                  {threadFilter === "direct"
                     ? "Cá nhân"
-                    : state.threadFilter === "groups"
+                    : threadFilter === "groups"
                       ? "Nhóm"
                       : "Phân loại"}
                 </span>
@@ -248,8 +263,8 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => {
-                  for (const t of state.threads) {
-                    const unread = threadUnreadCount(t, state.unreadCounts);
+                  for (const t of threads) {
+                    const unread = threadUnreadCount(t, unreadCounts);
                     if (unread > 0) {
                       const last = t.messages.at(-1);
                       if (last?.id) void ipc.sendSeen(t.id, t.is_group, last.id);
@@ -275,10 +290,10 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
             {virtualizer.getVirtualItems().map((vRow) => {
               const t = visibleThreads.at(vRow.index);
               if (!t) return null;
-              const selected = t.id === state.selectedThreadId;
+              const selected = t.id === selectedThreadId;
               const muted = settings ? isThreadMuted(t, settings) : false;
               const pinned = t.presentation.pinned || pinnedSet.has(t.id);
-              const unread = threadUnreadCount(t, state.unreadCounts);
+              const unread = threadUnreadCount(t, unreadCounts);
               const hasDot = unread > 0 || t.unread.marked_unread;
 
               return (
@@ -310,7 +325,7 @@ export function ThreadsSidebar({ state, dispatch }: ThreadsSidebarProps) {
                         isGroup={t.is_group}
                         memberCount={t.is_group ? threadMemberCount(t) : undefined}
                         size={48}
-                        mediaCache={state.mediaCache}
+                        mediaCache={mediaCache}
                       />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <div className="flex items-center justify-between gap-1">

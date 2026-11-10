@@ -21,12 +21,13 @@ import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { jxlToJpgUrl } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 import { isPhotoMessage } from "@/features/chat/utils/messages";
 import { isThreadMuted, threadMemberCount } from "@/features/threads/utils/threads";
 
 interface InfoDrawerProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
 /** 8-px bg-canvas band that separates sections visually */
@@ -74,7 +75,10 @@ function ViewAllButton({ onClick }: { onClick?: () => void }) {
   );
 }
 
-export function InfoDrawer({ state, dispatch }: InfoDrawerProps) {
+export function InfoDrawer({ state: propState, dispatch: propDispatch }: InfoDrawerProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [membersExpanded, setMembersExpanded] = useState(true);
   const [boardExpanded, setBoardExpanded] = useState(true);
   const [photosExpanded, setPhotosExpanded] = useState(true);

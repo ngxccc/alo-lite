@@ -15,11 +15,12 @@ import { Avatar } from "@/shared/ui/avatar";
 import { cn } from "@/shared/utils/cn";
 import { foldVnSearch, matchesVnQuery } from "@/shared/utils/text";
 import type { AppAction, AppState, ContactsSubTab } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 import type { Thread } from "@/shared/types/ipc";
 
 interface ContactsViewProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
 // Nav items in the left column
@@ -60,7 +61,10 @@ function groupLetter(name: string): string {
   return /[A-Z]/.test(firstChar) ? firstChar : "#";
 }
 
-export function ContactsView({ state, dispatch }: ContactsViewProps) {
+export function ContactsView({ state: propState, dispatch: propDispatch }: ContactsViewProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const sub = state.contactsSubTab;
 
   // Per-tab search query (local state)

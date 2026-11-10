@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ipc, isTauriRuntime } from "@/shared/api/ipc";
 import type { Thread } from "@/shared/types/ipc";
 import { cn } from "@/shared/utils/cn";
 import { dayKey, matchesVnQuery } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
+import { useChatStore } from "@/stores/use-chat-store";
 import { Composer } from "./composer";
 import { ChatHeader } from "./chat-header";
 import { PinnedBar } from "./pinned-bar";
@@ -14,42 +16,38 @@ import { useChatScroll } from "./use-chat-scroll";
 import { useSenderLookup } from "./use-sender-lookup";
 
 interface ChatAreaProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
-export function ChatArea({ state, dispatch }: ChatAreaProps) {
+export function ChatArea({ state: propState, dispatch: propDispatch }: ChatAreaProps = {}) {
+  const chat = useChatStore();
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [reactPickerFor, setReactPickerFor] = useState<string | null>(null);
 
-  const thread: Thread | undefined = useMemo(
-    () => state.threads.find((t) => t.id === state.selectedThreadId),
-    [state.threads, state.selectedThreadId],
-  );
-  const pinnedMessages = useMemo(
-    () => thread?.messages.filter((m) => m.is_pinned) ?? [],
-    [thread?.messages],
-  );
+  const selectedThreadId = propState?.selectedThreadId ?? chat.selectedThreadId;
+  const threads = propState?.threads ?? chat.threads;
+
+  const thread: Thread | undefined = threads.find((t) => t.id === selectedThreadId);
+  const pinnedMessages = thread?.messages.filter((m) => m.is_pinned) ?? [];
 
   const { resolveSender, resolveReplySenderName } = useSenderLookup(state);
 
-  const visibleMessages = useMemo(() => {
-    if (!thread) return [];
-    let list = thread.messages;
-    if (state.filterStarredOnly) {
-      list = list.filter((m) => Boolean(m.is_starred));
-    }
-    if (state.inChatSearchOpen && state.inChatSearchQuery.trim()) {
-      list = list.filter((m) => matchesVnQuery(m.text, state.inChatSearchQuery));
-    }
-    const limit = state.renderLimitByThread[thread.id] ?? 150;
-    return list.length > limit ? list.slice(-limit) : list;
-  }, [
-    thread,
-    state.filterStarredOnly,
-    state.inChatSearchOpen,
-    state.inChatSearchQuery,
-    state.renderLimitByThread,
-  ]);
+  let visibleMessages = thread?.messages ?? [];
+  if (state.filterStarredOnly) {
+    visibleMessages = visibleMessages.filter((m) => Boolean(m.is_starred));
+  }
+  if (state.inChatSearchOpen && state.inChatSearchQuery.trim()) {
+    visibleMessages = visibleMessages.filter((m) =>
+      matchesVnQuery(m.text, state.inChatSearchQuery),
+    );
+  }
+  const limit = thread ? (state.renderLimitByThread[thread.id] ?? 150) : 150;
+  if (visibleMessages.length > limit) {
+    visibleMessages = visibleMessages.slice(-limit);
+  }
 
   useEffect(() => {
     if (!thread || thread.is_group || thread.name.includes("Cloud của tôi")) return;

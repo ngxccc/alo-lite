@@ -30,14 +30,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { cn } from "@/shared/utils/cn";
 import { extractFirstUrl } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 import { stickerThumbnailUrl } from "@/features/chat/utils/messages";
 
 interface ComposerProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
   thread: Thread;
 }
-
 type StickerTabId = "popular" | "onion" | "search" | "store" | number;
 
 function StickerThumb({ item, onPick }: { item: StickerItem; onPick: () => void }) {
@@ -62,7 +62,10 @@ function StickerThumb({ item, onPick }: { item: StickerItem; onPick: () => void 
   );
 }
 
-export function Composer({ state, dispatch, thread }: ComposerProps) {
+export function Composer({ state: propState, dispatch: propDispatch, thread }: ComposerProps) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [text, setText] = useState("");
   const [stickerOpen, setStickerOpen] = useState(false);
   const [stickerTab, setStickerTab] = useState<StickerTabId>("popular");

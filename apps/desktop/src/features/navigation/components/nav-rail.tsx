@@ -28,12 +28,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { cn } from "@/shared/utils/cn";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
+import { useAuthStore } from "@/stores/use-auth-store";
+import { useChatStore } from "@/stores/use-chat-store";
+import { useUIStore } from "@/stores/use-ui-store";
 import type { AppSettings } from "@/shared/types/ipc";
 import { threadUnreadCount } from "@/features/threads/utils/threads";
 
 interface NavRailProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
 // ─── Shared rail button ───────────────────────────────────────────────────────
@@ -96,20 +100,24 @@ const dmSubContentCls =
 // ─── Settings popup menu ──────────────────────────────────────────────────────
 
 function SettingsMenu({
-  state,
-  dispatch,
+  state: propState,
+  dispatch: propDispatch,
   isDark,
 }: {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
   isDark: boolean;
 }) {
+  const storeSettings = useChatStore((s) => s.settings);
+  const settings = propState?.settings ?? storeSettings;
+  const dispatch = propDispatch ?? useAppStore.getState().dispatch;
+  const storeDevMode = useUIStore((s) => s.devMode);
+  const devMode = propState?.devMode ?? storeDevMode;
   const [open, setOpen] = useState(false);
-
   const toggleTheme = () => {
-    if (!state.settings) return;
+    if (!settings) return;
     const next: AppSettings = {
-      ...state.settings,
+      ...settings,
       theme_mode: isDark ? "light" : "dark",
     };
     dispatch({ type: "UPDATE_SETTINGS_LOCAL", settings: next });
@@ -240,7 +248,7 @@ function SettingsMenu({
           </DropdownMenuPrimitive.Item>
 
           {/* Dev tools – only in devMode */}
-          {state.devMode && (
+          {devMode && (
             <DropdownMenuPrimitive.Item
               className={dmItemCls}
               onSelect={() => dispatch({ type: "SET_DEV_MODAL", open: true })}
@@ -402,22 +410,35 @@ function ToolsPopover({ dispatch }: { dispatch: (action: AppAction) => void; isD
 
 // ─── Main NavRail ─────────────────────────────────────────────────────────────
 
-export function NavRail({ state, dispatch }: NavRailProps) {
-  const totalUnread = state.threads.reduce(
-    (sum, t) => sum + threadUnreadCount(t, state.unreadCounts),
-    0,
-  );
-  const isDark = (state.settings?.theme_mode ?? "dark") !== "light";
+export function NavRail({ state: propState, dispatch: propDispatch }: NavRailProps = {}) {
+  const storeDispatch = useAppStore.getState().dispatch;
+  const dispatch = propDispatch ?? storeDispatch;
+
+  const auth = useAuthStore();
+  const chat = useChatStore();
+  const ui = useUIStore();
+  const appStore = useAppStore();
+
+  const uin = propState?.uin ?? auth.uin;
+  const displayName = propState?.displayName ?? auth.displayName;
+  const avatar = propState?.avatar ?? auth.avatar;
+  const mediaCache = propState?.mediaCache ?? appStore.mediaCache;
+  const activeSection = propState?.activeSection ?? ui.activeSection;
+  const threads = propState?.threads ?? chat.threads;
+  const unreadCounts = propState?.unreadCounts ?? chat.unreadCounts;
+  const settings = propState?.settings ?? chat.settings;
+
+  const totalUnread = threads.reduce((sum, t) => sum + threadUnreadCount(t, unreadCounts), 0);
+  const isDark = (settings?.theme_mode ?? "dark") !== "light";
 
   const openCloudThread = () => {
-    const cloud = state.threads.find((t) => !t.is_group && t.name.includes("Cloud của tôi"));
+    const cloud = threads.find((t) => !t.is_group && t.name.includes("Cloud của tôi"));
     if (cloud) {
       dispatch({ type: "SELECT_THREAD", threadId: cloud.id });
     } else {
       dispatch({ type: "SHOW_TOAST", message: "Chưa tìm thấy hội thoại Cloud của tôi" });
     }
   };
-
   return (
     <aside
       aria-label="Thanh điều hướng chính"
@@ -434,44 +455,38 @@ export function NavRail({ state, dispatch }: NavRailProps) {
               className="relative mb-2 cursor-pointer rounded-full ring-2 ring-white/25 transition hover:ring-white/50 focus-visible:outline-none"
             >
               <Avatar
-                id={state.uin || "self"}
-                name={state.displayName || "Me"}
-                avatarUrl={state.avatar}
+                id={uin || "self"}
+                name={displayName || "Me"}
+                avatarUrl={avatar}
                 size={40}
-                mediaCache={state.mediaCache}
+                mediaCache={mediaCache}
               />
               {/* Online status dot */}
               <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-rail bg-online" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">{state.displayName || "Tài khoản"}</TooltipContent>
+          <TooltipContent side="right">{displayName || "Tài khoản"}</TooltipContent>
         </Tooltip>
 
         {/* Messages tab */}
         <RailBtn
-          active={state.activeSection === "chat"}
+          active={activeSection === "chat"}
           isDark={isDark}
           label="Tin nhắn"
           onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "chat" })}
           badge={totalUnread}
         >
-          <MessageSquare
-            className="h-6 w-6"
-            strokeWidth={state.activeSection === "chat" ? 2.5 : 1.75}
-          />
+          <MessageSquare className="h-6 w-6" strokeWidth={activeSection === "chat" ? 2.5 : 1.75} />
         </RailBtn>
 
         {/* Contacts tab */}
         <RailBtn
-          active={state.activeSection === "contacts"}
+          active={activeSection === "contacts"}
           isDark={isDark}
           label="Danh bạ"
           onClick={() => dispatch({ type: "SET_NAV_SECTION", section: "contacts" })}
         >
-          <Users
-            className="h-6 w-6"
-            strokeWidth={state.activeSection === "contacts" ? 2.5 : 1.75}
-          />
+          <Users className="h-6 w-6" strokeWidth={activeSection === "contacts" ? 2.5 : 1.75} />
         </RailBtn>
       </div>
 
@@ -495,7 +510,7 @@ export function NavRail({ state, dispatch }: NavRailProps) {
         <ToolsPopover dispatch={dispatch} isDark={isDark} />
 
         {/* Settings dropdown */}
-        <SettingsMenu state={state} dispatch={dispatch} isDark={isDark} />
+        <SettingsMenu state={propState} dispatch={dispatch} isDark={isDark} />
       </div>
     </aside>
   );

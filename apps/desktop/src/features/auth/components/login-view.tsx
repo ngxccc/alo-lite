@@ -5,13 +5,17 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
+import { useAppStore } from "@/app/store/use-app-store";
 
 interface LoginViewProps {
-  state: AppState;
-  dispatch: (action: AppAction) => void;
+  state?: AppState;
+  dispatch?: (action: AppAction) => void;
 }
 
-export function LoginView({ state, dispatch }: LoginViewProps) {
+export function LoginView({ state: propState, dispatch: propDispatch }: LoginViewProps = {}) {
+  const appStore = useAppStore();
+  const state = propState ?? appStore;
+  const dispatch = propDispatch ?? appStore.dispatch;
   const [tab, setTab] = useState<"qr" | "password">("qr");
   const [phone, setPhone] = useState("");
   const [pass, setPass] = useState("");
