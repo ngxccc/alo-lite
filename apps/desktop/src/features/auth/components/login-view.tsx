@@ -221,21 +221,21 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
                   />
                 ) : qrRequested ? (
                   /* State D: Loading QR skeleton */
-                  <div className="flex flex-col items-center justify-center gap-2.5 text-center text-slate-400">
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
+                  <div className="flex flex-col items-center justify-center gap-2.5 text-center">
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/10">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-slate-600">
                       Đang tạo mã QR bảo mật…
                     </div>
                   </div>
                 ) : (
                   /* State E: Idle — nothing requested until the user asks for a code */
                   <div className="flex flex-col items-center justify-center gap-2.5 p-3 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/10 text-primary">
                       <QrCode className="h-6 w-6" />
                     </div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-slate-600">
                       Bấm để tạo mã QR đăng nhập
                     </div>
                     <Button
