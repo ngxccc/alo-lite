@@ -10,5 +10,11 @@
     "stylesheet": "src/app/styles/globals.css",
     "functions": ["cn", "clsx", "cva"]
   },
-  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/build/**", ".*/**"]
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    ".*/**",
+    "**/*.generated.ts"
+  ]
 }
