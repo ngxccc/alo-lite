@@ -340,6 +340,11 @@ pub async fn login_by_password(
     if let Some(cfg) = &env.data {
         apply_login_config(s, cfg);
     }
+    // The cookie minted by the login edge is authoritative; the `zpw_sek` echoed in the
+    // encrypted body can lag behind it and would otherwise replace a working jar entry.
+    if let Some(sek) = s.take_server_zpw_sek() {
+        s.set_zpw_sek(sek);
+    }
     Ok(LoginPasswordOutcome::Success(
         crate::protocol::wire::ActionAck::from_wire(&resp),
     ))
@@ -518,12 +523,25 @@ pub async fn fetch_and_apply_server_info(s: &mut Session) -> Result<()> {
 /// Returns an error if [`get_login_info`] fails on all candidate hosts.
 pub async fn fetch_and_apply_login_info(s: &mut Session) -> Result<()> {
     let info = get_login_info(s).await?;
-    if let Some(sek) = super::qr::extract_zpw_sek(&info) {
-        s.set_zpw_sek(sek);
+    let server_sek = s.take_server_zpw_sek();
+    // Credentials established by the login step outrank this hydration call: only fill the
+    // gaps, never replace a token the server has already accepted.
+    let live_sek = s.zpw_sek.clone().filter(|v| !v.is_empty());
+    let live_key = s.secret_key.clone();
+    if live_sek.is_none() {
+        if let Some(sek) = super::qr::extract_zpw_sek(&info) {
+            s.set_zpw_sek(sek);
+        }
     }
     let env = LoginResponseWireData::from_value(&info);
     if let Some(cfg) = &env.data {
         apply_login_config(s, cfg);
+    }
+    if let Some(sek) = server_sek.or(live_sek) {
+        s.set_zpw_sek(sek);
+    }
+    if let Some(key) = live_key {
+        s.secret_key = Some(key);
     }
     Ok(())
 }
@@ -762,6 +780,14 @@ pub fn apply_login_config(s: &mut Session, typed: &LoginConfigWireData) {
     if !new_enk.is_empty() {
         let raw = crate::crypto::parse_secret_key(&new_enk);
         s.secret_key = Some(raw);
+    }
+    if s.verbose {
+        eprintln!(
+            "[login] config: dkey={} ký tự, zpw_enk={} ký tự, zpw_sek={} ký tự",
+            new_dkey.len(),
+            new_enk.len(),
+            new_sek.len()
+        );
     }
     if !new_sek.is_empty() {
         s.set_zpw_sek(new_sek.clone());

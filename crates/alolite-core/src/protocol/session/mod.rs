@@ -7,6 +7,7 @@
 //! and server info / session health tracking ([`server_info`]).
 
 use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 
 use anyhow::Result;
 use reqwest::cookie::Jar;
@@ -53,6 +54,9 @@ pub struct Session {
     /// Same key as a string, for `maybe_decrypt`.
     pub session_key: Option<String>,
     pub zpw_sek: Option<String>,
+    /// Most recent `zpw_sek` the server delivered through `Set-Cookie`, kept out of `Debug`
+    /// formatting. Shared across clones so a response handler can hand it to the state owner.
+    pub(crate) server_zpw_sek: Arc<StdMutex<Option<String>>>,
     pub login: Option<LoginInfo>,
     /// Draw commands in front of the user so they can be reproduced by hand.
     pub verbose: bool,
@@ -93,6 +97,7 @@ impl Session {
             secret_key: None,
             session_key: None,
             zpw_sek: None,
+            server_zpw_sek: Arc::new(StdMutex::new(None)),
             login: None,
             verbose,
             dump,

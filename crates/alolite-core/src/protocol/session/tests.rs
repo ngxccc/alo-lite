@@ -179,3 +179,51 @@ async fn maybe_decrypt_unwraps_inner_decrypted_envelope() {
     );
 }
 
+#[test]
+fn set_zpw_sek_reaches_every_chat_subdomain() {
+    use reqwest::cookie::CookieStore;
+    let mut s = Session::new(false, false, false).unwrap();
+    s.set_zpw_sek("sek123".into());
+    for host in [
+        "https://tt-profile-wpa.chat.zalo.me",
+        "https://tt-convers-wpa.chat.zalo.me",
+        "https://tt-group-wpa.chat.zalo.me",
+        "https://tt-group-cm.chat.zalo.me",
+        "https://tt-files-wpa.chat.zalo.me",
+        "https://lp9-msg.chat.zalo.me",
+        "https://wpa.chat.zalo.me",
+        "https://wpa.zaloapp.com",
+    ] {
+        let url = reqwest::Url::parse(host).unwrap();
+        let header = s
+            .jar
+            .cookies(&url)
+            .map(|v| v.to_str().unwrap_or_default().to_string())
+            .unwrap_or_default();
+        assert!(header.contains("zpw_sek=sek123"), "{host} -> {header:?}");
+        assert_eq!(
+            header.matches("zpw_sek=").count(),
+            1,
+            "{host} received duplicate cookies: {header:?}"
+        );
+    }
+}
+
+#[test]
+fn extract_set_cookie_sek_ignores_other_cookies_and_attributes() {
+    use reqwest::header::{HeaderMap, HeaderValue, SET_COOKIE};
+    let mut headers = HeaderMap::new();
+    headers.append(SET_COOKIE, HeaderValue::from_static("_zlang=vi; Path=/"));
+    headers.append(
+        SET_COOKIE,
+        HeaderValue::from_static("zpw_sek=abc.def; Path=/; HttpOnly; Secure"),
+    );
+    assert_eq!(
+        super::cookies::extract_set_cookie_sek(&headers).as_deref(),
+        Some("abc.def")
+    );
+
+    let mut none = HeaderMap::new();
+    none.append(SET_COOKIE, HeaderValue::from_static("zpw_sek=; Path=/"));
+    assert!(super::cookies::extract_set_cookie_sek(&none).is_none());
+}

@@ -213,6 +213,9 @@ impl Session {
         };
 
         let status = resp.status();
+        if let Some(sek) = super::cookies::extract_set_cookie_sek(resp.headers()) {
+            self.stash_server_zpw_sek(sek);
+        }
         let text = resp.text().await?;
         if self.verbose {
             eprintln!("← {status} {}", truncate(&text, 400));
