@@ -100,22 +100,31 @@ impl CoreEngine {
     /// Start background message polling, `zpw_ws` WebSocket push listener, update checks,
     /// initial thread refresh, and optional local HTTP REST/MCP server inside the active Tokio runtime.
     pub fn start_background_loops(self: &Arc<Self>, api_port: Option<u16>) {
-        // 1. Apply server info and refresh threads/sticker keywords if logged in.
+        // 1. Validate the restored session first, then refresh threads/sticker keywords.
+        //    Nothing is sent when there is no stored session, and a session the server
+        //    refuses is never polled.
         {
             let engine = Arc::clone(self);
             tokio::spawn(async move {
-                let is_logged = {
+                let has_credentials = {
+                    let s = engine.session.lock().await;
+                    s.has_live_credentials()
+                };
+                if !has_credentials {
+                    return;
+                }
+                engine.refresh_threads(false).await;
+                if !engine.is_session_verified() {
+                    return;
+                }
+                {
                     let mut s = engine.session.lock().await;
                     let _ = login::fetch_and_apply_server_info(&mut s).await;
-                    s.login.is_some()
-                };
-                if is_logged {
-                    engine.refresh_threads(false).await;
-                    let s = engine.session.lock().await.clone();
-                    if let Ok(kws) = fetch_sticker_suggest_keywords(&s).await {
-                        if !kws.is_empty() {
-                            engine.emit(CoreEvent::StickerSuggestKeywordsLoaded(kws));
-                        }
+                }
+                let s = engine.session.lock().await.clone();
+                if let Ok(kws) = fetch_sticker_suggest_keywords(&s).await {
+                    if !kws.is_empty() {
+                        engine.emit(CoreEvent::StickerSuggestKeywordsLoaded(kws));
                     }
                 }
             });

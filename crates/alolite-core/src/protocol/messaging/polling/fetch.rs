@@ -120,6 +120,11 @@ pub async fn get_cloud_messages(
 /// Returns an error if unauthenticated or the server returns a non-zero `error_code` / HTTP error.
 pub async fn get_chat_from_polling(s: &Session, state: &mut PollState) -> Result<PollBatch> {
     require_login(s)?;
+    // Without the session cookie/AES key the long-poll host answers a bare `HTTP 400`,
+    // so skip the round-trip instead of hammering it every tick.
+    if !s.has_live_credentials() {
+        anyhow::bail!("phiên thiếu zpw_sek/secret_key, bỏ qua long-poll");
+    }
     let host = domain_or(&s.domains.lp_chat, crate::endpoints::LP_CHAT_DEFAULT);
     let ts = unix_now();
     let url = format!(
@@ -215,4 +220,20 @@ pub async fn poll_new_messages(
     threads.retain(|t| !t.messages.is_empty() || !t.name.starts_with("Người dùng "));
     deduplicate_threads(threads, None);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::protocol::session::LoginInfo;
+
+    #[tokio::test]
+    async fn long_poll_skips_when_session_credentials_are_missing() {
+        let mut s = Session::new(false, false, false).unwrap();
+        s.login = Some(LoginInfo::default());
+        let mut state = PollState::default();
+
+        let err = get_chat_from_polling(&s, &mut state).await.unwrap_err();
+        assert!(err.to_string().contains("zpw_sek/secret_key"));
+    }
 }

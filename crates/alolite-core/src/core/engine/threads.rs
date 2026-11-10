@@ -118,8 +118,9 @@ impl CoreEngine {
             return;
         }
         match s.session_status().await {
-            SessionStatus::Valid => {}
+            SessionStatus::Valid => self.set_session_verified(true),
             SessionStatus::Expired => {
+                self.set_session_verified(false);
                 self.handle_expired_session(
                     "Phiên đăng nhập (zpw_sek) đã hết hạn trên máy chủ Zalo",
                 )
@@ -234,8 +235,12 @@ impl CoreEngine {
         if self.is_polling.swap(true, Ordering::SeqCst) {
             return;
         }
+        if (unix_now().max(0) as u64) < self.poll_paused_until.load(Ordering::Relaxed) {
+            self.is_polling.store(false, Ordering::SeqCst);
+            return;
+        }
         let s = self.session.lock().await.clone();
-        if s.login.is_some() {
+        if s.has_live_credentials() && self.is_session_verified() {
             let known_threads = self.known_threads_snapshot();
             let mut temp_threads: Vec<Thread> = known_threads
                 .into_iter()
@@ -276,14 +281,29 @@ impl CoreEngine {
             match poll_err {
                 Some(e) => {
                     if SessionStatus::from_error(&e) == SessionStatus::Expired {
+                        self.poll_failures.store(0, Ordering::Relaxed);
+                        self.poll_paused_until.store(0, Ordering::Relaxed);
                         self.handle_expired_session("Phiên đăng nhập (zpw_sek) đã hết hạn")
                             .await;
                     } else {
+                        // A bare `HTTP 400` from the long-poll edge is not an auth failure, so
+                        // treat it as transient: report it once and back off instead of
+                        // re-sending the same request every 1200ms.
+                        let failures = self.poll_failures.fetch_add(1, Ordering::Relaxed) + 1;
                         crate::logger::log_error("core::poll_messages", &e.to_string());
-                        self.emit(CoreEvent::SessionUnreachable(e.to_string()));
+                        if failures == 1 {
+                            self.emit(CoreEvent::SessionUnreachable(e.to_string()));
+                        }
+                        if failures >= 3 {
+                            let backoff_secs = 5u64 << (failures.saturating_sub(3)).min(3);
+                            let pause_until = unix_now().max(0) as u64 + backoff_secs.min(60);
+                            self.poll_paused_until.store(pause_until, Ordering::Relaxed);
+                        }
                     }
                 }
                 None => {
+                    self.poll_failures.store(0, Ordering::Relaxed);
+                    self.poll_paused_until.store(0, Ordering::Relaxed);
                     temp_threads.retain(|t| !t.messages.is_empty());
                     if !temp_threads.is_empty() {
                         resolve_thread_names(&s, &mut temp_threads).await;
@@ -292,6 +312,9 @@ impl CoreEngine {
                     }
                 }
             }
+        } else {
+            self.poll_failures.store(0, Ordering::Relaxed);
+            self.poll_paused_until.store(0, Ordering::Relaxed);
         }
         self.is_polling.store(false, Ordering::SeqCst);
     }
