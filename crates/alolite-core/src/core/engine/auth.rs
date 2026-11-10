@@ -12,7 +12,7 @@ use crate::protocol::messaging::polling::{poll_new_messages, PollState};
 use crate::protocol::messaging::stickers::fetch_sticker_suggest_keywords;
 use crate::protocol::messaging::unread::get_mute_snapshot;
 use crate::protocol::messaging::Thread;
-use crate::protocol::session::Session;
+use crate::protocol::session::{Session, SessionStatus};
 use crate::protocol::social::friends::get_friends_with;
 use crate::protocol::social::groups::get_groups;
 use crate::services::account_manager::{
@@ -134,6 +134,31 @@ impl CoreEngine {
         captcha_token: Option<String>,
         captcha_answer: Option<String>,
     ) {
+        // Two overlapping logins invalidate each other server-side: the last token wins while
+        // the first one keeps any state it already applied. Serialise them.
+        if self
+            .login_in_flight
+            .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            crate::logger::log_error(
+                "core::login_password",
+                "bỏ qua yêu cầu đăng nhập trùng khi lần trước chưa xong",
+            );
+            return;
+        }
+        self.login_password_inner(phone, pass, captcha_token, captcha_answer)
+            .await;
+        self.login_in_flight
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    async fn login_password_inner(
+        self: &Arc<Self>,
+        phone: String,
+        pass: String,
+        captcha_token: Option<String>,
+        captcha_answer: Option<String>,
+    ) {
         self.emit(CoreEvent::StatusUpdate("Đang xác thực tài khoản…".into()));
         let mut s = self.session.lock().await;
         match login::login_by_password(
@@ -176,9 +201,26 @@ impl CoreEngine {
     }
 
     async fn finish_authenticated_bootstrap(self: &Arc<Self>, s: Session) {
-        if s.login.is_none() || s.zpw_sek.is_none() {
+        if !s.has_live_credentials() {
             self.emit(CoreEvent::LoginFailed(
                 "Đăng nhập thất bại: Không nhận được thông tin phiên từ máy chủ Zalo.".into(),
+            ));
+            return;
+        }
+        if s.verbose {
+            eprintln!(
+                "[login] zpw_sek={} ký tự, secret_key={} byte, uin={}",
+                s.zpw_sek.as_ref().map_or(0, |v| v.len()),
+                s.secret_key.as_ref().map_or(0, |v| v.len()),
+                s.login.as_ref().map_or("", |l| l.uin.as_str())
+            );
+        }
+        // Verify before touching the API. A token the edge refuses would otherwise fire the
+        // whole bootstrap request set (friends, groups, last-msgs, mobile sync) into `600`.
+        if s.session_status().await == SessionStatus::Expired {
+            self.set_session_verified(false);
+            self.emit(CoreEvent::LoginFailed(
+                "Phiên vừa tạo bị máy chủ Zalo từ chối (zpw_sek không hợp lệ). Vui lòng thử lại hoặc đăng nhập bằng mã QR.".into(),
             ));
             return;
         }

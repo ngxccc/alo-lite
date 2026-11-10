@@ -51,6 +51,9 @@ pub struct CoreEngine {
     /// Set once the server accepted the current credentials; background polling stays idle
     /// until then so a restored-but-dead `zpw_sek` never produces long-poll traffic.
     pub(super) session_verified: Arc<AtomicBool>,
+    /// Set while a password login is running; a concurrent submit is dropped instead of
+    /// minting a second session that invalidates the first.
+    pub(super) login_in_flight: Arc<AtomicBool>,
     pub(super) current_qr_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
@@ -67,6 +70,7 @@ impl CoreEngine {
             poll_failures: Arc::new(AtomicU32::new(0)),
             poll_paused_until: Arc::new(AtomicU64::new(0)),
             session_verified: Arc::new(AtomicBool::new(false)),
+            login_in_flight: Arc::new(AtomicBool::new(false)),
             current_qr_task: Mutex::new(None),
         })
     }
@@ -87,6 +91,7 @@ impl CoreEngine {
             poll_failures: Arc::new(AtomicU32::new(0)),
             poll_paused_until: Arc::new(AtomicU64::new(0)),
             session_verified: Arc::new(AtomicBool::new(false)),
+            login_in_flight: Arc::new(AtomicBool::new(false)),
             current_qr_task: Mutex::new(None),
         })
     }
