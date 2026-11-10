@@ -166,6 +166,12 @@ pub fn switch_to_account(current_uin: &str, target_uin: &str) -> Result<()> {
         anyhow::bail!("Target UIN is empty");
     }
     let dir = accounts_dir();
+    let target_session = dir.join(format!("{target_uin}.json"));
+    // Validate the target before touching the live session files: a bad UIN must not
+    // leave the app without `session.json`.
+    if !target_session.exists() {
+        anyhow::bail!("Không tìm thấy dữ liệu phiên của tài khoản {target_uin}");
+    }
     if !current_uin.is_empty() {
         let _ = save_current_account_snapshot(current_uin);
     }
@@ -173,10 +179,6 @@ pub fn switch_to_account(current_uin: &str, target_uin: &str) -> Result<()> {
     let _ = std::fs::remove_file("threads_cache.json");
     let _ = std::fs::remove_file("zalo_history.db");
 
-    let target_session = dir.join(format!("{target_uin}.json"));
-    if !target_session.exists() {
-        anyhow::bail!("Không tìm thấy dữ liệu phiên của tài khoản {target_uin}");
-    }
     std::fs::copy(&target_session, "session.json")?;
 
     let target_threads = dir.join(format!("{target_uin}_threads.json"));
