@@ -1,5 +1,5 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
-import { KeyRound, QrCode, RefreshCw, Shield } from "lucide-react";
+import { KeyRound, QrCode, RefreshCw } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -19,8 +19,6 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
   const [tab, setTab] = useState<"qr" | "password">("qr");
   const [phone, setPhone] = useState("");
   const [pass, setPass] = useState("");
-  const [proxyInput, setProxyInput] = useState(state.settings?.proxy_url ?? "");
-  const [showProxy, setShowProxy] = useState(false);
 
   useEffect(() => {
     if (tab === "qr" && !state.qrDataUrl) {
@@ -37,15 +35,6 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
       status: "Đang đăng nhập…",
     });
     void ipc.loginPassword(phone.trim(), pass);
-  };
-
-  const applyProxy = () => {
-    void ipc.setProxy(proxyInput.trim());
-    if (state.settings) {
-      const updated = { ...state.settings, proxy_url: proxyInput.trim() };
-      dispatch({ type: "UPDATE_SETTINGS_LOCAL", settings: updated });
-      void ipc.saveSettings(updated);
-    }
   };
 
   return (
@@ -145,32 +134,6 @@ export function LoginView({ state: propState, dispatch: propDispatch }: LoginVie
             {state.loginError}
           </div>
         ) : null}
-
-        <div className="border-t border-border pt-2.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-between px-2"
-            onClick={() => setShowProxy((v) => !v)}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5" /> Cấu hình Proxy HTTP / SOCKS5
-            </span>
-            <span className="text-[11px] text-muted-foreground">{showProxy ? "Ẩn" : "Mở"}</span>
-          </Button>
-          {showProxy ? (
-            <div className="mt-2 flex gap-1.5">
-              <Input
-                value={proxyInput}
-                onChange={(e) => setProxyInput(e.target.value)}
-                placeholder="http://127.0.0.1:8080 hoặc socks5://..."
-              />
-              <Button variant="default" onClick={applyProxy}>
-                Áp dụng
-              </Button>
-            </div>
-          ) : null}
-        </div>
 
         {state.savedAccounts.length > 0 ? (
           <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">

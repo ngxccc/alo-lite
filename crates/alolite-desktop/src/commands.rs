@@ -479,12 +479,6 @@ pub async fn save_settings(
 }
 
 #[tauri::command]
-pub async fn set_proxy(state: State<'_, AppCoreState>, proxy_url: String) -> Result<(), String> {
-    state.engine.set_proxy(&proxy_url).await;
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn download_file(
     state: State<'_, AppCoreState>,
     url: String,
@@ -587,7 +581,7 @@ pub fn open_path_in_os(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn spawn_multi_profile(profile: String, proxy_url: String) -> Result<(), String> {
+pub fn spawn_multi_profile(profile: String) -> Result<(), String> {
     let clean = profile.trim();
     if clean.is_empty() {
         return Err("Tên profile không được để trống".into());
@@ -595,8 +589,5 @@ pub fn spawn_multi_profile(profile: String, proxy_url: String) -> Result<(), Str
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let mut cmd = std::process::Command::new(exe);
     cmd.arg("--profile").arg(clean);
-    if !proxy_url.trim().is_empty() {
-        cmd.arg("--proxy").arg(proxy_url.trim());
-    }
     cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
 }

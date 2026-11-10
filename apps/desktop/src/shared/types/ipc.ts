@@ -135,7 +135,6 @@ export interface AppSettings {
   thread_labels: Record<string, string>;
   auto_check_updates: boolean;
   skipped_update_version: string;
-  proxy_url: string;
   multi_profile_name: string;
   info_drawer_open: boolean;
 }
@@ -436,10 +435,6 @@ export type CoreEventDto =
         cancelled: boolean;
         error: string | null;
       };
-    }
-  | {
-      type: "ProxyUpdated";
-      payload: { ok: boolean; proxy_url: string | null; error: string | null };
     }
   | {
       type: "FileDownloaded";

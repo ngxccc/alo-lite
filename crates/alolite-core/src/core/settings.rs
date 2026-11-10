@@ -55,8 +55,7 @@ pub struct AppSettings {
     // 9. Cập nhật tự động qua GitHub Releases API
     pub auto_check_updates: bool,
     pub skipped_update_version: String,
-    // 10. Proxy & Đa tài khoản
-    pub proxy_url: String,
+    // 10. Đa tài khoản
     pub multi_profile_name: String,
     pub info_drawer_open: bool,
 }
@@ -114,7 +113,6 @@ impl Default for AppSettings {
             thread_labels: HashMap::new(),
             auto_check_updates: true,
             skipped_update_version: String::new(),
-            proxy_url: String::new(),
             multi_profile_name: "acc2".into(),
             info_drawer_open: false,
         }

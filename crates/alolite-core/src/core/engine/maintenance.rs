@@ -84,18 +84,6 @@ impl CoreEngine {
         }
     }
 
-    pub async fn set_proxy(&self, proxy_url: &str) {
-        let res = {
-            let mut s = self.session.lock().await;
-            let r = s.set_proxy(Some(proxy_url)).map_err(|e| e.to_string());
-            if r.is_ok() {
-                let _ = s.save_to_file("session.json");
-            }
-            r
-        };
-        self.emit(CoreEvent::ProxyUpdated(res));
-    }
-
     /// Build the full initial snapshot required by desktop UI hosts (Tauri WebView, etc.).
     pub async fn bootstrap_snapshot(
         &self,
@@ -105,10 +93,7 @@ impl CoreEngine {
         settings.apply_privacy_blockers();
 
         let (logged_in, uin, display_name, avatar, send2me_id) = {
-            let mut s = self.session.lock().await;
-            if s.proxy_url.is_none() && !settings.proxy_url.trim().is_empty() {
-                let _ = s.set_proxy(Some(&settings.proxy_url));
-            }
+            let s = self.session.lock().await;
             let logged_in = s.login.is_some() && !s.is_expired_marked();
             let (uin, display_name, avatar, send2me_id) = s
                 .login

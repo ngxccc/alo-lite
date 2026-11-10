@@ -69,14 +69,6 @@ async fn main() -> Result<()> {
 
     let mut s = Session::new(opts.dev_mode, opts.dump, opts.dump_raw)?;
     s.load_or_init_device_identity("device.json");
-    if let Some(ref p) = opts.cli_proxy {
-        if let Some(norm) = s.set_proxy(Some(p))? {
-            println!(
-                "🌐 Đã kích hoạt Proxy cho phiên này: {}",
-                session::redact_proxy_url(&norm)
-            );
-        }
-    }
 
     // Attempt to restore persistent session from disk
     let session_restored = if !opts.force_logout {

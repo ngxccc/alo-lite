@@ -44,7 +44,6 @@ const baseSettings: AppSettings = {
   thread_labels: {},
   auto_check_updates: true,
   skipped_update_version: "",
-  proxy_url: "",
   multi_profile_name: "acc2",
   info_drawer_open: false,
 };
