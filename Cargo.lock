@@ -75,7 +75,7 @@ dependencies = [
 
 [[package]]
 name = "alolite-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "alolite-core",
  "anyhow",
@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "alolite-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -121,7 +121,7 @@ dependencies = [
 
 [[package]]
 name = "alolite-desktop"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "alolite-core",
  "anyhow",
