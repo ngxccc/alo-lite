@@ -3,6 +3,7 @@
   "tabWidth": 2,
   "useTabs": false,
   "printWidth": 100,
+  "proseWrap": "preserve",
   "semi": true,
   "endOfLine": "lf",
   "sortPackageJson": false,

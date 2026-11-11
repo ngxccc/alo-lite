@@ -11,7 +11,7 @@ help:
 	@echo "  make build-desktop - Build frontend & Tauri desktop binary (alolite-desktop)"
 	@echo "  make test          - Run Rust core/cli tests + desktop TypeScript tests"
 	@echo "  make lint          - Check Rust workspace with clippy & TypeScript typecheck"
-	@echo "  make fmt           - Format Rust workspace with cargo fmt"
+	@echo "  make fmt           - Format Rust workspace, Desktop UI, scripts & Markdown docs"
 	@echo "  make docs          - Build and open alolite-core private Rustdoc in browser"
 	@echo "  make package       - Build all Linux packages (.deb, .rpm, .AppImage, .tar.gz)"
 	@echo "  make install       - Install desktop entry and icon into ~/.local"
@@ -44,10 +44,12 @@ test:
 lint:
 	cargo clippy --workspace --all-targets -- -D warnings
 	cd apps/desktop && bun run check
+	bun run format:check
 
 fmt:
 	cargo fmt --all
 	cd apps/desktop && bun run format
+	bun run format
 docs:
 	cargo doc -p alolite-core --no-deps --document-private-items --open
 

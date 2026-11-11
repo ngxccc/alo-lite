@@ -24,7 +24,7 @@ if [ -n "$RS_FILES" ]; then
 fi
 
 # 3. Check Desktop UI formatting if any frontend file is staged
-UI_FILES=$(echo "$STAGED_FILES" | grep -E '^apps/desktop/.*\.(ts|tsx|js|jsx|css|json)$' || true)
+UI_FILES=$(echo "$STAGED_FILES" | grep -E '^apps/desktop/.*\.(ts|tsx|js|jsx|css|json|md)$' || true)
 if [ -n "$UI_FILES" ]; then
   echo "🔍 [pre-commit] Checking Desktop UI code format (oxfmt)..."
   if command -v bun >/dev/null 2>&1; then
@@ -32,7 +32,7 @@ if [ -n "$UI_FILES" ]; then
       echo ""
       echo "❌ [pre-commit] Desktop UI code formatting check failed!"
       echo "   Please run:"
-      echo "     cd apps/desktop && bun run format"
+      echo "     make fmt"
       echo "   and re-stage your changes before committing."
       echo ""
       exit 1
@@ -40,7 +40,25 @@ if [ -n "$UI_FILES" ]; then
   fi
 fi
 
-# 4. Check scripts if any release/version script is staged
+# 4. Check Markdown & scripts formatting if any .md or scripts/ file is staged
+MD_OR_SCRIPT_FILES=$(echo "$STAGED_FILES" | grep -E '(\.md$|^scripts/.*\.(ts|js|json)$)' || true)
+if [ -n "$MD_OR_SCRIPT_FILES" ]; then
+  echo "🔍 [pre-commit] Checking Markdown & scripts format (oxfmt)..."
+  if [ -x "./apps/desktop/node_modules/.bin/oxfmt" ] && [ -f ".oxfmtrc.json" ]; then
+    # shellcheck disable=SC2086
+    if ! ./apps/desktop/node_modules/.bin/oxfmt --config .oxfmtrc.json --check $MD_OR_SCRIPT_FILES >/dev/null 2>&1; then
+      echo ""
+      echo "❌ [pre-commit] Markdown or scripts formatting check failed!"
+      echo "   Please run:"
+      echo "     make fmt"
+      echo "   and re-stage your changes before committing."
+      echo ""
+      exit 1
+    fi
+  fi
+fi
+
+# 5. Check scripts tests if any release/version script is staged
 SCRIPT_FILES=$(echo "$STAGED_FILES" | grep -E '^scripts/.*\.(ts|js)$' || true)
 if [ -n "$SCRIPT_FILES" ]; then
   echo "🔍 [pre-commit] Verifying release and versioning scripts..."
