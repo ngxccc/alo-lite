@@ -6,24 +6,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".gitignore"
-      - "LICENSE"
-      - ".vscode/**"
-      - "assets/**"
-      - ".github/assets/**"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".gitignore"
-      - "LICENSE"
-      - ".vscode/**"
-      - "assets/**"
-      - ".github/assets/**"
 
 permissions:
   security-events: write
