@@ -82,4 +82,17 @@ describe("prependChangelog", () => {
     expect(text.indexOf("### What's Changed")).toBeLessThan(text.indexOf("old body"));
     expect(text.split("# Changelog")).toHaveLength(2);
   });
+
+  it("auto-formats markdown lists and spacing in the generated changelog", () => {
+    writeFileSync(
+      path,
+      "# Changelog\n\nGenerated at release time.\n\n## 1.0.0 - 2026-01-01\n\n*   old bullet\n",
+    );
+
+    prependChangelog("1.1.0", "### What's Changed\n*   first item\n*    second item", path);
+
+    const text = readFileSync(path, "utf8");
+    expect(text).toContain("### What's Changed\n\n- first item\n- second item");
+    expect(text).toContain("## 1.0.0 - 2026-01-01\n\n- old bullet\n");
+  });
 });
