@@ -9,12 +9,12 @@
 
 ## 1. The 4-Tier Taxonomy
 
-| Tier | Form | Scope | Mandatory |
-| :--- | :--- | :--- | :--- |
-| **1. Contract** | `///` rustdoc, `//!` module docs | Public items, shared helpers, non-obvious domain rules | Yes for every `pub` item |
-| **2. Rationale** | `//` prose, `// SAFETY:` | Non-obvious decisions, protocol quirks, failure modes | Yes where the "why" is not inferable |
-| **3. Tracked debt** | `// TODO(owner-or-issue):` | Known gaps | Only when tracked |
-| **4. Prohibited** | — | Echoes, dead code, changelog tags, non-English prose | Never |
+| Tier                | Form                             | Scope                                                  | Mandatory                            |
+| :------------------ | :------------------------------- | :----------------------------------------------------- | :----------------------------------- |
+| **1. Contract**     | `///` rustdoc, `//!` module docs | Public items, shared helpers, non-obvious domain rules | Yes for every `pub` item             |
+| **2. Rationale**    | `//` prose, `// SAFETY:`         | Non-obvious decisions, protocol quirks, failure modes  | Yes where the "why" is not inferable |
+| **3. Tracked debt** | `// TODO(owner-or-issue):`       | Known gaps                                             | Only when tracked                    |
+| **4. Prohibited**   | —                                | Echoes, dead code, changelog tags, non-English prose   | Never                                |
 
 ---
 
@@ -36,12 +36,12 @@ pub fn decode_aes(key: &[u8], b64: &str) -> anyhow::Result<String> { ... }
 
 Required rustdoc sections when applicable:
 
-| Section | Use |
-| :--- | :--- |
-| `# Errors` | Any function returning `Result`. |
-| `# Panics` | Any `panic!`, `unwrap`, `expect`, index or slice that can panic. |
-| `# Safety` | Every `pub unsafe fn`. |
-| `# Invariants` | Every `INV-N` the function enforces (see `GLOSSARY.md`). |
+| Section        | Use                                                              |
+| :------------- | :--------------------------------------------------------------- |
+| `# Errors`     | Any function returning `Result`.                                 |
+| `# Panics`     | Any `panic!`, `unwrap`, `expect`, index or slice that can panic. |
+| `# Safety`     | Every `pub unsafe fn`.                                           |
+| `# Invariants` | Every `INV-N` the function enforces (see `GLOSSARY.md`).         |
 
 Module docs explain the module's role and the protocol surface it implements, in 1–4 lines:
 
@@ -86,15 +86,15 @@ Rules:
 
 ## 5. Tier 4 — Prohibited
 
-| Banned | Why | Do instead |
-| :--- | :--- | :--- |
-| `// increment counter` | Echoes code. | Delete it. |
-| `// get user by id` above `get_user_by_id()` | Noise. | Delete it. |
-| Commented-out code | Git preserves history. | Delete it. |
-| `// added by X on 2026-01-01` | Git blame exists. | Delete it. |
-| `// v2 rewrite` | Changelog in source. | Put it in the PR/ADR. |
-| Non-English prose in source | Mixed-language drift. | English comment; Vietnamese in user-facing strings. |
-| Banner art (`///// ===== /////`) | Decoration, not information. | Module docs or plain comments. |
+| Banned                                       | Why                          | Do instead                                          |
+| :------------------------------------------- | :--------------------------- | :-------------------------------------------------- |
+| `// increment counter`                       | Echoes code.                 | Delete it.                                          |
+| `// get user by id` above `get_user_by_id()` | Noise.                       | Delete it.                                          |
+| Commented-out code                           | Git preserves history.       | Delete it.                                          |
+| `// added by X on 2026-01-01`                | Git blame exists.            | Delete it.                                          |
+| `// v2 rewrite`                              | Changelog in source.         | Put it in the PR/ADR.                               |
+| Non-English prose in source                  | Mixed-language drift.        | English comment; Vietnamese in user-facing strings. |
+| Banner art (`///// ===== /////`)             | Decoration, not information. | Module docs or plain comments.                      |
 
 ---
 

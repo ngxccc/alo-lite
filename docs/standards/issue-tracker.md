@@ -6,14 +6,14 @@ Issues, specs and tickets live in **GitHub Issues** for `ngxccc/alolite`. Use th
 
 ## 1. CLI Command Conventions
 
-| Operation | Command | Notes |
-| :--- | :--- | :--- |
-| Create issue | `gh issue create --title "..." --body "..."` | Use a heredoc for structured bodies. |
-| View issue | `gh issue view <number> --comments` | Description, labels and discussion. |
-| List issues | `gh issue list --state open --label "<label>"` | Filter by lifecycle, type or area. |
-| Comment | `gh issue comment <number> --body "..."` | Post updates, link PRs, attach evidence. |
-| Apply labels | `gh issue edit <number> --add-label "<label>"` | Update type/area/priority. |
-| Close issue | `gh issue close <number> --comment "..."` | Always close with a resolution summary. |
+| Operation    | Command                                        | Notes                                    |
+| :----------- | :--------------------------------------------- | :--------------------------------------- |
+| Create issue | `gh issue create --title "..." --body "..."`   | Use a heredoc for structured bodies.     |
+| View issue   | `gh issue view <number> --comments`            | Description, labels and discussion.      |
+| List issues  | `gh issue list --state open --label "<label>"` | Filter by lifecycle, type or area.       |
+| Comment      | `gh issue comment <number> --body "..."`       | Post updates, link PRs, attach evidence. |
+| Apply labels | `gh issue edit <number> --add-label "<label>"` | Update type/area/priority.               |
+| Close issue  | `gh issue close <number> --comment "..."`      | Always close with a resolution summary.  |
 
 ## 2. Label Taxonomy
 
@@ -21,10 +21,10 @@ Issues, specs and tickets live in **GitHub Issues** for `ngxccc/alolite`. Use th
 
 State lives in the issue itself (`open`/`closed`), PR links (`Fixes #<id>`) and GitHub Projects. Do not maintain `in-progress` / `needs-review` labels.
 
-| Label | Meaning |
-| :--- | :--- |
+| Label            | Meaning                                                                                      |
+| :--------------- | :------------------------------------------------------------------------------------------- |
 | `status:blocked` | Waiting on an external dependency, credentials, upstream protocol evidence or another issue. |
-| `wontfix` | Closed as out of scope, superseded or rejected. |
+| `wontfix`        | Closed as out of scope, superseded or rejected.                                              |
 
 ### B. Type (Conventional Commits alignment)
 
@@ -32,41 +32,42 @@ State lives in the issue itself (`open`/`closed`), PR links (`Fixes #<id>`) and 
 
 ### C. Area (domain scopes)
 
-| Label | Scope |
-| :--- | :--- |
-| `area:core` | Core engine, background runtime, common utilities and services (`crates/alolite-core/src/{core,common,services}`). |
-| `area:protocol` | Zalo network protocol, wire codecs, cryptographic handshakes, and message sync (`crates/alolite-core/src/protocol/`). |
-| `area:auth` | QR/password login, `session.json`, `zpw_sek` / `zpw_enk`, and trusted device pairing. |
-| `area:net` | HTTP endpoints, candidate failover, WebSocket framing, `ParamCipher v2`, and `signkey`. |
-| `area:chat` | Threads, message identity, reactions, recall, forwarding, and history sync. |
-| `area:store` | SQLite schema, migrations, queries, and local offline cache (`crates/alolite-core/src/storage/`). |
-| `area:mcp` | MCP JSON-RPC protocol over stdio/HTTP, local REST daemon, and autoreply rules (`crates/alolite-core/src/mcp/`). |
-| `area:ui` | Native Tauri v2 host and React desktop frontend (`apps/desktop/`, `crates/alolite-desktop/`). |
-| `area:cli` | Command-line interface, terminal QR login, and desktop launcher (`crates/alolite-cli/`). |
-| `area:packaging` | Linux distribution packages (.deb, .rpm, .AppImage, .tar.gz) under `packaging/`. |
-| `area:assets` | Desktop icons, SVG branding assets, and reaction graphics under `assets/` and `.github/assets/`. |
-| `area:docs` | Documentation book (`docs/`), ADRs, standards, README, and user guides. |
-| `area:ci` | GitHub Actions workflows and CI/CD automation (`.github/workflows/`). |
-| `area:harness` | `AGENTS.md`, AI agent tooling, `.omp/`, helper scripts, and Makefile. |
+| Label            | Scope                                                                                                                 |
+| :--------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| `area:core`      | Core engine, background runtime, common utilities and services (`crates/alolite-core/src/{core,common,services}`).    |
+| `area:protocol`  | Zalo network protocol, wire codecs, cryptographic handshakes, and message sync (`crates/alolite-core/src/protocol/`). |
+| `area:auth`      | QR/password login, `session.json`, `zpw_sek` / `zpw_enk`, and trusted device pairing.                                 |
+| `area:net`       | HTTP endpoints, candidate failover, WebSocket framing, `ParamCipher v2`, and `signkey`.                               |
+| `area:chat`      | Threads, message identity, reactions, recall, forwarding, and history sync.                                           |
+| `area:store`     | SQLite schema, migrations, queries, and local offline cache (`crates/alolite-core/src/storage/`).                     |
+| `area:mcp`       | MCP JSON-RPC protocol over stdio/HTTP, local REST daemon, and autoreply rules (`crates/alolite-core/src/mcp/`).       |
+| `area:ui`        | Native Tauri v2 host and React desktop frontend (`apps/desktop/`, `crates/alolite-desktop/`).                         |
+| `area:cli`       | Command-line interface, terminal QR login, and desktop launcher (`crates/alolite-cli/`).                              |
+| `area:packaging` | Linux distribution packages (.deb, .rpm, .AppImage, .tar.gz) under `packaging/`.                                      |
+| `area:assets`    | Desktop icons, SVG branding assets, and reaction graphics under `assets/` and `.github/assets/`.                      |
+| `area:docs`      | Documentation book (`docs/`), ADRs, standards, README, and user guides.                                               |
+| `area:ci`        | GitHub Actions workflows and CI/CD automation (`.github/workflows/`).                                                 |
+| `area:harness`   | `AGENTS.md`, AI agent tooling, `.omp/`, helper scripts, and Makefile.                                                 |
+
 ### D. Priority
 
-| Label | Meaning |
-| :--- | :--- |
+| Label         | Meaning                                                    |
+| :------------ | :--------------------------------------------------------- |
 | `priority:p0` | Critical: data loss, credential exposure, complete outage. |
-| `priority:p1` | Blocks the next release milestone. |
-| `priority:p2` | Normal (default). |
+| `priority:p1` | Blocks the next release milestone.                         |
+| `priority:p2` | Normal (default).                                          |
 
 ## 3. Triage Label Vocabulary
 
 Canonical vocabulary consumed by `/triage`. Do not introduce synonyms.
 
-| Role | Repo representation |
-| :--- | :--- |
-| `needs-triage` | Default: open issue with no `type:*` / `area:*` label. |
-| `needs-info` | `status:blocked` + a comment naming the missing evidence. |
-| `ready-for-agent` | `type:*` + `area:*` set, acceptance criteria present, no open blocker. |
+| Role              | Repo representation                                                                     |
+| :---------------- | :-------------------------------------------------------------------------------------- |
+| `needs-triage`    | Default: open issue with no `type:*` / `area:*` label.                                  |
+| `needs-info`      | `status:blocked` + a comment naming the missing evidence.                               |
+| `ready-for-agent` | `type:*` + `area:*` set, acceptance criteria present, no open blocker.                  |
 | `ready-for-human` | `priority:p0` / `priority:p1`, or requires protocol evidence / physical device testing. |
-| `wontfix` | `wontfix` label + closing comment. |
+| `wontfix`         | `wontfix` label + closing comment.                                                      |
 
 ## 4. Native Sub-Issues Protocol
 
@@ -76,13 +77,13 @@ Canonical vocabulary consumed by `/triage`. Do not introduce synonyms.
    gh issue create --title "task(<area>): <summary>" --label "type:task,area:<area>" --body "$(cat <<'EOF'
    ### Outcome
    <One-sentence observable behaviour or state when complete.>
-   
+
    ### Context
    <Child task context or sub-problem specification.>
-   
+
    ### Acceptance Criteria
    - [ ] <Specific verifiable condition>
-   
+
    ### Non-goals
    - <Explicit boundaries>
    EOF
@@ -102,6 +103,7 @@ Canonical vocabulary consumed by `/triage`. Do not introduce synonyms.
    gh api repos/ngxccc/alolite/issues/<parent_number>/sub_issues \
      --jq '.[] | "#\(.number): \(.title)"'
    ```
+
 ## 5. Wayfinding
 
 - **Map ticket**: one issue labeled `wayfinder:map`, holding decisions and the fog tracker.
@@ -116,16 +118,20 @@ A ticket is actionable only when it adheres to the canonical issue body structur
 
 ```markdown
 ### Outcome
+
 <One-sentence observable behaviour or state when complete, not file inventory.>
 
 ### Context
+
 <Current limitation, background, discrepancy, or reproduction steps.>
 
 ### Acceptance Criteria
+
 - [ ] <Specific verifiable condition>
 - [ ] <Verification command or test pass criteria>
 
 ### Non-goals
+
 - <Explicit non-goal to prevent scope creep.>
 ```
 
@@ -158,6 +164,7 @@ gh issue create \
 EOF
 )"
 ```
+
 ## 7. Security Rule
 
 Never paste `session.json`, `zpw_sek`, `zpw_enk`, cookies, IMEI or raw captures containing them into an issue. Redact to `zpw_sek=<redacted>` and attach only sanitized excerpts.

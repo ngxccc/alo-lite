@@ -6,11 +6,11 @@ Runner: `cargo test --locked` (CI runs it on Linux, Windows and macOS). Tests li
 
 ## 1. Test Hierarchy
 
-| Level | Location | Naming |
-| :--- | :--- | :--- |
-| **Unit** | `#[cfg(test)] mod tests` at the bottom of the module | `mod tests` + descriptive `fn` names |
-| **Module integration** | `tests/` directory when multiple modules must cooperate | `tests/<area>_integration.rs` |
-| **Protocol fixture** | `tests/` + `re-notes/` fixtures | `tests/protocol_<topic>.rs` |
+| Level                  | Location                                                | Naming                               |
+| :--------------------- | :------------------------------------------------------ | :----------------------------------- |
+| **Unit**               | `#[cfg(test)] mod tests` at the bottom of the module    | `mod tests` + descriptive `fn` names |
+| **Module integration** | `tests/` directory when multiple modules must cooperate | `tests/<area>_integration.rs`        |
+| **Protocol fixture**   | `tests/` + `re-notes/` fixtures                         | `tests/protocol_<topic>.rs`          |
 
 Naming pattern: `fn <behaviour>_when_<condition>()`.
 
@@ -37,12 +37,12 @@ Rules:
 
 There is no DB-backed factory system; use small builders and static fixtures.
 
-| Pattern | Location | Rule |
-| :--- | :--- | :--- |
-| **Static JSON fixture** | `tests/fixtures/<name>.json` | Sanitized capture; never contains cookies, `zpw_sek`, `zpw_enk`, IMEI or phone numbers. |
-| **Builder** | `tests/common/mod.rs` or inline `fn sample_message()` | Defaults are valid; override only the field under test. |
-| **Object mother** | `fn standard_thread()`, `fn group_thread()` | Named domain presets for readability. |
-| **In-memory store** | `MessageStore::open(":memory:")` | Mandatory for store tests. |
+| Pattern                 | Location                                              | Rule                                                                                    |
+| :---------------------- | :---------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| **Static JSON fixture** | `tests/fixtures/<name>.json`                          | Sanitized capture; never contains cookies, `zpw_sek`, `zpw_enk`, IMEI or phone numbers. |
+| **Builder**             | `tests/common/mod.rs` or inline `fn sample_message()` | Defaults are valid; override only the field under test.                                 |
+| **Object mother**       | `fn standard_thread()`, `fn group_thread()`           | Named domain presets for readability.                                                   |
+| **In-memory store**     | `MessageStore::open(":memory:")`                      | Mandatory for store tests.                                                              |
 
 Rules:
 
@@ -63,17 +63,17 @@ Rules:
 
 ## 4. What Must Be Tested
 
-| Area | Minimum coverage |
-| :--- | :--- |
-| `protocol/crypto.rs` | AES roundtrip, known-answer vectors, `md5_hex_bytes` vector, `sign_key` parameter set. |
-| `protocol/param_cipher.rs` | Encode/decode roundtrip + known-answer vector. |
-| `protocol/registry/` | Strict ID sorting/uniqueness (437 entries), domain fallback coverage, `Session` candidate resolution, `ws::cmd_name`. |
-| `storage/` | Upsert idempotency, delete-for-me, thread ordering, `ZDB4.0`/`BinNet` archive ingest (`INV-4`). |
-| `protocol/socket.rs` | Frame encode/decode, unknown-frame survival, inflate path. |
-| `protocol/session/` | `session.json` / `device.json` roundtrip, cookie attachment, `Domains` healing/failover, Privacy Guard, expiry handling. |
-| `protocol/messaging/{threads,polling}.rs` | `ChatMessage` wire parsing, `PollState`, `merge_previews`/`merge_group_history`, `MessageIdentityIndex` (`INV-4`). |
-| `protocol/endpoints.rs` | Service lookup for every key in `SERVICE_MAP_V3` and `EXTENDED_FALLBACK_MAP`. |
-Protocol parsing changes require a fixture-backed test. If a case cannot be tested automatically, document manual verification steps in the PR (device, flow, observed `error_code`).
+| Area                                                                                                                                                                                  | Minimum coverage                                                                                                         |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------- |
+| `protocol/crypto.rs`                                                                                                                                                                  | AES roundtrip, known-answer vectors, `md5_hex_bytes` vector, `sign_key` parameter set.                                   |
+| `protocol/param_cipher.rs`                                                                                                                                                            | Encode/decode roundtrip + known-answer vector.                                                                           |
+| `protocol/registry/`                                                                                                                                                                  | Strict ID sorting/uniqueness (437 entries), domain fallback coverage, `Session` candidate resolution, `ws::cmd_name`.    |
+| `storage/`                                                                                                                                                                            | Upsert idempotency, delete-for-me, thread ordering, `ZDB4.0`/`BinNet` archive ingest (`INV-4`).                          |
+| `protocol/socket.rs`                                                                                                                                                                  | Frame encode/decode, unknown-frame survival, inflate path.                                                               |
+| `protocol/session/`                                                                                                                                                                   | `session.json` / `device.json` roundtrip, cookie attachment, `Domains` healing/failover, Privacy Guard, expiry handling. |
+| `protocol/messaging/{threads,polling}.rs`                                                                                                                                             | `ChatMessage` wire parsing, `PollState`, `merge_previews`/`merge_group_history`, `MessageIdentityIndex` (`INV-4`).       |
+| `protocol/endpoints.rs`                                                                                                                                                               | Service lookup for every key in `SERVICE_MAP_V3` and `EXTENDED_FALLBACK_MAP`.                                            |
+| Protocol parsing changes require a fixture-backed test. If a case cannot be tested automatically, document manual verification steps in the PR (device, flow, observed `error_code`). |
 
 ---
 

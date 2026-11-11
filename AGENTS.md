@@ -12,41 +12,42 @@ Operating guide for AI agents and humans working in this repository.
 
 ## Commands
 
-|Task|Command|
-|:---|:---|
-|Build CLI & core|`cargo build`|
-|Build Desktop app|`(cd apps/desktop && bun run build) && cargo build --bin alolite-desktop`|
-|Build Release binaries|`cargo build --release --bin alolite --bin alolite-desktop`|
-|Test Rust core & CLI|`cargo test --locked`|
-|Test Desktop UI|`(cd apps/desktop && bun run typecheck && bun test && bun run build)`|
-|Format|`cargo fmt --all`|
-|Lint|`cargo clippy --workspace --all-targets -- -D warnings`|
-|Run Desktop|`cargo run --bin alolite-desktop`|
-|Run MCP (stdio)|`cargo run --bin alolite -- --mcp`|
-|Run headless REST + MCP HTTP|`cargo run --bin alolite -- --api-port 18128 --api-only`|
+| Task                         | Command                                                                   |
+| :--------------------------- | :------------------------------------------------------------------------ |
+| Build CLI & core             | `cargo build`                                                             |
+| Build Desktop app            | `(cd apps/desktop && bun run build) && cargo build --bin alolite-desktop` |
+| Build Release binaries       | `cargo build --release --bin alolite --bin alolite-desktop`               |
+| Test Rust core & CLI         | `cargo test --locked`                                                     |
+| Test Desktop UI              | `(cd apps/desktop && bun run typecheck && bun test && bun run build)`     |
+| Format                       | `cargo fmt --all`                                                         |
+| Lint                         | `cargo clippy --workspace --all-targets -- -D warnings`                   |
+| Run Desktop                  | `cargo run --bin alolite-desktop`                                         |
+| Run MCP (stdio)              | `cargo run --bin alolite -- --mcp`                                        |
+| Run headless REST + MCP HTTP | `cargo run --bin alolite -- --api-port 18128 --api-only`                  |
+
 ## Architecture Map
 
-|Path|Responsibility|
-|:---|:---|
-|`crates/alolite-core/`|UI-independent `CoreEngine`, `protocol/`, `storage/`, `mcp/`, `services/`, and `common/`|
-|`assets/`|Shared desktop icon (`app_icon.png`, `.ico`, `.svg`) and branding assets|
-|`crates/alolite-cli/`|`alolite` binary (`--mcp`, `--api-only`, `--qr`, `--phone`, desktop launcher)|
-|`crates/alolite-desktop/`|Tauri v2 native desktop host (`alolite-desktop`) over `alolite-core` embedding `apps/desktop/dist`|
-|`apps/desktop/`|Pure feature-based TypeScript + React frontend (`src/{app,shared,features}/`)|
-|`docs/`|Engineering standards, ADRs (`docs/adr/`), `book.toml`, `DESIGN.md`, `ROADMAP.md`, `LEGAL.md`|
-|`packaging/`|Linux `.deb`, `.rpm`, `.AppImage`, `.tar.gz` packaging scripts|
+| Path                      | Responsibility                                                                                     |
+| :------------------------ | :------------------------------------------------------------------------------------------------- |
+| `crates/alolite-core/`    | UI-independent `CoreEngine`, `protocol/`, `storage/`, `mcp/`, `services/`, and `common/`           |
+| `assets/`                 | Shared desktop icon (`app_icon.png`, `.ico`, `.svg`) and branding assets                           |
+| `crates/alolite-cli/`     | `alolite` binary (`--mcp`, `--api-only`, `--qr`, `--phone`, desktop launcher)                      |
+| `crates/alolite-desktop/` | Tauri v2 native desktop host (`alolite-desktop`) over `alolite-core` embedding `apps/desktop/dist` |
+| `apps/desktop/`           | Pure feature-based TypeScript + React frontend (`src/{app,shared,features}/`)                      |
+| `docs/`                   | Engineering standards, ADRs (`docs/adr/`), `book.toml`, `DESIGN.md`, `ROADMAP.md`, `LEGAL.md`      |
+| `packaging/`              | Linux `.deb`, `.rpm`, `.AppImage`, `.tar.gz` packaging scripts                                     |
 
 ### Protocol Submodule Map (`crates/alolite-core/src/protocol/`)
 
-|Module|Single Responsibility|
-|:---|:---|
-|`endpoints.rs` & `registry/{mod,http_table,ws}.rs`|SSOT for all host URLs (`SERVICE_MAP_V3`, fallbacks) + sorted 437 HTTP `commandId` catalog & WS `cmd` constants|
-|`wire.rs`, `crypto.rs`, `param_cipher.rs`, `socket.rs`|Shared JSON wire helpers (`require_login`, `unwrap_data`, `pick_str`, `iter_control_items`, `next_client_message_id`, `strip_vn_diacritics`), AES/MD5/`signkey`, `ParamCipher v2`, `zpw_ws` WebSocket framing|
-|`session/{mod,domains,persistence,privacy,status}.rs`|HTTP transport & failover (`api_get`/`api_post`), domain healing, `session.json`/`device.json`, Privacy Guard & redaction, `SessionStatus`|
-|`auth/{mod,login,qr,trust/*}.rs`|Password/session info auth, QR1/QR2 flow, pure-Rust Curve25519/XEdDSA Trusted Device protocol|
-|`social/{mod,friends,groups}.rs`|Friend roster/phone lookup/friendship requests, group profiles/history/name resolution|
-|`messaging/{mod,model,threads,send,polling,attachments,links,stickers,reactions,unread}.rs`|`ChatMessage`/`Thread` entities, `MessageIdentityIndex`, merge/dedup, text/RTF/quote/forward/recall, chunked file upload, OpenGraph link preview, stickers, `lp_chat` & `get-last-msgs` polling, reactions, seen/unread/mute|
-|`sync/{mod,controls,zdb4,bin_net,v2_proto,history,phone,container}.rs`|Pure sync HTTP/WS controls, `/api/znoise`, RSA-2048 + `ZDB4.0` container crypto, `BinNet` TLV, Sync V2 Protobuf, cloud history & phone sync fetchers (zero `rusqlite`)|
+| Module                                                                                      | Single Responsibility                                                                                                                                                                                                        |
+| :------------------------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `endpoints.rs` & `registry/{mod,http_table,ws}.rs`                                          | SSOT for all host URLs (`SERVICE_MAP_V3`, fallbacks) + sorted 437 HTTP `commandId` catalog & WS `cmd` constants                                                                                                              |
+| `wire.rs`, `crypto.rs`, `param_cipher.rs`, `socket.rs`                                      | Shared JSON wire helpers (`require_login`, `unwrap_data`, `pick_str`, `iter_control_items`, `next_client_message_id`, `strip_vn_diacritics`), AES/MD5/`signkey`, `ParamCipher v2`, `zpw_ws` WebSocket framing                |
+| `session/{mod,domains,persistence,privacy,status}.rs`                                       | HTTP transport & failover (`api_get`/`api_post`), domain healing, `session.json`/`device.json`, Privacy Guard & redaction, `SessionStatus`                                                                                   |
+| `auth/{mod,login,qr,trust/*}.rs`                                                            | Password/session info auth, QR1/QR2 flow, pure-Rust Curve25519/XEdDSA Trusted Device protocol                                                                                                                                |
+| `social/{mod,friends,groups}.rs`                                                            | Friend roster/phone lookup/friendship requests, group profiles/history/name resolution                                                                                                                                       |
+| `messaging/{mod,model,threads,send,polling,attachments,links,stickers,reactions,unread}.rs` | `ChatMessage`/`Thread` entities, `MessageIdentityIndex`, merge/dedup, text/RTF/quote/forward/recall, chunked file upload, OpenGraph link preview, stickers, `lp_chat` & `get-last-msgs` polling, reactions, seen/unread/mute |
+| `sync/{mod,controls,zdb4,bin_net,v2_proto,history,phone,container}.rs`                      | Pure sync HTTP/WS controls, `/api/znoise`, RSA-2048 + `ZDB4.0` container crypto, `BinNet` TLV, Sync V2 Protobuf, cloud history & phone sync fetchers (zero `rusqlite`)                                                       |
 
 ## Non-Negotiables
 

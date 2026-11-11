@@ -2,14 +2,14 @@
 
 ## 1. Branch Naming
 
-| Prefix | Use |
-| :--- | :--- |
-| `feature/<kebab-name>` | New capability. |
-| `fix/<kebab-name>` | Bug fix. |
-| `hotfix/<kebab-name>` | Production patch, branched from the release tag. |
-| `core/<kebab-name>` | Architecture, schema, protocol or crypto refactor (Tier 3). |
-| `docs/<kebab-name>` | Documentation only. |
-| `chore/<kebab-name>` | Tooling, deps, CI. |
+| Prefix                 | Use                                                         |
+| :--------------------- | :---------------------------------------------------------- |
+| `feature/<kebab-name>` | New capability.                                             |
+| `fix/<kebab-name>`     | Bug fix.                                                    |
+| `hotfix/<kebab-name>`  | Production patch, branched from the release tag.            |
+| `core/<kebab-name>`    | Architecture, schema, protocol or crypto refactor (Tier 3). |
+| `docs/<kebab-name>`    | Documentation only.                                         |
+| `chore/<kebab-name>`   | Tooling, deps, CI.                                          |
 
 - Branch from `main`; keep branches short-lived.
 - One logical change per branch. Do not mix formatting sweeps with behaviour changes.
@@ -19,17 +19,17 @@
 
 **Format**: `<type>(<scope>): <summary>` — header ≤ 72 characters, imperative mood, no trailing period.
 
-| Type | Use |
-| :--- | :--- |
-| `feat` | New user-visible capability. |
-| `fix` | Bug fix. |
+| Type       | Use                               |
+| :--------- | :-------------------------------- |
+| `feat`     | New user-visible capability.      |
+| `fix`      | Bug fix.                          |
 | `refactor` | Behaviour-preserving restructure. |
-| `perf` | Performance. |
-| `test` | Tests only. |
-| `docs` | Documentation. |
-| `chore` | Build, deps, tooling. |
-| `ci` | Workflows, packaging. |
-| `style` | Formatting only. |
+| `perf`     | Performance.                      |
+| `test`     | Tests only.                       |
+| `docs`     | Documentation.                    |
+| `chore`    | Build, deps, tooling.             |
+| `ci`       | Workflows, packaging.             |
+| `style`    | Formatting only.                  |
 
 **Scopes** (lowercase, module-aligned): `auth`, `core`, `net`, `chat`, `media`, `mcp`, `ui`, `store`, `crypto`, `session`, `ci`, `docs`, `harness`.
 
@@ -47,10 +47,10 @@ Rules:
 
 ## 3. Adaptive 3-Tier PR Matrix
 
-| Tier | Scope & risk | Requirements |
-| :--- | :--- | :--- |
-| **Tier 1 — Patch** | Typo, comment, docs, dependency bump with no API change. | One-sentence summary, CI green. |
-| **Tier 2 — Standard** | Feature, bugfix, refactor, test. | Conventional Commits, 5-section PR body, tests pass, no new clippy warnings. |
+| Tier                    | Scope & risk                                                       | Requirements                                                                             |
+| :---------------------- | :----------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| **Tier 1 — Patch**      | Typo, comment, docs, dependency bump with no API change.           | One-sentence summary, CI green.                                                          |
+| **Tier 2 — Standard**   | Feature, bugfix, refactor, test.                                   | Conventional Commits, 5-section PR body, tests pass, no new clippy warnings.             |
 | **Tier 3 — Enterprise** | Protocol/cipher/schema change, breaking change, release packaging. | Atomic commits, ADR/RFC link, protocol evidence, human audit, manual verification steps. |
 
 ### Standard PR Body Schema (`.github/PULL_REQUEST_TEMPLATE.md`)
@@ -59,14 +59,17 @@ Every PR opened against `main` must adhere to the 5-section schema defined in `.
 
 ```markdown
 ## Summary
+
 <!-- Concise explanation of what this PR changes and the technical rationale -->
 
 ## Context
+
 - Resolves: # <!-- If closing an issue, e.g. Resolves: #123 -->
 - Relates to: # <!-- If referencing an issue without closing -->
 - None <!-- If standalone change -->
 
 ## Type
+
 - [ ] feat: New feature
 - [ ] fix: Bug fix
 - [ ] refactor: Code refactoring
@@ -77,14 +80,16 @@ Every PR opened against `main` must adhere to the 5-section schema defined in `.
 - [ ] chore: Maintenance or dependencies
 
 ## Verification & Evidence
+
 - **Platform(s) Tested**:
-  - Architecture: [ ] x86_64  [ ] aarch64
-  - Display Server: [ ] Wayland  [ ] X11
+  - Architecture: [ ] x86_64 [ ] aarch64
+  - Display Server: [ ] Wayland [ ] X11
   - Distribution: <!-- e.g. Arch, Ubuntu 24.04, Fedora 40 -->
 - **Evidence**:
   - Output / Screenshots / Test logs: <!-- Attach screenshots for UI changes, or paste cargo test output -->
 
 ## Checklist
+
 - [ ] `cargo test` passes locally.
 - [ ] No proprietary binaries, secrets, or generated files (`target/`, `dist/`, `session*.json`) are committed.
 - [ ] No RE code violates the Clean-Room & IP guidelines in `LEGAL.md` and `docs/standards/compliance-and-ip.md`.

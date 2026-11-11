@@ -6,16 +6,16 @@ Persistence is local SQLite via `rusqlite` (bundled), owned by `src/storage/` (`
 
 ## 1. Schema Conventions
 
-| Rule | Detail |
-| :--- | :--- |
-| Naming | `snake_case` for tables, columns, indexes. |
-| Table names | Plural (`messages`, `threads`). |
+| Rule         | Detail                                                                                                                    |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------ |
+| Naming       | `snake_case` for tables, columns, indexes.                                                                                |
+| Table names  | Plural (`messages`, `threads`).                                                                                           |
 | Primary keys | Natural stable IDs: `msg_id TEXT PRIMARY KEY`, `thread_id TEXT PRIMARY KEY`. No autoincrement surrogate unless justified. |
-| Timestamps | `INTEGER` Unix epoch milliseconds in a `ts` / `last_ts` column; name them consistently. |
-| Booleans | `INTEGER` 0/1, column prefixed with `is_` (`is_outgoing`, `is_group`). |
-| Nullability | Explicit. Prefer `NOT NULL` for identity/lookup columns. |
-| Raw payloads | Keep `raw_json TEXT` for forward-compatible replay; never parse it on the hot path. |
-| Foreign keys | `PRAGMA foreign_keys = ON` per connection when relations are added. |
+| Timestamps   | `INTEGER` Unix epoch milliseconds in a `ts` / `last_ts` column; name them consistently.                                   |
+| Booleans     | `INTEGER` 0/1, column prefixed with `is_` (`is_outgoing`, `is_group`).                                                    |
+| Nullability  | Explicit. Prefer `NOT NULL` for identity/lookup columns.                                                                  |
+| Raw payloads | Keep `raw_json TEXT` for forward-compatible replay; never parse it on the hot path.                                       |
+| Foreign keys | `PRAGMA foreign_keys = ON` per connection when relations are added.                                                       |
 
 Current tables: `messages (msg_id, thread_id, sender_id, sender_name, text, msg_type, ts, is_outgoing, raw_json)`, `threads (thread_id, name, is_group, last_ts)`. Extend with new tables, do not overload existing columns.
 
@@ -42,11 +42,11 @@ Rules:
 
 ## 3. Indexing Strategy
 
-| Index | Purpose |
-| :--- | :--- |
-| `PRIMARY KEY (msg_id)` | Idempotent upsert. |
-| `idx_thread_ts (thread_id, ts)` | Thread history pagination (high-selectivity `thread_id` first). |
-| Partial index | For sparse states, e.g. `WHERE is_outgoing = 1`, when a query proves it. |
+| Index                           | Purpose                                                                  |
+| :------------------------------ | :----------------------------------------------------------------------- |
+| `PRIMARY KEY (msg_id)`          | Idempotent upsert.                                                       |
+| `idx_thread_ts (thread_id, ts)` | Thread history pagination (high-selectivity `thread_id` first).          |
+| Partial index                   | For sparse states, e.g. `WHERE is_outgoing = 1`, when a query proves it. |
 
 - Add an index only with a query that needs it (YAGNI); record the query in the migration comment.
 - `EXPLAIN QUERY PLAN` before merging any index or query that touches history pagination.
@@ -83,14 +83,14 @@ migrate path: N -> N+1 -> ... -> target
 
 Rules:
 
-| Rule | Detail |
-| :--- | :--- |
-| Single source | Migration list lives in `src/storage/` (`mod.rs` / `models.rs`); no ad-hoc `CREATE TABLE` at call sites. |
-| Idempotent bootstrap | Fresh DB runs every migration from 0; existing DB runs only missing steps. |
-| Forward-only | No down-migrations; ship a compensating migration instead. |
-| Atomic step | Each step runs in a transaction and bumps `user_version` in the same transaction. |
-| Startup safety | Migration failure aborts startup with a clear error; never run on a corrupted/unknown newer version. |
-| Backup | Before a destructive migration, copy the DB file to `<name>.bak-<user_version>` when feasible. |
+| Rule                 | Detail                                                                                                   |
+| :------------------- | :------------------------------------------------------------------------------------------------------- |
+| Single source        | Migration list lives in `src/storage/` (`mod.rs` / `models.rs`); no ad-hoc `CREATE TABLE` at call sites. |
+| Idempotent bootstrap | Fresh DB runs every migration from 0; existing DB runs only missing steps.                               |
+| Forward-only         | No down-migrations; ship a compensating migration instead.                                               |
+| Atomic step          | Each step runs in a transaction and bumps `user_version` in the same transaction.                        |
+| Startup safety       | Migration failure aborts startup with a clear error; never run on a corrupted/unknown newer version.     |
+| Backup               | Before a destructive migration, copy the DB file to `<name>.bak-<user_version>` when feasible.           |
 
 ### Expand & Contract (SQLite adaptation)
 
