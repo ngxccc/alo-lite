@@ -101,24 +101,6 @@ pub async fn refresh_threads(state: State<'_, AppCoreState>, manual: bool) -> Re
 }
 
 #[tauri::command]
-pub async fn set_known_threads(
-    state: State<'_, AppCoreState>,
-    threads: Vec<(String, String, bool)>,
-) -> Result<(), String> {
-    state.engine.set_known_threads(threads);
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn persist_threads(
-    state: State<'_, AppCoreState>,
-    threads: Vec<Thread>,
-) -> Result<(), String> {
-    state.engine.persist_threads(threads).await;
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn load_group_history(
     state: State<'_, AppCoreState>,
     group_id: String,
@@ -150,9 +132,12 @@ pub async fn cancel_cloud_sync(state: State<'_, AppCoreState>) -> Result<(), Str
 #[tauri::command]
 pub async fn sync_phone_messages(
     state: State<'_, AppCoreState>,
-    threads: Vec<Thread>,
     send_phone_prompt: bool,
 ) -> Result<(), String> {
+    let threads = state
+        .engine
+        .list_threads(alolite_core::store::MessageStore::PRELOAD_MSGS)
+        .await;
     state
         .engine
         .sync_phone_messages(threads, send_phone_prompt)
@@ -284,16 +269,6 @@ pub async fn send_attachment_bytes(
         .engine
         .send_attachment_bytes(to_id, is_group, file_name, bytes, caption)
         .await;
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn fetch_media_data(
-    state: State<'_, AppCoreState>,
-    key: String,
-    url: String,
-) -> Result<(), String> {
-    state.engine.fetch_sticker_image(key, url).await;
     Ok(())
 }
 

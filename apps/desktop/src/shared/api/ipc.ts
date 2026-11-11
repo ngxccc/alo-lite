@@ -11,7 +11,6 @@ import type {
   CoreEventDto,
   DevDiagnosticsSnapshot,
   ImportSummaryDto,
-  Thread,
 } from "@/shared/types/ipc.generated";
 
 declare global {
@@ -56,15 +55,12 @@ export const ipc = {
   deleteSavedAccount: (uin: string) => call<void>("delete_saved_account", { uin }),
   wipeLocalData: () => call<void>("wipe_local_data"),
   refreshThreads: (manual = false) => call<void>("refresh_threads", { manual }),
-  setKnownThreads: (threads: [string, string, boolean][]) =>
-    call<void>("set_known_threads", { threads }),
-  persistThreads: (threads: Thread[]) => call<void>("persist_threads", { threads }),
   loadGroupHistory: (groupId: string, isGroup: boolean, have: number) =>
     call<void>("load_group_history", { groupId, isGroup, have }),
   syncHistory: (threads: [string, string, boolean][]) => call<void>("sync_history", { threads }),
   cancelCloudSync: () => call<void>("cancel_cloud_sync"),
-  syncPhoneMessages: (threads: Thread[], sendPhonePrompt: boolean) =>
-    call<void>("sync_phone_messages", { threads, sendPhonePrompt }),
+  syncPhoneMessages: (sendPhonePrompt: boolean) =>
+    call<void>("sync_phone_messages", { sendPhonePrompt }),
   cancelPhoneSync: () => call<void>("cancel_phone_sync"),
   sendMessage: (toId: string, text: string, isGroup: boolean) =>
     call<void>("send_message", { toId, text, isGroup }),
@@ -98,17 +94,16 @@ export const ipc = {
     toId: string,
     isGroup: boolean,
     fileName: string,
-    bytes: number[],
+    bytes: Uint8Array | number[],
     caption: string,
   ) =>
     call<void>("send_attachment_bytes", {
       toId,
       isGroup,
       fileName,
-      bytes,
+      bytes: bytes instanceof Uint8Array ? Array.from(bytes) : bytes,
       caption,
     }),
-  fetchMediaData: (key: string, url: string) => call<void>("fetch_media_data", { key, url }),
   fetchStickerStore: () => call<void>("fetch_sticker_store"),
   fetchStickerPack: (cateId: number, name: string) =>
     call<void>("fetch_sticker_pack", { cateId, name }),

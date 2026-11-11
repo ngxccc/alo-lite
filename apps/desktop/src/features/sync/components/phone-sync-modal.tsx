@@ -91,7 +91,7 @@ export function PhoneSyncModal({
               className="h-8 rounded-md px-4 text-sm"
               onClick={() => {
                 dispatch({ type: "START_PHONE_SYNC" });
-                void ipc.syncPhoneMessages(state.threads, true);
+                void ipc.syncPhoneMessages(true);
               }}
             >
               <RefreshCw className="h-3.5 w-3.5" /> Bắt đầu đồng bộ ngay
