@@ -73,7 +73,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
   const [dismissedLinkFor, setDismissedLinkFor] = useState("");
   const [pendingUpload, setPendingUpload] = useState<{
     fileName: string;
-    bytes: number[];
+    bytes: Uint8Array;
     previewUrl: string;
   } | null>(null);
   const lastTypingAt = useRef(0);
@@ -167,7 +167,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
           const buf = new Uint8Array(await file.arrayBuffer());
           setPendingUpload({
             fileName: file.name || `clipboard_${Date.now()}.png`,
-            bytes: Array.from(buf),
+            bytes: buf,
             previewUrl: URL.createObjectURL(file),
           });
           return;
@@ -183,7 +183,7 @@ export function Composer({ state: propState, dispatch: propDispatch, thread }: C
     const buf = new Uint8Array(await file.arrayBuffer());
     setPendingUpload({
       fileName: file.name || `drop_${Date.now()}`,
-      bytes: Array.from(buf),
+      bytes: buf,
       previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : "",
     });
   };
