@@ -12,6 +12,7 @@
 To support direct 1-1 end-to-end messaging and resolve Zalo server `error_code: 10002` (Group not found / Companion authorization required), Alolite requires the **Trusted Device Protocol**.
 
 The official Zalo client ships this logic inside an isolated WebAssembly binary:
+
 - File: `trusted_device_protocol_bg.97af2bf51fb002cefc5a888e932bcab2.wasm` (SHA-256: `716f0a0637...`)
 - Size: 346 KB, 331 functions, stripped symbols.
 - Analysis across official Linux, Windows (`Zalo-Win-26.11.10.7z`), and macOS Universal (`Zalo 26.11.10.dmg`) packages revealed that **no native binary library exists**; all desktop platforms run this protocol via WebAssembly.
@@ -35,11 +36,13 @@ Re-implement the entire Trusted Device Protocol in clean-room pure Rust under `s
 ## 3. Consequences
 
 ### Positive
+
 - **Zero WASM / JS Dependency:** Native execution speed, instant startup, zero runtime memory overhead from WASM interpreters.
 - **Strict Clean-Room:** Clean implementation derived exclusively from black-box differential testing and wire observations.
 - **Portability:** Seamless compilation across Linux (x86_64, aarch64), Windows, and macOS without extra native C dependencies.
 
 ### Negative / Trade-offs
+
 - Future protocol updates from upstream Zalo require re-verifying against updated official packages using the established REA harness (`re-notes/11-trusted-device-protocol.md`).
 
 ---
@@ -63,4 +66,3 @@ The module is complete and offline-verified (KAT + integration tests), but **ina
 Zalo's servers report `qr_format_trust_device = 0`, so the companion-linking QR (and the mobile
 biometric authorization it triggers) cannot be exercised end to end. Evidence and the probe matrix:
 `re-notes/10-trusted-device-and-bio-sync.md` §1.2.1.
-

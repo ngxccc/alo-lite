@@ -4,11 +4,11 @@ Single-context repository: one glossary, one ADR log.
 
 ## 1. Files
 
-| File | Purpose |
-| :--- | :--- |
-| `GLOSSARY.md` | Ubiquitous language: session, protocol, chat, runtime terms + `INV-N` invariants. |
-| `docs/adr/NNNN-<kebab-name>.md` | One architectural decision per file, numbered from `0001`. |
-| `docs/adr/README.md` | ADR template + index table. |
+| File                            | Purpose                                                                           |
+| :------------------------------ | :-------------------------------------------------------------------------------- |
+| `GLOSSARY.md`                   | Ubiquitous language: session, protocol, chat, runtime terms + `INV-N` invariants. |
+| `docs/adr/NNNN-<kebab-name>.md` | One architectural decision per file, numbered from `0001`.                        |
+| `docs/adr/README.md`            | ADR template + index table.                                                       |
 
 Do not create `GLOSSARY-MAP.md` or per-module glossaries; this repo is a single context.
 
@@ -52,12 +52,12 @@ Rules:
 
 ## 5. ADR Rules
 
-| Status | Meaning |
-| :--- | :--- |
-| `proposed` | Under discussion; not binding. |
-| `accepted` | Binding; code must comply or explicitly supersede. |
-| `superseded by ADR-NNNN` | Historical only; do not edit the decision body. |
-| `deprecated` | No longer relevant; kept for history. |
+| Status                   | Meaning                                            |
+| :----------------------- | :------------------------------------------------- |
+| `proposed`               | Under discussion; not binding.                     |
+| `accepted`               | Binding; code must comply or explicitly supersede. |
+| `superseded by ADR-NNNN` | Historical only; do not edit the decision body.    |
+| `deprecated`             | No longer relevant; kept for history.              |
 
 - ADRs are append-only: correct with a new ADR, never rewrite an accepted one.
 - One ADR per decision. Bundle only tightly coupled choices.
@@ -71,4 +71,3 @@ See `GLOSSARY.md` (Product & Workspace Naming) for canonical terms and avoided s
 - **Product Display Name**: `AloLite` (UI headers, window title, desktop entry name, notifications, documentation headers).
 - **Binaries**: `alolite` (CLI/launcher) and `alolite-desktop` (GUI desktop host).
 - **Crates & Packages**: `alolite-core`, `alolite-cli`, `alolite-desktop` (Rust workspace) and `alolite-desktop` (UI package `apps/desktop/package.json`).
-

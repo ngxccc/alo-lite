@@ -28,17 +28,17 @@ See [`docs/LEGAL.md`](docs/LEGAL.md) and [`docs/standards/compliance-and-ip.md`]
 
 ### Common Commands
 
-| Task | Command |
-| :--- | :--- |
-| **Build CLI & Core** | `cargo build` |
-| **Build Desktop App** | `(cd apps/desktop && bun run build) && cargo build --bin alolite-desktop` |
-| **Run Desktop App** | `cargo run --bin alolite-desktop` |
-| **Run Headless Daemon** | `cargo run --bin alolite -- --api-port 18128 --api-only` |
-| **Run MCP (stdio)** | `cargo run --bin alolite -- --mcp` |
-| **Test Rust Core & CLI** | `cargo test --locked` |
-| **Test Desktop UI** | `(cd apps/desktop && bun run typecheck && bun test && bun run build)` |
-| **Format Check** | `cargo fmt --all -- --check` |
-| **Lint** | `cargo clippy --workspace --all-targets -- -D warnings` |
+| Task                     | Command                                                                   |
+| :----------------------- | :------------------------------------------------------------------------ |
+| **Build CLI & Core**     | `cargo build`                                                             |
+| **Build Desktop App**    | `(cd apps/desktop && bun run build) && cargo build --bin alolite-desktop` |
+| **Run Desktop App**      | `cargo run --bin alolite-desktop`                                         |
+| **Run Headless Daemon**  | `cargo run --bin alolite -- --api-port 18128 --api-only`                  |
+| **Run MCP (stdio)**      | `cargo run --bin alolite -- --mcp`                                        |
+| **Test Rust Core & CLI** | `cargo test --locked`                                                     |
+| **Test Desktop UI**      | `(cd apps/desktop && bun run typecheck && bun test && bun run build)`     |
+| **Format Check**         | `cargo fmt --all -- --check`                                              |
+| **Lint**                 | `cargo clippy --workspace --all-targets -- -D warnings`                   |
 
 ---
 
@@ -101,10 +101,10 @@ Branch from `main` using standard prefixes:
 
 Before opening a PR, determine its tier according to risk and scope:
 
-| Tier | Scope | Requirements |
-| :--- | :--- | :--- |
-| **Tier 1: Patch** | Typos, docs, non-breaking dependency updates | Single-sentence summary, all CI checks green |
-| **Tier 2: Standard** | Features, bug fixes, routine refactors | 5-section PR body, tests pass, zero clippy warnings |
+| Tier                   | Scope                                            | Requirements                                                        |
+| :--------------------- | :----------------------------------------------- | :------------------------------------------------------------------ |
+| **Tier 1: Patch**      | Typos, docs, non-breaking dependency updates     | Single-sentence summary, all CI checks green                        |
+| **Tier 2: Standard**   | Features, bug fixes, routine refactors           | 5-section PR body, tests pass, zero clippy warnings                 |
 | **Tier 3: Enterprise** | Protocol, cipher, DB schema, or breaking changes | Atomic commits, ADR/RFC reference, protocol evidence, rollback plan |
 
 ### Pull Request Template (`.github/PULL_REQUEST_TEMPLATE.md`)
@@ -113,14 +113,17 @@ Pull requests must follow the repository template schema:
 
 ```markdown
 ## Summary
+
 <!-- Concise explanation of what this PR changes and the technical rationale -->
 
 ## Context
+
 - Resolves: # <!-- If closing an issue, e.g. Resolves: #123 -->
 - Relates to: # <!-- If referencing an issue without closing -->
 - None <!-- If standalone change -->
 
 ## Type
+
 - [ ] feat: New feature
 - [ ] fix: Bug fix
 - [ ] refactor: Code refactoring
@@ -131,14 +134,16 @@ Pull requests must follow the repository template schema:
 - [ ] chore: Maintenance or dependencies
 
 ## Verification & Evidence
+
 - **Platform(s) Tested**:
-  - Architecture: [ ] x86_64  [ ] aarch64
-  - Display Server: [ ] Wayland  [ ] X11
+  - Architecture: [ ] x86_64 [ ] aarch64
+  - Display Server: [ ] Wayland [ ] X11
   - Distribution: <!-- e.g. Arch, Ubuntu 24.04, Fedora 40 -->
 - **Evidence**:
   - Output / Screenshots / Test logs: <!-- Attach screenshots for UI changes, or paste cargo test output -->
 
 ## Checklist
+
 - [ ] `cargo test` passes locally.
 - [ ] No proprietary binaries, secrets, or generated files (`target/`, `dist/`, `session*.json`) are committed.
 - [ ] No RE code violates the Clean-Room & IP guidelines in `LEGAL.md` and `docs/standards/compliance-and-ip.md`.

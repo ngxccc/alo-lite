@@ -6,13 +6,13 @@ Threat model: local desktop client holding a live Zalo session. The main risks a
 
 ## 1. Secret Inventory
 
-| Secret | Location | Rule |
-| :--- | :--- | :--- |
-| `zpw_sek` (session cookie) | `session.json` | Never log, never commit, never send anywhere except Zalo hosts. |
-| `zpw_enk` (encryption key) | `session.json` | Same; derive AES key in memory only. |
-| Cookies / IMEI | `session.json` | Same; IMEI is a hardware identifier. |
-| Password | memory only | Never persist, never log. |
-| Raw captures | `re-notes/`, `dump/` | Must be sanitized before commit; `dump/` is gitignored. |
+| Secret                     | Location             | Rule                                                            |
+| :------------------------- | :------------------- | :-------------------------------------------------------------- |
+| `zpw_sek` (session cookie) | `session.json`       | Never log, never commit, never send anywhere except Zalo hosts. |
+| `zpw_enk` (encryption key) | `session.json`       | Same; derive AES key in memory only.                            |
+| Cookies / IMEI             | `session.json`       | Same; IMEI is a hardware identifier.                            |
+| Password                   | memory only          | Never persist, never log.                                       |
+| Raw captures               | `re-notes/`, `dump/` | Must be sanitized before commit; `dump/` is gitignored.         |
 
 `session.json` and `*.db` are gitignored and documented in `SESSION_SECURITY.md`. Both rules are non-negotiable.
 
@@ -46,12 +46,12 @@ Threat model: local desktop client holding a live Zalo session. The main risks a
 
 ## 4. Cryptography Rules
 
-| Primitive | Usage | Rule |
-| :--- | :--- | :--- |
-| AES-CBC + PKCS#7, zero IV | Zalo `params` compatibility | Must match the observed server contract; do not "improve" it (INV-1). |
-| AES-GCM | Local at-rest payloads where applicable | Fresh random nonce per message; never reuse a nonce. |
-| MD5 | `signkey` only | Protocol compatibility only; never for password or integrity decisions. |
-| Random | IDs, salts, nonces | Use `OsRng` / `rand` CSPRNG; never time-seeded PRNGs. |
+| Primitive                 | Usage                                   | Rule                                                                    |
+| :------------------------ | :-------------------------------------- | :---------------------------------------------------------------------- |
+| AES-CBC + PKCS#7, zero IV | Zalo `params` compatibility             | Must match the observed server contract; do not "improve" it (INV-1).   |
+| AES-GCM                   | Local at-rest payloads where applicable | Fresh random nonce per message; never reuse a nonce.                    |
+| MD5                       | `signkey` only                          | Protocol compatibility only; never for password or integrity decisions. |
+| Random                    | IDs, salts, nonces                      | Use `OsRng` / `rand` CSPRNG; never time-seeded PRNGs.                   |
 
 - Crypto changes require an ADR (`docs/adr/`) and a known-answer test.
 - Constant-time comparison is mandatory for any secret comparison.

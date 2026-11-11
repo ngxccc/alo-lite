@@ -5,7 +5,7 @@
 # AloLite
 
 **A fast, lightweight, native desktop messaging client written in Rust**  
-*No Node.js at runtime • No Electron • No Chromium bloat*
+_No Node.js at runtime • No Electron • No Chromium bloat_
 
 [![Rust](https://img.shields.io/badge/Rust-1.75+-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.0-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
@@ -32,27 +32,32 @@ AloLite is a standalone, lightweight desktop messaging client written in pure Ru
 ## Features
 
 **Sign-in & session**
+
 - QR-code or password sign-in; Trusted Device flow implemented in pure Rust.
 - Automatic session save/restore on startup; session expiry (`zpw_sek`) is handled without freezing the app.
 - Switch between multiple saved accounts.
 
 **Conversations & messages**
+
 - Friends, groups and recent conversations, with diacritic-insensitive search.
 - Text, replies (quote), forward, recall, delete-for-me, reactions, stickers, images, file attachments (chunked upload) and link previews.
 - Unread counters, mark-as-unread, mute, pin, hide and delete conversations; `@` mention detection.
 - Real-time delivery over WebSocket combined with long-polling.
 
 **Local data**
+
 - Messages and threads are stored in SQLite for offline reading.
 - History sync from the phone (Sync V1/V2, `ZDB4.0` container) and import from older data directories.
 - Data lives in `$XDG_DATA_HOME/alolite` (default `~/.local/share/alolite`) with `0700` directory / `0600` file permissions.
 
 **Integration & automation**
+
 - **MCP** server (JSON-RPC over stdio or HTTP) exposing `zalo_status`, `zalo_list_threads`, `zalo_get_messages`, `zalo_search_messages`, `zalo_send_message` and `zalo_configure_autoreply`.
 - **Headless** mode (REST + MCP HTTP) with no GUI.
 - Rule-based auto-reply, light/dark/system themes, update checks against GitHub Releases.
 
 **Security**
+
 - Every outbound request goes through one path: params → `ParamCipher v2` → `signkey` → session cookies.
 - A Privacy Guard keeps session keys, cookies, IMEI and sensitive content out of logs.
 
@@ -68,11 +73,11 @@ AloLite renders its interface using the system's native **WebKitGTK 4.1** WebVie
 
 ### 1. WebView and GUI libraries (required)
 
-| Distribution | Command |
-|:---|:---|
+| Distribution                           | Command                                                         |
+| :------------------------------------- | :-------------------------------------------------------------- |
 | Debian / Ubuntu / Linux Mint / Pop!_OS | `sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0 libsoup-3.0-0` |
-| Fedora / RHEL / Rocky | `sudo dnf install gtk3 webkit2gtk4.1 libsoup3` |
-| Arch / Manjaro / EndeavourOS | `sudo pacman -S gtk3 webkit2gtk-4.1 libsoup3` |
+| Fedora / RHEL / Rocky                  | `sudo dnf install gtk3 webkit2gtk4.1 libsoup3`                  |
+| Arch / Manjaro / EndeavourOS           | `sudo pacman -S gtk3 webkit2gtk-4.1 libsoup3`                   |
 
 > [!NOTE]
 > Installing the official `.deb` or `.rpm` release package pulls these dependencies automatically.
@@ -81,11 +86,11 @@ AloLite renders its interface using the system's native **WebKitGTK 4.1** WebVie
 
 WebKitGTK plays inline `<video>` through GStreamer. AloLite checks for `qtdemux` (MP4 demuxer) and `autoaudiosink` elements at startup and shows a helpful hint in chat when they are absent.
 
-| Distribution | Command |
-|:---|:---|
+| Distribution                           | Command                                                                                                            |
+| :------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
 | Debian / Ubuntu / Linux Mint / Pop!_OS | `sudo apt install gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav` |
-| Fedora / RHEL / Rocky | `sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-libav` |
-| Arch / Manjaro / EndeavourOS | `sudo pacman -S gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav` |
+| Fedora / RHEL / Rocky                  | `sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-libav`    |
+| Arch / Manjaro / EndeavourOS           | `sudo pacman -S gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav`                                       |
 
 - `gst-plugins-base` provides core pipeline elements, `gst-plugins-good` and `gst-plugins-bad` provide MP4/WebM demuxers, and `gst-libav` provides H.264/AAC decoders used by chat media.
 - On Fedora, stock `gstreamer1-libav` may lack H.264 for patent reasons; enable [RPM Fusion](https://rpmfusion.org/) and install its `ffmpeg`/`gstreamer1-plugin-libav` packages.
@@ -99,11 +104,11 @@ WebKitGTK plays inline `<video>` through GStreamer. AloLite checks for `qtdemux`
 
 ### 3. Optional desktop helpers
 
-| Purpose | Debian / Ubuntu | Fedora | Arch |
-|:---|:---|:---|:---|
-| File dialogs | `zenity` | `zenity` | `zenity` |
-| Clipboard (X11 / Wayland) | `xclip wl-clipboard` | `xclip wl-clipboard` | `xclip wl-clipboard` |
-| Vietnamese-capable fonts | `fonts-noto-core` | `google-noto-sans-fonts` | `noto-fonts` |
+| Purpose                   | Debian / Ubuntu      | Fedora                   | Arch                 |
+| :------------------------ | :------------------- | :----------------------- | :------------------- |
+| File dialogs              | `zenity`             | `zenity`                 | `zenity`             |
+| Clipboard (X11 / Wayland) | `xclip wl-clipboard` | `xclip wl-clipboard`     | `xclip wl-clipboard` |
+| Vietnamese-capable fonts  | `fonts-noto-core`    | `google-noto-sans-fonts` | `noto-fonts`         |
 
 These match the `Recommends` of the `.deb`/`.rpm` packages.
 
@@ -130,12 +135,12 @@ make dev-desktop        # builds the UI, then runs alolite-desktop
 - **Fast Linker**: `mold` and `clang` (configured in `.cargo/config.toml` for sub-second native linking)
 - Tauri v2 build dependencies:
 
-| Distribution | Command |
-|:---|:---|
-| Debian / Ubuntu | `sudo apt install build-essential pkg-config mold clang libssl-dev libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev patchelf` |
-| Fedora | `sudo dnf install gcc gcc-c++ pkgconf-pkg-config mold clang openssl-devel gtk3-devel webkit2gtk4.1-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel libxdo-devel patchelf` |
-| Arch | `sudo pacman -S --needed base-devel mold clang openssl gtk3 webkit2gtk-4.1 libsoup3 librsvg libappindicator-gtk3 xdotool patchelf` |
-See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for the authoritative list.
+| Distribution                                                                                         | Command                                                                                                                                                                                  |
+| :--------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Debian / Ubuntu                                                                                      | `sudo apt install build-essential pkg-config mold clang libssl-dev libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev patchelf`     |
+| Fedora                                                                                               | `sudo dnf install gcc gcc-c++ pkgconf-pkg-config mold clang openssl-devel gtk3-devel webkit2gtk4.1-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel libxdo-devel patchelf` |
+| Arch                                                                                                 | `sudo pacman -S --needed base-devel mold clang openssl gtk3 webkit2gtk-4.1 libsoup3 librsvg libappindicator-gtk3 xdotool patchelf`                                                       |
+| See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for the authoritative list. |
 
 ### Command-line & headless modes
 
@@ -148,16 +153,16 @@ cargo run -p alolite-cli --bin alolite -- --help                        # All op
 
 ### Build, test, package
 
-| Task | Command |
-|:---|:---|
-| Build CLI and core | `cargo build` |
-| Release build | `cargo build --release --bin alolite --bin alolite-desktop` |
-| Rust tests | `cargo test --locked` |
-| UI tests | `(cd apps/desktop && bun run typecheck && bun test && bun run build)` |
-| Format | `cargo fmt --all` |
-| Lint | `cargo clippy --workspace --all-targets -- -D warnings` |
-| Linux packages (`.deb`, `.rpm`, `.AppImage`, `.tar.gz`) | `make package` |
-| Install desktop entry into `~/.local` | `make install` |
+| Task                                                    | Command                                                               |
+| :------------------------------------------------------ | :-------------------------------------------------------------------- |
+| Build CLI and core                                      | `cargo build`                                                         |
+| Release build                                           | `cargo build --release --bin alolite --bin alolite-desktop`           |
+| Rust tests                                              | `cargo test --locked`                                                 |
+| UI tests                                                | `(cd apps/desktop && bun run typecheck && bun test && bun run build)` |
+| Format                                                  | `cargo fmt --all`                                                     |
+| Lint                                                    | `cargo clippy --workspace --all-targets -- -D warnings`               |
+| Linux packages (`.deb`, `.rpm`, `.AppImage`, `.tar.gz`) | `make package`                                                        |
+| Install desktop entry into `~/.local`                   | `make install`                                                        |
 
 `make help` lists every available command.
 
@@ -191,13 +196,13 @@ Details: [`docs/adr/`](docs/adr/) and [`docs/standards/`](docs/standards/).
 
 > Online documentation book is published at **[https://ngxccc.github.io/alolite/](https://ngxccc.github.io/alolite/)**.
 
-| Document | Contents |
-|:---|:---|
-| [`AGENTS.md`](AGENTS.md) | Operating guide for humans and AI agents: commands, architecture map, non-negotiables |
-| [`docs/standards/`](docs/standards/) | API, SQLite, concurrency, testing, security, commit and PR standards |
-| [`docs/adr/`](docs/adr/) | Architecture decisions (Trusted Device, `protocol/` boundaries, Tauri, Cargo workspace) |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Scope and roadmap |
-| [`GLOSSARY.md`](GLOSSARY.md) | Domain glossary |
+| Document                             | Contents                                                                                |
+| :----------------------------------- | :-------------------------------------------------------------------------------------- |
+| [`AGENTS.md`](AGENTS.md)             | Operating guide for humans and AI agents: commands, architecture map, non-negotiables   |
+| [`docs/standards/`](docs/standards/) | API, SQLite, concurrency, testing, security, commit and PR standards                    |
+| [`docs/adr/`](docs/adr/)             | Architecture decisions (Trusted Device, `protocol/` boundaries, Tauri, Cargo workspace) |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Scope and roadmap                                                                       |
+| [`GLOSSARY.md`](GLOSSARY.md)         | Domain glossary                                                                         |
 
 ---
 

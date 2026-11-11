@@ -2,11 +2,11 @@
 
 This project is a client, not a server. The "API" surface is three boundaries:
 
-| Boundary | Direction | Module |
-| :--- | :--- | :--- |
-| **Zalo HTTP API** | outbound | `protocol/session/`, `protocol/registry/`, `protocol/auth/`, `protocol/social/`, `protocol/messaging/` |
-| **Zalo WebSocket** | bidirectional | `protocol/socket.rs`, `protocol/registry/ws.rs` |
-| **UI ↔ Core IPC** | in-process | `core/` (`CoreEngine` / `CoreEvent`) + `gui/worker/` (`WorkerCmd` / `GuiEvent`) |
+| Boundary           | Direction     | Module                                                                                                 |
+| :----------------- | :------------ | :----------------------------------------------------------------------------------------------------- |
+| **Zalo HTTP API**  | outbound      | `protocol/session/`, `protocol/registry/`, `protocol/auth/`, `protocol/social/`, `protocol/messaging/` |
+| **Zalo WebSocket** | bidirectional | `protocol/socket.rs`, `protocol/registry/ws.rs`                                                        |
+| **UI ↔ Core IPC**  | in-process    | `core/` (`CoreEngine` / `CoreEvent`) + `gui/worker/` (`WorkerCmd` / `GuiEvent`)                        |
 
 Plus local filesystem persistence (`src/storage/`, `protocol/session/persistence.rs`).
 
@@ -25,15 +25,15 @@ Plus local filesystem persistence (`src/storage/`, `protocol/session/persistence
 
 Zalo responses use `{ error_code, error_message, data }`. Parse once, then branch:
 
-| `error_code` | Meaning | Handling |
-| :--- | :--- | :--- |
-| `0` | Success | Return typed `data`. |
-| `18012` | QR scanned, not yet confirmed | Keep long-polling; no user error. |
-| `18022` | Invalid signature | Bug: wrong `signkey` parameter set. Do not retry; log and fix. |
-| `18060` | Invalid encryption protocol | Bug: request bypassed `ParamCipher v2`. Do not retry. |
-| `600` / `-102` | `zpw_sek` missing or expired | Fail closed: clear session, restart QR login. |
-| `114` | Invalid parameter type | Bug: malformed nested JSON. Do not retry. |
-| `429` | Rate limited | Back off exponentially; surface a retry hint. |
+| `error_code`   | Meaning                       | Handling                                                       |
+| :------------- | :---------------------------- | :------------------------------------------------------------- |
+| `0`            | Success                       | Return typed `data`.                                           |
+| `18012`        | QR scanned, not yet confirmed | Keep long-polling; no user error.                              |
+| `18022`        | Invalid signature             | Bug: wrong `signkey` parameter set. Do not retry; log and fix. |
+| `18060`        | Invalid encryption protocol   | Bug: request bypassed `ParamCipher v2`. Do not retry.          |
+| `600` / `-102` | `zpw_sek` missing or expired  | Fail closed: clear session, restart QR login.                  |
+| `114`          | Invalid parameter type        | Bug: malformed nested JSON. Do not retry.                      |
+| `429`          | Rate limited                  | Back off exponentially; surface a retry hint.                  |
 
 Canonical table lives in `docs/KHAC_PHUC_SU_CO.md`; keep both in sync when a new code is observed.
 
@@ -43,14 +43,14 @@ Canonical table lives in `docs/KHAC_PHUC_SU_CO.md`; keep both in sync when a new
 
 Use `anyhow::Result` at module boundaries. Add typed errors only where callers must branch on the cause.
 
-| Category | Examples | Retry? | Surface |
-| :--- | :--- | :--- | :--- |
-| `Network` | DNS, TLS, timeout, socket reset | Yes, with backoff | "Mất kết nối, đang thử lại…" |
-| `Auth` | expired `zpw_sek`, invalid credentials | No | Prompt re-login |
-| `Protocol` | bad `signkey`, cipher mismatch, decode failure | No (bug) | Log + generic error |
-| `RateLimit` | `429` | Yes, honoring delay | "Thao tác quá nhanh, thử lại sau" |
-| `Io` | SQLite, file, media read/write | Conditional | Context-specific |
-| `Unsupported` | missing `ffmpeg`, missing audio device | No | Actionable hint |
+| Category      | Examples                                       | Retry?              | Surface                           |
+| :------------ | :--------------------------------------------- | :------------------ | :-------------------------------- |
+| `Network`     | DNS, TLS, timeout, socket reset                | Yes, with backoff   | "Mất kết nối, đang thử lại…"      |
+| `Auth`        | expired `zpw_sek`, invalid credentials         | No                  | Prompt re-login                   |
+| `Protocol`    | bad `signkey`, cipher mismatch, decode failure | No (bug)            | Log + generic error               |
+| `RateLimit`   | `429`                                          | Yes, honoring delay | "Thao tác quá nhanh, thử lại sau" |
+| `Io`          | SQLite, file, media read/write                 | Conditional         | Context-specific                  |
+| `Unsupported` | missing `ffmpeg`, missing audio device         | No                  | Actionable hint                   |
 
 Rules:
 
@@ -115,12 +115,14 @@ Rules:
 AloLite enforces a strict separation between upstream server wire responses and in-process frontend IPC:
 
 ### Tier 1: Upstream Wire Protocol (`protocol/`)
+
 - **Audience**: Core protocol engineers working in `crates/alolite-core/src/protocol/`.
 - **SSOT**: Rust `serde::Deserialize` structs (`ZaloWireEnvelope`, `SendMessageReceipt`, `ActionAck`, `PhoneLookupResult`, `ChatMessage`, etc.).
 - **Documentation**: Living documentation via `cargo doc --document-private-items` with docstrings (`///`) and sanitized JSON payload fixtures. The consolidated HTTP/WebSocket wire reference lives in `re-notes/14-http-rest-endpoint-catalog.md` (index: `re-notes/README.md`). Upstream schemas are never exposed as public AloLite web documentation to preserve Clean-Room compliance (`docs/standards/compliance-and-ip.md`).
 - **Isolation**: The UI thread and frontend React code **never** see or parse raw Zalo wire payloads.
 
 ### Tier 2: Frontend IPC & State Contracts (`core/ipc.rs` ↔ `apps/desktop`)
+
 - **Audience**: Desktop frontend engineers working in `apps/desktop/` (React + TypeScript).
 - **SSOT**: Rust IPC event projection `CoreEventDto` and snapshot `CoreBootstrapSnapshot`.
 - **Automated Codegen**: Generated via `specta` directly from Rust structs to `apps/desktop/src/shared/types/ipc.generated.ts`. JSDoc comments written on Rust structs propagate directly to IDE tooltips.
@@ -131,18 +133,18 @@ AloLite enforces a strict separation between upstream server wire responses and 
 Every protocol function that reads an upstream JSON response names its payload with a typed
 `*WireData` struct instead of walking `serde_json::Value` inline.
 
-| Rule | Detail |
-|:---|:---|
-| **Location** | Same module as the endpoint function (e.g. `social/friends.rs`). |
-| **Name** | `<Thing>WireData` (e.g. `LastOnlineWireData`, `GroupProfileWireData`). |
-| **Derives** | `#[derive(Debug, Clone, Default, Serialize, Deserialize)]` + `#[serde(default)]`. |
-| **Field mapping** | Mirror the raw Zalo keys with `#[serde(rename = "...")]` / `#[serde(alias = "...")]`. |
-| **Type-inconsistent fields** | Keep the field as `Option<serde_json::Value>` and expose a typed accessor using the existing `protocol::wire` helpers (`val_i64`, `val_u64`, `pick_str`, `unwrap_data`). Never add new ad-hoc coercion. |
-| **Docstring** | Four blocks: summary line, `# Wire Response Example` (sanitized JSON), `# Core Transformation`, and `# Errors` on the consuming function. |
-| **Constructor** | `pub fn from_value(v: &Value) -> Self { serde_json::from_value(v.clone()).unwrap_or_default() }`; the parse must never fail, so an unexpected scalar cannot silently turn a payload into `Default`. |
-| **Envelope head** | Use `wire::ErrorEnvelopeWireData` instead of reading `error_code` / `error_message` inline. `code()` treats a missing code as success (`0`); use `code_opt()` when "absent" must stay distinct from `0`. |
-| **Shared coercion** | Multi-alias lookups keep `wire::pick_str`; an already-selected field uses `wire::field_str` so alias order lives in the accessor. |
-| **Behaviour** | Behaviour-preserving: no public signature change, no change to emitted values. |
+| Rule                         | Detail                                                                                                                                                                                                   |
+| :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Location**                 | Same module as the endpoint function (e.g. `social/friends.rs`).                                                                                                                                         |
+| **Name**                     | `<Thing>WireData` (e.g. `LastOnlineWireData`, `GroupProfileWireData`).                                                                                                                                   |
+| **Derives**                  | `#[derive(Debug, Clone, Default, Serialize, Deserialize)]` + `#[serde(default)]`.                                                                                                                        |
+| **Field mapping**            | Mirror the raw Zalo keys with `#[serde(rename = "...")]` / `#[serde(alias = "...")]`.                                                                                                                    |
+| **Type-inconsistent fields** | Keep the field as `Option<serde_json::Value>` and expose a typed accessor using the existing `protocol::wire` helpers (`val_i64`, `val_u64`, `pick_str`, `unwrap_data`). Never add new ad-hoc coercion.  |
+| **Docstring**                | Four blocks: summary line, `# Wire Response Example` (sanitized JSON), `# Core Transformation`, and `# Errors` on the consuming function.                                                                |
+| **Constructor**              | `pub fn from_value(v: &Value) -> Self { serde_json::from_value(v.clone()).unwrap_or_default() }`; the parse must never fail, so an unexpected scalar cannot silently turn a payload into `Default`.      |
+| **Envelope head**            | Use `wire::ErrorEnvelopeWireData` instead of reading `error_code` / `error_message` inline. `code()` treats a missing code as success (`0`); use `code_opt()` when "absent" must stay distinct from `0`. |
+| **Shared coercion**          | Multi-alias lookups keep `wire::pick_str`; an already-selected field uses `wire::field_str` so alias order lives in the accessor.                                                                        |
+| **Behaviour**                | Behaviour-preserving: no public signature change, no change to emitted values.                                                                                                                           |
 
 Reference implementations: `protocol/social/friends.rs` (`FriendWireData`,
 `PhoneProfileWireData`), `protocol/messaging/polling/parse.rs` (`ChatMessageWireData`,

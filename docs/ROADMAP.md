@@ -28,6 +28,7 @@ src/
 ## 2. Feature Scope Boundaries
 
 ### ✅ In Scope (Core Linux MVP):
+
 1. **Authentication**: QR code scanning, persistent session and cookie storage, automatic session restore on startup.
 2. **Conversations**: Friend list, group list, and recent conversation threads.
 3. **Messaging**:
@@ -37,6 +38,7 @@ src/
 5. **Platform**: Native Linux execution on Wayland and X11, compatible with Vietnamese input methods (ibus, fcitx5).
 
 ### ❌ Out of Scope (Explicit Non-Goals):
+
 1. **VoIP / Audio & Video Calls**: Omit WebRTC signaling, FFmpeg camera probing, and Opus streaming (`src/call.rs`, `src/audio.rs`).
 2. **Zalo Video & Social Feed**: Omit timeline feed, video stories, and social profiles (`src/feed.rs`).
 3. **TUI Terminal Interface**: Completely deleted (`src/tui.rs` removed, `ratatui` and `crossterm` dropped).
@@ -48,6 +50,7 @@ src/
 ## 3. Execution Roadmap (4 Phases)
 
 ### Phase 1: Codebase Pruning & Linux Build Simplification [COMPLETED]
+
 - [x] **Empirical Verification**: Validated `ParamCipher v2` and `reqqr` authentication against live servers (`code: 0`).
 - [x] **Protocol Decoupling**: Extracted all protocol logic into the isolated `src/protocol/` module.
 - [x] **Build Script Cleanup**: Stripped 250+ lines of Windows PE COFF `.res` generator from `build.rs`.
@@ -56,12 +59,14 @@ src/
 - [x] **Verification**: Confirmed `cargo check --all-targets` (0 warnings) and all 204 unit tests passing.
 
 ### Phase 2: QR Authentication & Persistent Session Management [COMPLETED]
+
 - [x] **XDG Standard Compliance**: Standardized session and database storage at `~/.local/share/alolite/` (or `$XDG_DATA_HOME/alolite`) with private `0700` directory and `0600` file permissions (`src/common/data_dir.rs`).
 - [x] **Seamless Session Restore**: Validated instant session resume from `session.json` on startup without blocking the UI thread; non-expired sessions navigate directly into chat workspace.
 - [x] **Graceful Expiration & Re-authentication**: Handled token expiry (`zpw_sek` invalidation / error code 600 / -102) by marking expiration, notifying UI (`GuiEvent::SessionExpired`), and generating fresh QR without application crash.
 - [x] **QR Lifecycle & Timeout Handling**: Added `GuiEvent::QrExpired` when long-poll scan or confirmation times out, clearly updating the login UI state and providing manual and automatic refresh options.
 
 ### Phase 3: Core Messaging & WebSocket Synchronization
+
 - [ ] Fetch recent conversations (`get_friends`, `get_groups`) and persist into SQLite `store.rs`.
 - [ ] Sync conversation message history (`get_group_history` / 1-1 chats).
 - [ ] Implement text message sending (`/api/message/sms`) with optimistic UI update.
@@ -69,6 +74,7 @@ src/
 - [ ] Implement basic image viewing and photo sending.
 
 ### Phase 4: Linux Polish & Packaging
+
 - [ ] Validate font rendering (`BeVietnamPro`) and Vietnamese input methods (ibus, fcitx5) in `egui`.
 - [ ] Polish UI with responsive dark/light themes.
 - [ ] Produce standalone Linux distribution artifacts: stripped binary, `alolite.desktop` entry, and `.deb` package.
