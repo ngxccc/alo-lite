@@ -9,54 +9,94 @@ export type AccountProfile = {
 	uin: string,
 	display_name: string,
 	avatar: string | null,
-	last_active_ts: number | null,
+	last_active_ts: number,
 	is_current: boolean,
 };
 
 export type AppSettings = {
-	show_all_contacts?: boolean,
-	language?: string,
-	autostart_on_boot?: boolean,
-	remember_login?: boolean,
-	download_dir?: string,
-	show_birthday?: string,
-	show_online_status?: boolean,
-	show_seen_status?: boolean,
-	allow_message_from?: string,
-	block_typing?: boolean,
-	block_delivered?: boolean,
-	block_seen?: boolean,
-	allow_call_from?: string,
-	allow_search_by_phone?: boolean,
-	friend_src_qr?: boolean,
-	friend_src_group?: boolean,
-	friend_src_card?: boolean,
-	theme_mode?: string,
-	use_avatar_as_wallpaper?: boolean,
-	enable_notifications?: boolean,
-	play_notification_sound?: boolean,
-	quick_messages_enabled?: boolean,
-	hidden_chat_pin_enabled?: boolean,
-	split_priority_inbox?: boolean,
-	excel_paste_mode?: string,
-	double_click_to_reply?: boolean,
-	show_typing_indicator?: boolean,
-	send_message_key?: string,
-	suggest_stickers_while_typing?: boolean,
-	suggest_mentions?: boolean,
-	enable_gif_search?: boolean,
-	enable_sticker_keyword_search?: boolean,
-	selected_mic_device?: string,
-	selected_camera_device?: string,
-	mic_gain_percent?: number,
-	pinned_threads?: string[],
-	muted_threads?: { [key in string]: number | null },
-	hidden_threads?: string[],
-	thread_labels?: { [key in string]: string },
-	auto_check_updates?: boolean,
-	skipped_update_version?: string,
-	multi_profile_name?: string,
-	info_drawer_open?: boolean,
+	show_all_contacts: boolean,
+	language: string,
+	autostart_on_boot: boolean,
+	remember_login: boolean,
+	download_dir: string,
+	show_birthday: string,
+	show_online_status: boolean,
+	show_seen_status: boolean,
+	allow_message_from: string,
+	block_typing: boolean,
+	block_delivered: boolean,
+	block_seen: boolean,
+	allow_call_from: string,
+	allow_search_by_phone: boolean,
+	friend_src_qr: boolean,
+	friend_src_group: boolean,
+	friend_src_card: boolean,
+	theme_mode: string,
+	font_size: string,
+	use_avatar_as_wallpaper: boolean,
+	enable_notifications: boolean,
+	play_notification_sound: boolean,
+	quick_messages_enabled: boolean,
+	hidden_chat_pin_enabled: boolean,
+	split_priority_inbox: boolean,
+	excel_paste_mode: string,
+	double_click_to_reply: boolean,
+	show_typing_indicator: boolean,
+	send_message_key: string,
+	suggest_stickers_while_typing: boolean,
+	suggest_mentions: boolean,
+	enable_gif_search: boolean,
+	enable_sticker_keyword_search: boolean,
+	selected_mic_device: string,
+	selected_camera_device: string,
+	mic_gain_percent: number,
+	pinned_threads: string[],
+	muted_threads: { [key in string]: number },
+	hidden_threads: string[],
+	thread_labels: { [key in string]: string },
+	auto_check_updates: boolean,
+	skipped_update_version: string,
+	multi_profile_name: string,
+	info_drawer_open: boolean,
+};
+
+export type AutoReplyRule = {
+	id: string,
+	keyword: string,
+	/**  `"contains"` (default), `"exact"`, or `"prefix"`. */
+	match_mode?: string,
+	reply_text: string,
+	enabled?: boolean,
+	/**  Optional filter: `"all"`, `"direct"`, or `"group"`. */
+	scope?: string,
+};
+
+/**
+ *  Authenticate using phone number and password via v2 protocol (`POST /api/login/loginByPasswv2`).
+ * 
+ *  \[O\] Exact bundle flow (`signInPasswordV2` in `default-login-main-startup-shared-worker-znotification.*.js`):
+ *  1. Generates 8-character random salt via [`random_salt`].
+ *  2. Derives AES key and encrypts password via [`encrypt_password`].
+ *  3. Assembles signed payload `g` containing phone, country code, encrypted password, salt,
+ *     machine metadata, and stored logged UINs.
+ *  4. Encrypts payload with [`ParamCipher`] v2 using tag `"loginbypasswv2"`.
+ *  5. Appends `ref = https://chat.zalo.me` AFTER signing (excluded from `signkey`).
+ *  6. Sends `POST` form request and decrypts response with the derived AES key.
+ *  7. Parses [`LoginResponseWireData`], applies credentials via [`apply_login_config`], and
+ *     returns [`crate::protocol::wire::ActionAck`].
+ * 
+ *  # Arguments
+ *  * `s` - Active [`Session`].
+ *  * `phone` - Phone number (e.g. `"0901234567"` or country-code formatted).
+ *  * `password` - Plaintext user password.
+ *  * `iso` - ISO country code (e.g. `"VN"`).
+ * 
+ *  Active Captcha challenge returned by `18029 CAPTCHA_REQUIRED` or `/api/login/getCaptcha`.
+ */
+export type CaptchaChallenge = {
+	token: string,
+	captcha_img: string,
+	expiration_time: number,
 };
 
 export type ChatMessage = {
@@ -70,7 +110,7 @@ export type ChatMessage = {
 	text: string,
 	time: string,
 	is_outgoing: boolean,
-	ts: number | null,
+	ts: number,
 	sticker_id?: number | null,
 	sticker_cate_id?: number | null,
 	sticker_type?: number | null,
@@ -119,7 +159,7 @@ export type CoreBootstrapSnapshot = {
 
 /**  JSON-serializable projection of [`CoreEvent`] for Tauri WebView IPC. */
 export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
-	request_id: number | null,
+	request_id: number,
 	ok: boolean,
 	status_label: string | null,
 	error: string | null,
@@ -138,7 +178,7 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 	avatar: string | null,
 } } | { type: "LoginFailed"; payload: {
 	message: string,
-} } | { type: "ThreadsUpdated"; payload: {
+} } | { type: "CaptchaRequired"; payload: CaptchaChallenge } | { type: "ThreadsUpdated"; payload: {
 	threads: Thread[],
 } } | { type: "MessageSent"; payload: {
 	client_message_id: string,
@@ -149,8 +189,8 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 	client_message_id: string,
 	thread_id: string,
 	msg_id: string,
-	sticker_id: number | null,
-	cate_id: number | null,
+	sticker_id: number,
+	cate_id: number,
 	sticker_type: number,
 } } | { type: "AttachmentSent"; payload: {
 	thread_id: string,
@@ -161,7 +201,7 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 } } | { type: "StickerStoreLoaded"; payload: {
 	packs: StickerPackInfo[],
 } } | { type: "StickerPackItemsLoaded"; payload: {
-	cate_id: number | null,
+	cate_id: number,
 	name: string,
 	items: StickerItem[],
 } } | { type: "StickerSearchResults"; payload: {
@@ -191,16 +231,21 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 } } | { type: "Reacted"; payload: {
 	thread_id: string,
 	msg_id: string,
-	ts: number | null,
+	ts: number,
+	reaction: string,
+} } | { type: "ReactFailed"; payload: {
+	thread_id: string,
+	msg_id: string,
+	ts: number,
 	reaction: string,
 } } | { type: "MessageDeleted"; payload: {
 	thread_id: string,
 	msg_id: string,
-	ts: number | null,
+	ts: number,
 } } | { type: "MessageRecalled"; payload: {
 	thread_id: string,
 	msg_id: string,
-	ts: number | null,
+	ts: number,
 } } | { type: "SendFailed"; payload: {
 	thread_id: string,
 	text: string,
@@ -212,12 +257,12 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 } } | { type: "LocalDataWiped" } | { type: "StatusUpdate"; payload: {
 	message: string,
 } } | { type: "RefreshFinished"; payload: {
-	threads: number | null,
-	messages: number | null,
+	threads: number,
+	messages: number,
 	errors: string[],
 	manual: boolean,
 } } | { type: "SyncFinished"; payload: {
-	added: number | null,
+	added: number,
 	errors: string[],
 	cancelled: boolean,
 } } | { type: "UpdateCheckFinished"; payload: {
@@ -229,21 +274,21 @@ export type CoreEventDto = { type: "NotificationAuthorization"; payload: {
 	downloading: boolean,
 	message: string,
 } } | { type: "UpdateDownloadProgress"; payload: {
-	downloaded: number | null,
-	total: number | null,
+	downloaded: number,
+	total: number,
 } } | { type: "UpdateAppliedAndRestarting"; payload: {
 	version: string,
 } } | { type: "MuteSnapshotSynced"; payload: {
-	muted_threads: { [key in string]: number | null },
+	muted_threads: { [key in string]: number },
 } } | { type: "MuteEventsReceived"; payload: {
 	events: MuteControlEvent[],
 } } | { type: "PhoneSyncProgress"; payload: {
-	progress: number | null,
+	progress: number,
 	status: string,
 } } | { type: "PhoneSyncFinished"; payload: {
 	threads: Thread[],
-	added: number | null,
-	active_threads: number | null,
+	added: number,
+	active_threads: number,
 	cancelled: boolean,
 	error: string | null,
 } } | { type: "FileDownloaded"; payload: {
@@ -268,7 +313,7 @@ export type DevCryptoInfo = {
 	zpw_type: string,
 	cipher_algo: string,
 	sign_key_formula: string,
-	param_cipher_key_len: number | null,
+	param_cipher_key_len: number,
 };
 
 export type DevDiagnosticsSnapshot = {
@@ -284,8 +329,8 @@ export type FindingLevel = "Info" | "Warning" | "Critical";
 export type FriendshipStatus = "Unknown" | "Friend" | "OutgoingPending" | "IncomingPending" | "Stranger";
 
 export type ImportSummaryDto = {
-	threads_imported: number | null,
-	messages_imported: number | null,
+	threads_imported: number,
+	messages_imported: number,
 	source_path: string,
 };
 
@@ -298,12 +343,12 @@ export type LinkMetadata = {
 };
 
 export type LogEntry = {
-	id: number | null,
+	id: number,
 	timestamp: string,
 	method: string,
 	url: string,
 	status: number | null,
-	latency_ms: number | null,
+	latency_ms: number,
 	payload_preview: string,
 	decrypted_preview: string | null,
 	is_error: boolean,
@@ -353,7 +398,7 @@ export type PhoneLookupResult = {
 };
 
 export type PinnedPackMeta = {
-	cate_id: number | null,
+	cate_id: number,
 	name: string,
 	items: StickerItem[],
 };
@@ -367,33 +412,33 @@ export type ReactionEvent = {
 	client_event_id?: string,
 	r_type?: number,
 	emoji?: string,
-	ts?: number | null,
+	ts?: number,
 	historical?: boolean,
 };
 
 /**  Persist source and capture watermark independently of the transient network-fresh bit. */
 export type ReactionSnapshotProvenance = {
 	source?: string,
-	captured_at_ms?: number | null,
+	captured_at_ms?: number,
 };
 
 export type ReactionSummary = {
 	emoji?: string,
-	count?: number | null,
+	count?: number,
 	reactor_ids?: string[],
 	r_type?: number | null,
 	count_is_lower_bound?: boolean,
-	reactor_counts?: { [key in string]: number | null },
+	reactor_counts?: { [key in string]: number },
 };
 
 /**  Persisted per-reactor ledger. IDs deduplicate replay; chronological replay handles old pages. */
 export type ReactionVersion = {
-	ts?: number | null,
+	ts?: number,
 	event_id?: string,
 	client_event_id?: string,
 	events?: ReactionEvent[],
 	covered_events?: ReactionEvent[],
-	baseline?: { [key in number]: number | null },
+	baseline?: { [key in number]: number },
 	ledger_initialized?: boolean,
 	snapshot_baseline?: boolean,
 };
@@ -406,42 +451,42 @@ export type ScanFinding = {
 };
 
 export type SidebarMember = {
-	id?: string,
-	name?: string,
-	avatar?: string | null,
+	id: string,
+	name: string,
+	avatar: string | null,
 };
 
 /**  Durable sidebar metadata, including metadata-only startup snapshots. */
 export type SidebarPresentation = {
-	members?: SidebarMember[],
+	members: SidebarMember[],
 	/**  Server `totalMember` only; never inferred from message senders or avatar samples. */
-	member_count?: number | null,
-	last_message_ts?: number | null,
-	last_message_id?: string,
-	last_sender?: string,
-	last_sender_id?: string,
-	last_outgoing?: boolean,
-	pinned?: boolean,
-	muted?: boolean,
-	hidden?: boolean,
+	member_count: number | null,
+	last_message_ts: number,
+	last_message_id: string,
+	last_sender: string,
+	last_sender_id: string,
+	last_outgoing: boolean,
+	pinned: boolean,
+	muted: boolean,
+	hidden: boolean,
 };
 
 export type StickerItem = {
-	sticker_id: number | null,
-	cate_id: number | null,
+	sticker_id: number,
+	cate_id: number,
 	sticker_type: number,
 	label: string,
 };
 
 export type StickerPackInfo = {
-	id: number | null,
+	id: number,
 	name: string,
 	total_image: number,
 	icon_url: string,
 };
 
 export type Thread = {
-	presentation?: SidebarPresentation,
+	presentation: SidebarPresentation,
 	id: string,
 	name: string,
 	preview: string,
@@ -449,7 +494,7 @@ export type Thread = {
 	avatar: string | null,
 	is_group: boolean,
 	messages: ChatMessage[],
-	unread?: UnreadState,
+	unread: UnreadState,
 };
 
 export type UnreadPolicy = {
@@ -461,11 +506,11 @@ export type UnreadPolicy = {
 export type UnreadState = {
 	/**  None means that no authoritative read point has been received. */
 	last_seen_id: string | null,
-	unread_ids?: string[],
-	mention_ids?: string[],
-	muted?: boolean,
-	muted_until?: number | null,
-	marked_unread?: boolean,
+	unread_ids: string[],
+	mention_ids: string[],
+	muted: boolean,
+	muted_until: number | null,
+	marked_unread: boolean,
 };
 
 /**  UI-agnostic update metadata returned by [`fetch_github_latest_release`]. */
@@ -478,7 +523,7 @@ export type UpdateCheckResult = {
 	html_url: string,
 	download_url: string | null,
 	asset_name: string | null,
-	asset_size: number | null,
+	asset_size: number,
 	expected_sha256: string | null,
 	published_at: string,
 };

@@ -1,8 +1,8 @@
 import { CornerUpLeft, Forward, RotateCcw, SmilePlus, Star, Trash2 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import type { ChatMessage, Thread } from "@/shared/types/ipc";
-import { Button } from "@/shared/ui/button";
+import type { ChatMessage, Thread } from "@/shared/types/ipc.generated";
 import { Popover, PopoverTrigger } from "@/shared/ui/popover";
+import { ChatBubbleAction, ChatBubbleActionWrapper } from "@/shared/ui/chat";
 import { cn } from "@/shared/utils/cn";
 import type { AppAction } from "@/app/store/app-reducer";
 import { ReactionPickerContent } from "./message-reactions";
@@ -15,6 +15,7 @@ interface MessageActionsProps {
   setReactPickerFor: (key: string | null) => void;
   onSelectReaction: (emoji: string) => void;
   dispatch: (action: AppAction) => void;
+  variant?: "sent" | "received";
 }
 
 export function MessageActions({
@@ -25,50 +26,33 @@ export function MessageActions({
   setReactPickerFor,
   onSelectReaction,
   dispatch,
+  variant,
 }: MessageActionsProps) {
+  const isPickerOpen = reactPickerFor === msgKey;
+
   return (
-    <div
-      className={cn(
-        "absolute -top-9 z-20 hidden items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 shadow-md group-hover:flex",
-        msg.is_outgoing ? "right-0" : "left-10",
-      )}
-    >
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="h-7 w-7"
+    <ChatBubbleActionWrapper variant={variant} forceVisible={isPickerOpen}>
+      <ChatBubbleAction
+        icon={<CornerUpLeft className="h-3.5 w-3.5" />}
         title="Trả lời"
         onClick={() => dispatch({ type: "SET_REPLYING_TO", msg })}
-      >
-        <CornerUpLeft className="h-3.5 w-3.5" />
-      </Button>
+      />
 
-      <Popover
-        open={reactPickerFor === msgKey}
-        onOpenChange={(open) => setReactPickerFor(open ? msgKey : null)}
-      >
+      <Popover open={isPickerOpen} onOpenChange={(open) => setReactPickerFor(open ? msgKey : null)}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7" title="Thả cảm xúc">
-            <SmilePlus className="h-3.5 w-3.5" />
-          </Button>
+          <ChatBubbleAction icon={<SmilePlus className="h-3.5 w-3.5" />} title="Thả cảm xúc" />
         </PopoverTrigger>
         <ReactionPickerContent onSelectReaction={onSelectReaction} />
       </Popover>
 
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="h-7 w-7"
+      <ChatBubbleAction
+        icon={<Forward className="h-3.5 w-3.5" />}
         title="Chuyển tiếp"
         onClick={() => dispatch({ type: "SET_FORWARD_MSG", msg })}
-      >
-        <Forward className="h-3.5 w-3.5" />
-      </Button>
+      />
 
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="h-7 w-7"
+      <ChatBubbleAction
+        icon={<Star className={cn("h-3.5 w-3.5", msg.is_starred && "text-warning")} />}
         title="Gắn sao"
         onClick={() =>
           dispatch({
@@ -77,31 +61,34 @@ export function MessageActions({
             msgId: msg.id,
           })
         }
-      >
-        <Star className={cn("h-3.5 w-3.5", msg.is_starred && "text-warning")} />
-      </Button>
+      />
 
       {msg.is_outgoing ? (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-7 w-7"
+        <ChatBubbleAction
+          icon={<RotateCcw className="h-3.5 w-3.5" />}
           title="Thu hồi tin nhắn"
           onClick={() => void ipc.recallMessage(thread.id, thread.is_group, msg)}
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </Button>
+        />
       ) : null}
 
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="h-7 w-7 text-destructive hover:text-destructive"
+      <ChatBubbleAction
+        icon={<Trash2 className="h-3.5 w-3.5 text-destructive" />}
         title="Xóa chỉ ở phía tôi"
-        onClick={() => void ipc.deleteForMe(thread.id, thread.is_group, msg)}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
+        onClick={() => {
+          dispatch({
+            type: "CORE_EVENT",
+            event: {
+              type: "MessageDeleted",
+              payload: {
+                thread_id: thread.id,
+                msg_id: msg.id,
+                ts: msg.ts,
+              },
+            },
+          });
+          void ipc.deleteForMe(thread.id, thread.is_group, msg);
+        }}
+      />
+    </ChatBubbleActionWrapper>
   );
 }

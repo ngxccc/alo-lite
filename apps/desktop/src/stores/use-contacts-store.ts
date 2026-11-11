@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { FriendshipStatus, PhoneLookupResult } from "@/shared/types/ipc";
+import type { FriendshipStatus, PhoneLookupResult } from "@/shared/types/ipc.generated";
 import type { ContactsSubTab } from "@/app/store/app-state";
 
 export interface ContactsStoreState {

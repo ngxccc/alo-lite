@@ -186,18 +186,36 @@ pub fn emoji_for_type(r_type: i32) -> &'static str {
         32 => "😮",
         2 => "😢",
         20 => "😠",
+        46 => "👏",
+        120 => "🌹",
+        65 => "💔",
+        4 => "👎",
+        68 => "👌",
+        69 => "✌️",
+        70 => "🙏",
+        66 => "💩",
+        101 => "🎉",
         _ => "◦",
     }
 }
 
-fn type_for_icon(icon: &str) -> Option<i32> {
+pub fn type_for_icon(icon: &str) -> Option<i32> {
     match icon.trim() {
         "/-strong" | "👍" => Some(3),
         "/-heart" | "❤" | "❤️" => Some(5),
         ":>" | "😆" => Some(0),
         ":o" | "😮" => Some(32),
-        ":-((" | "😢" => Some(2),
+        ":-((" | ":-(( " | "😢" => Some(2),
         ":-h" | "😠" => Some(20),
+        ":handclap" | "👏" => Some(46),
+        "/-rose" | "🌹" => Some(120),
+        "/-break" | "💔" => Some(65),
+        "/-weak" | "👎" => Some(4),
+        "/-ok" | "👌" => Some(68),
+        "/-v" | "✌️" | "✌" => Some(69),
+        "/-thanks" | "🙏" => Some(70),
+        "/-shit" | "💩" => Some(66),
+        "🎉" => Some(101),
         _ => None,
     }
 }
@@ -328,6 +346,8 @@ pub struct ReactionContentWireData {
     pub r_type: Option<Value>,
     #[serde(rename = "rMsg")]
     pub r_msg: Option<Vec<Value>>,
+    #[serde(rename = "rIcon")]
+    pub r_icon: Option<Value>,
 }
 
 impl ReactionContentWireData {
@@ -342,6 +362,11 @@ impl ReactionContentWireData {
     /// Raw target entries.
     pub fn targets(&self) -> &[Value] {
         self.r_msg.as_deref().unwrap_or_default()
+    }
+
+    /// Reaction icon; `None` when absent or non-string.
+    pub fn r_icon(&self) -> Option<&str> {
+        self.r_icon.as_ref().and_then(Value::as_str)
     }
 }
 
@@ -616,7 +641,11 @@ pub fn parse_reaction_events(value: &Value) -> Vec<ReactionEvent> {
                 event_id: id(wire.msg_id.as_ref()),
                 client_event_id: id(wire.cli_msg_id.as_ref()),
                 r_type,
-                emoji: emoji_for_type(r_type).into(),
+                emoji: content
+                    .r_icon()
+                    .filter(|s| !s.trim().is_empty())
+                    .map(|s| icon_to_emoji(s).to_string())
+                    .unwrap_or_else(|| emoji_for_type(r_type).to_string()),
                 historical: false,
                 ts: wire.timestamp(),
             })
@@ -759,6 +788,74 @@ mod tests {
             assert!(parse_reaction_events(&v).is_empty());
         }
     }
+    #[test]
+    fn simple_hash_matches_zalo_reaction_spec() {
+        assert_eq!(simple_hash("👏"), 1772466);
+        assert_eq!(simple_hash("🎉"), 1773261);
+        assert_eq!(simple_hash("🔥"), 1772680);
+        assert_eq!(simple_hash("👍"), 1772464);
+        assert_eq!(simple_hash("hello"), 99162322);
+        assert_eq!(simple_hash("xin chào Việt Nam"), 1766506019);
+        assert_eq!(simple_hash("❤️"), 377643);
+    }
+
+    #[test]
+    fn reaction_code_and_type_maps_canonical_and_custom() {
+        assert_eq!(
+            reaction_code_and_type("👍"),
+            (std::borrow::Cow::Borrowed("/-strong"), 3)
+        );
+        assert_eq!(
+            reaction_code_and_type("❤️"),
+            (std::borrow::Cow::Borrowed("/-heart"), 5)
+        );
+        assert_eq!(
+            reaction_code_and_type("👏"),
+            (std::borrow::Cow::Borrowed(":handclap"), 46)
+        );
+        assert_eq!(
+            reaction_code_and_type(":handclap"),
+            (std::borrow::Cow::Borrowed(":handclap"), 46)
+        );
+        assert_eq!(
+            reaction_code_and_type("🎉"),
+            (std::borrow::Cow::Borrowed("🎉"), 101)
+        );
+        let fire_hash = simple_hash("🔥");
+        assert_eq!(
+            reaction_code_and_type("🔥"),
+            (std::borrow::Cow::Owned("🔥".into()), fire_hash)
+        );
+    }
+
+    #[test]
+    fn custom_and_extended_ricon_preserved_in_reaction_events() {
+        let r = parse_reaction_events(&json!({
+            "uidFrom": "peer",
+            "idTo": "0",
+            "content": {
+                "rType": 1772680,
+                "rIcon": "🔥",
+                "rMsg": [{"gMsgID": "42", "cMsgID": 100}]
+            }
+        }));
+        assert_eq!(r.len(), 1);
+        assert_eq!(r[0].emoji, "🔥");
+        assert_eq!(r[0].r_type, 1772680);
+
+        let r_clap = parse_reaction_events(&json!({
+            "uidFrom": "peer",
+            "idTo": "0",
+            "content": {
+                "rType": 46,
+                "rIcon": ":handclap",
+                "rMsg": [{"gMsgID": "42", "cMsgID": 100}]
+            }
+        }));
+        assert_eq!(r_clap.len(), 1);
+        assert_eq!(r_clap[0].emoji, "👏");
+        assert_eq!(r_clap[0].r_type, 46);
+    }
 }
 
 /// Persist source and capture watermark independently of the transient network-fresh bit.
@@ -817,28 +914,80 @@ impl ReactionCoverage {
 }
 
 /// Convert Zalo reaction icon code to visual emoji.
-pub fn icon_to_emoji(icon: &str) -> &'static str {
-    match icon {
+pub fn icon_to_emoji(icon: &str) -> &str {
+    match icon.trim() {
         "/-strong" => "👍",
         "/-heart" => "❤️",
         ":>" => "😆",
         ":o" => "😮",
         ":-((" | ":-(( " => "😢",
         ":-h" => "😠",
-        _ => "❤️",
+        ":handclap" => "👏",
+        "/-rose" => "🌹",
+        "/-break" => "💔",
+        "/-weak" => "👎",
+        "/-ok" => "👌",
+        "/-v" => "✌️",
+        "/-thanks" => "🙏",
+        "/-shit" => "💩",
+        "" => "❤️",
+        other => other,
     }
 }
 
+/// Deterministic positive 32-bit hash identical to `simpleHash` in `zalo-reaction`.
+pub fn simple_hash(s: &str) -> i32 {
+    let mut hash: i32 = 0;
+    for c in s.encode_utf16() {
+        hash = (hash.wrapping_shl(5))
+            .wrapping_sub(hash)
+            .wrapping_add(c as i32);
+    }
+    (hash as i64).abs() as i32
+}
+
 /// Map a visual reaction emoji or Zalo reaction code to `(rIcon, rType)`.
-pub fn reaction_code_and_type(emoji_or_code: &str) -> (&'static str, i32) {
-    match emoji_or_code {
-        "👍" | "/-strong" => ("/-strong", 3),
-        "❤️" | "❤" | "/-heart" => ("/-heart", 5),
-        "😆" | ":>" => (":>", 0),
-        "😮" | ":o" => (":o", 32),
-        "😢" | ":-(( " | ":-((" => (":-((", 2),
-        "😠" | ":-h" => (":-h", 20),
-        _ => ("/-heart", 5),
+pub fn reaction_code_and_type(emoji_or_code: &str) -> (std::borrow::Cow<'static, str>, i32) {
+    let trimmed = emoji_or_code.trim();
+    if let Some(t) = type_for_icon(trimmed) {
+        let icon = match t {
+            3 => "/-strong",
+            5 => "/-heart",
+            0 => ":>",
+            32 => ":o",
+            2 => ":-((",
+            20 => ":-h",
+            46 => ":handclap",
+            120 => "/-rose",
+            65 => "/-break",
+            4 => "/-weak",
+            68 => "/-ok",
+            69 => "/-v",
+            70 => "/-thanks",
+            66 => "/-shit",
+            101 => "🎉",
+            _ => "/-heart",
+        };
+        return (std::borrow::Cow::Borrowed(icon), t);
+    }
+    (
+        std::borrow::Cow::Owned(trimmed.to_string()),
+        simple_hash(trimmed),
+    )
+}
+
+fn resolve_target_msg_type(msg: &super::threads::ChatMessage) -> i64 {
+    if let Some(t) = crate::protocol::wire::val_i64(msg.wire_ref.original_type.as_ref()) {
+        if t > 0 {
+            return t;
+        }
+    }
+    if msg.sticker_id.is_some() {
+        4
+    } else if msg.link_url.is_some() {
+        1805
+    } else {
+        1
     }
 }
 
@@ -856,14 +1005,20 @@ pub async fn send_reaction(
     crate::protocol::wire::require_login(s)?;
     let now = crate::clock::now_ms();
     let (r_icon, r_type) = reaction_code_and_type(reaction);
-    let is_local_id =
-        msg.id.is_empty() || msg.id.starts_with("out_") || msg.id.starts_with("local_");
+    let is_local_id = msg.id.is_empty()
+        || msg.id.starts_with("out_")
+        || msg.id.starts_with("local_")
+        || msg.id.starts_with('.');
     let g_msg_id_val = if is_local_id {
         serde_json::json!("")
     } else {
         serde_json::json!(msg.id)
     };
-    let c_msg_id = if msg.ts > 0 {
+    let c_msg_id = if !msg.client_message_id.is_empty() {
+        msg.client_message_id
+            .parse::<u64>()
+            .unwrap_or(if msg.ts > 0 { msg.ts as u64 } else { now })
+    } else if msg.ts > 0 {
         msg.ts as u64
     } else {
         msg.id.parse::<u64>().unwrap_or(now)
@@ -873,9 +1028,9 @@ pub async fn send_reaction(
         "rMsg": [{
             "gMsgID": g_msg_id_val,
             "cMsgID": c_msg_id,
-            "msgType": if msg.sticker_id.is_some() { 5 } else { 1 }
+            "msgType": resolve_target_msg_type(msg)
         }],
-        "rIcon": r_icon,
+        "rIcon": r_icon.as_ref(),
         "rType": r_type,
         "source": 6
     })
@@ -917,5 +1072,13 @@ pub async fn send_reaction(
     let params = s.encoded_params(&body)?;
     let resp = s.post_form(&url, format!("params={params}")).await?;
     let dec = s.maybe_decrypt(resp, s.session_key_bytes()).await;
-    Ok(crate::protocol::wire::ActionAck::from_wire(&dec))
+    let ack = crate::protocol::wire::ActionAck::from_wire(&dec);
+    if !ack.is_ok() {
+        anyhow::bail!(
+            "Zalo reaction rejected by server (code {:?}): {}",
+            ack.err_code(),
+            ack.error_message.as_deref().unwrap_or("unknown error")
+        );
+    }
+    Ok(ack)
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import type { AppSettings, ChatMessage, CoreBootstrapSnapshot, Thread } from "@/shared/types/ipc";
+import type {
+  AppSettings,
+  ChatMessage,
+  CoreBootstrapSnapshot,
+  Thread,
+} from "@/shared/types/ipc.generated";
 import { matchesVnQuery } from "@/shared/utils/text";
 import { uniqueReferenceIndex } from "@/features/chat/utils/messages";
 import { appReducer, initialAppState } from "./app-reducer";
@@ -48,6 +53,7 @@ function makeSettings(): AppSettings {
     auto_check_updates: true,
     skipped_update_version: "",
     multi_profile_name: "acc2",
+    font_size: "medium",
     info_drawer_open: false,
   };
 }
@@ -64,7 +70,9 @@ function makeThread(id: string, name: string, ts: number, msgs: ChatMessage[] = 
     unread: {
       last_seen_id: null,
       unread_ids: [],
+      mention_ids: [],
       muted: false,
+      muted_until: null,
       marked_unread: false,
     },
     presentation: {

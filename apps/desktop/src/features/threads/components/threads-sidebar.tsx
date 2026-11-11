@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import type { Thread } from "@/shared/types/ipc";
+import type { Thread } from "@/shared/types/ipc.generated";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -150,7 +150,7 @@ export function ThreadsSidebar({
             onChange={(e) => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
             onKeyDown={(e) => handleSearchKeyDown(e.key)}
             placeholder="Tìm kiếm"
-            className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
           {searchQuery ? (
             <button
@@ -187,7 +187,7 @@ export function ThreadsSidebar({
 
       {/* Tabs + filter row — 32 px tall */}
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-border/40 px-4">
-        <div className="flex h-full items-center gap-4 text-[14px]">
+        <div className="flex h-full items-center gap-4 text-sm">
           <button
             type="button"
             onClick={() => setUnreadOnly(false)}
@@ -219,7 +219,7 @@ export function ThreadsSidebar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex cursor-pointer items-center gap-0.5 text-[13px] text-muted-foreground transition hover:text-foreground"
+                className="inline-flex cursor-pointer items-center gap-0.5 text-sm text-muted-foreground transition hover:text-foreground"
               >
                 <span>
                   {threadFilter === "direct"
@@ -282,7 +282,7 @@ export function ThreadsSidebar({
       {/* Conversation list — virtualised, items use inset-x-2 for 8 px side margins */}
       <div ref={listRef} className="flex-1 overflow-y-auto py-1">
         {visibleThreads.length === 0 ? (
-          <div className="p-6 text-center text-[13px] text-muted-foreground">
+          <div className="p-6 text-center text-sm text-muted-foreground">
             Không có hội thoại phù hợp
           </div>
         ) : (
@@ -331,18 +331,16 @@ export function ThreadsSidebar({
                         <div className="flex items-center justify-between gap-1">
                           <span
                             className={cn(
-                              "truncate text-[16px] text-foreground",
+                              "truncate text-base text-foreground",
                               hasDot ? "font-semibold" : "font-normal",
                             )}
                           >
                             {t.name || t.id}
                           </span>
-                          <span className="shrink-0 text-[12px] text-muted-foreground">
-                            {t.time}
-                          </span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{t.time}</span>
                         </div>
                         <div className="flex items-center justify-between gap-1.5">
-                          <span className="truncate text-[14px] text-muted-foreground">
+                          <span className="truncate text-sm text-muted-foreground">
                             {t.presentation.last_outgoing &&
                             !t.preview.startsWith("Bạn:") &&
                             !t.preview.startsWith("You:")
@@ -358,7 +356,7 @@ export function ThreadsSidebar({
                               <Badge
                                 variant="destructive"
                                 className={cn(
-                                  "h-4 rounded-full text-[11px] leading-none font-bold",
+                                  "h-4 rounded-full text-xs leading-none font-bold",
                                   unread > 9 ? "min-w-4 px-1" : "w-4 p-0",
                                 )}
                               >

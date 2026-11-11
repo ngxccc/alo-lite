@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage, Thread } from "@/shared/types/ipc";
+import type { ChatMessage, Thread } from "@/shared/types/ipc.generated";
 import type { AppAction } from "@/app/store/app-reducer";
 import { uniqueReferenceIndex } from "@/features/chat/utils/messages";
 

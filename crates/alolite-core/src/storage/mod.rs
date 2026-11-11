@@ -278,6 +278,38 @@ mod tests {
     }
 
     #[test]
+    fn test_persist_and_load_client_message_id() {
+        use crate::protocol::messaging::{ChatMessage, Thread};
+        let mut store = MessageStore::open(":memory:").unwrap();
+        let t = Thread {
+            id: "user_99".into(),
+            name: "Test Client Msg ID".into(),
+            is_group: false,
+            messages: vec![ChatMessage {
+                id: "srv_99".into(),
+                client_message_id: "cli_123456789".into(),
+                sender: "Peer".into(),
+                text: "Hello with cli id".into(),
+                time: "12:00".into(),
+                is_outgoing: false,
+                ts: 1731215400000,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        persist_threads(&mut store, std::slice::from_ref(&t)).unwrap();
+        let mut loaded = vec![Thread {
+            id: "user_99".into(),
+            name: "Test Client Msg ID".into(),
+            is_group: false,
+            ..Default::default()
+        }];
+        store.hydrate_threads(&mut loaded, 10).unwrap();
+        assert_eq!(loaded[0].messages.len(), 1);
+        assert_eq!(loaded[0].messages[0].client_message_id, "cli_123456789");
+    }
+
+    #[test]
     fn delete_thread_and_search_messages_work() {
         let mut store = MessageStore::open(":memory:").unwrap();
         let t = StoredThread {

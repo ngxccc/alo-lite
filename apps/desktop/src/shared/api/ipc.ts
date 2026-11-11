@@ -12,7 +12,7 @@ import type {
   DevDiagnosticsSnapshot,
   ImportSummaryDto,
   Thread,
-} from "@/shared/types/ipc";
+} from "@/shared/types/ipc.generated";
 
 declare global {
   interface Window {
@@ -41,7 +41,14 @@ export const ipc = {
 
   bootstrapState: () => call<CoreBootstrapSnapshot>("bootstrap_state"),
   requestQr: () => call<void>("request_qr"),
-  loginPassword: (phone: string, pass: string) => call<void>("login_password", { phone, pass }),
+  loginPassword: (phone: string, pass: string, captchaToken?: string, captchaAnswer?: string) =>
+    call<void>("login_password", {
+      phone,
+      pass,
+      captchaToken: captchaToken ?? null,
+      captchaAnswer: captchaAnswer ?? null,
+    }),
+  refreshCaptcha: () => call<void>("refresh_captcha"),
   logout: () => call<void>("logout"),
   switchAccount: (targetUin: string) => call<void>("switch_account", { targetUin }),
   addNewAccount: () => call<void>("add_new_account"),

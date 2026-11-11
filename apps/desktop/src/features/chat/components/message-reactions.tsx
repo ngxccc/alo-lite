@@ -1,27 +1,19 @@
-import { REACTION_LIST } from "@/shared/types/ipc";
+import { useState } from "react";
+import { SmilePlus, Undo2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { PopoverContent } from "@/shared/ui/popover";
 import { cn } from "@/shared/utils/cn";
-import likeIcon from "@/assets/reactions/like.png";
-import heartIcon from "@/assets/reactions/heart.png";
-import smileIcon from "@/assets/reactions/smile.png";
-import surprisedIcon from "@/assets/reactions/surprised.png";
-import cryIcon from "@/assets/reactions/cry.png";
-import rageIcon from "@/assets/reactions/rage.png";
+import {
+  CATEGORY_ICONS,
+  EMOJI_CATEGORIES,
+  PINNED_REACTIONS,
+  REACTION_LIST,
+} from "../constants/emojis";
 
-export const REACTION_ICONS = {
-  like: likeIcon,
-  heart: heartIcon,
-  smile: smileIcon,
-  surprised: surprisedIcon,
-  cry: cryIcon,
-  rage: rageIcon,
-} as const;
-
-export const resolveReactionKey = (raw: string): keyof typeof REACTION_ICONS | null => {
+export const resolveReactionEmoji = (raw: string): string => {
   const clean = raw.trim();
   if (clean === "\u{1F44D}" || clean === "/-strong" || clean === "like" || clean === "3") {
-    return "like";
+    return "👍";
   }
   if (
     clean === "\u{2764}\u{FE0F}" ||
@@ -30,7 +22,7 @@ export const resolveReactionKey = (raw: string): keyof typeof REACTION_ICONS | n
     clean === "heart" ||
     clean === "5"
   ) {
-    return "heart";
+    return "❤️";
   }
   if (
     clean === "\u{1F606}" ||
@@ -39,7 +31,7 @@ export const resolveReactionKey = (raw: string): keyof typeof REACTION_ICONS | n
     clean === "haha" ||
     clean === "0"
   ) {
-    return "smile";
+    return "😆";
   }
   if (
     clean === "\u{1F62E}" ||
@@ -48,16 +40,17 @@ export const resolveReactionKey = (raw: string): keyof typeof REACTION_ICONS | n
     clean === "wow" ||
     clean === "32"
   ) {
-    return "surprised";
+    return "😮";
   }
   if (
     clean === "\u{1F622}" ||
-    clean === ":-" ||
+    clean === ":-((" ||
+    clean === ":-(( " ||
     clean === "cry" ||
     clean === "buồn" ||
     clean === "2"
   ) {
-    return "cry";
+    return "😢";
   }
   if (
     clean === "\u{1F620}" ||
@@ -66,18 +59,41 @@ export const resolveReactionKey = (raw: string): keyof typeof REACTION_ICONS | n
     clean === "phẫn nộ" ||
     clean === "20"
   ) {
-    return "rage";
+    return "😠";
   }
-  return null;
+  if (clean === ":handclap" || clean === "clap" || clean === "46") {
+    return "👏";
+  }
+  if (clean === "/-rose" || clean === "120") {
+    return "🌹";
+  }
+  if (clean === "/-break" || clean === "65") {
+    return "💔";
+  }
+  if (clean === "/-weak" || clean === "4") {
+    return "👎";
+  }
+  if (clean === "/-ok" || clean === "68") {
+    return "👌";
+  }
+  if (clean === "/-v" || clean === "69") {
+    return "✌️";
+  }
+  if (clean === "/-thanks" || clean === "70") {
+    return "🙏";
+  }
+  if (clean === "/-shit" || clean === "66") {
+    return "💩";
+  }
+  if (clean === "101") {
+    return "🎉";
+  }
+  return clean || "❤️";
 };
 
 export function ReactionBadge({ raw }: { raw: string }) {
-  const key = resolveReactionKey(raw);
-  if (key) {
-    return <img src={REACTION_ICONS[key]} alt={key} className="h-4.5 w-4.5 object-contain" />;
-  }
-  const found = REACTION_LIST.find((r) => r.emoji === raw);
-  return <span className="text-sm leading-none">{found?.emoji ?? raw}</span>;
+  const emoji = resolveReactionEmoji(raw);
+  return <span className="text-sm leading-none select-none">{emoji}</span>;
 }
 
 interface ReactionPickerContentProps {
@@ -85,19 +101,105 @@ interface ReactionPickerContentProps {
 }
 
 export function ReactionPickerContent({ onSelectReaction }: ReactionPickerContentProps) {
-  return (
-    <PopoverContent side="top" className="flex items-center gap-1 p-1.5">
-      {REACTION_LIST.map((r) => (
+  const [showAll, setShowAll] = useState(false);
+  const [category, setCategory] = useState<string>("Smileys");
+
+  if (!showAll) {
+    return (
+      <PopoverContent side="top" className="flex w-auto items-center gap-1 p-1.5">
+        {REACTION_LIST.map((r) => (
+          <Button
+            key={r.key}
+            variant="ghost"
+            size="icon-sm"
+            title={r.label}
+            className="h-8 w-8 text-base transition-transform hover:scale-125"
+            onClick={() => onSelectReaction(r.emoji)}
+          >
+            <ReactionBadge raw={r.emoji} />
+          </Button>
+        ))}
         <Button
-          key={r.key}
           variant="ghost"
           size="icon-sm"
-          title={r.label}
-          onClick={() => onSelectReaction(r.emoji)}
+          title="Thêm biểu tượng cảm xúc"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowAll(true);
+          }}
         >
-          <ReactionBadge raw={r.emoji} />
+          <SmilePlus className="h-4 w-4" />
         </Button>
-      ))}
+      </PopoverContent>
+    );
+  }
+
+  const categoryEmojis = EMOJI_CATEGORIES[category] ?? [];
+
+  return (
+    <PopoverContent side="top" className="w-[300px] space-y-2 p-2">
+      <div className="flex items-center justify-between border-b border-border pb-1 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Ghim & Phổ biến</span>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-6 w-6 text-muted-foreground"
+          title="Thu gọn"
+          onClick={() => setShowAll(false)}
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Pinned row */}
+      <div className="flex flex-wrap gap-1">
+        {PINNED_REACTIONS.map((em) => (
+          <button
+            key={`pin_${em}`}
+            type="button"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-base transition-transform hover:scale-120 hover:bg-accent"
+            onClick={() => onSelectReaction(em)}
+          >
+            {em}
+          </button>
+        ))}
+      </div>
+
+      {/* Category tabs */}
+      <div className="no-scrollbar flex items-center gap-0.5 overflow-x-auto border-t border-border pt-1">
+        {Object.keys(EMOJI_CATEGORIES).map((catName) => (
+          <button
+            key={catName}
+            type="button"
+            title={catName}
+            className={cn(
+              "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-sm transition-colors",
+              category === catName
+                ? "bg-accent font-bold text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted",
+            )}
+            onClick={() => setCategory(catName)}
+          >
+            {CATEGORY_ICONS[catName] ?? "😀"}
+          </button>
+        ))}
+      </div>
+
+      {/* Emoji grid for active category */}
+      <div className="grid max-h-44 grid-cols-8 gap-1 overflow-y-auto pr-1">
+        {categoryEmojis.map((em, idx) => (
+          <button
+            key={`${category}_${em}_${idx}`}
+            type="button"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-base transition-transform hover:scale-120 hover:bg-accent"
+            onClick={() => onSelectReaction(em)}
+          >
+            {em}
+          </button>
+        ))}
+      </div>
     </PopoverContent>
   );
 }
@@ -125,7 +227,7 @@ export function MessageReactionsChip({ reactions, isOutgoing }: MessageReactions
           </span>
         ))}
       {reactions.length > 1 ? (
-        <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
+        <span className="ml-0.5 text-xs font-semibold text-muted-foreground">
           {reactions.length}
         </span>
       ) : null}

@@ -1,4 +1,4 @@
-import type { ChatMessage, Thread } from "@/shared/types/ipc";
+import type { ChatMessage, Thread } from "@/shared/types/ipc.generated";
 import type { AppState } from "@/app/store/app-reducer";
 
 export interface ResolvedSender {

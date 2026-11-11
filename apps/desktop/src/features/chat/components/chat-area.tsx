@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { ipc, isTauriRuntime } from "@/shared/api/ipc";
-import type { Thread } from "@/shared/types/ipc";
+import type { Thread } from "@/shared/types/ipc.generated";
 import { cn } from "@/shared/utils/cn";
 import { dayKey, matchesVnQuery } from "@/shared/utils/text";
 import type { AppAction, AppState } from "@/app/store/app-reducer";
 import { useAppStore } from "@/app/store/use-app-store";
 import { useChatStore } from "@/stores/use-chat-store";
+import { ChatMessageList } from "@/shared/ui/chat";
 import { Composer } from "./composer";
 import { ChatHeader } from "./chat-header";
 import { PinnedBar } from "./pinned-bar";
@@ -95,8 +96,8 @@ export function ChatArea({ state: propState, dispatch: propDispatch }: ChatAreaP
         onToggleInfoDrawer={() => dispatch({ type: "TOGGLE_INFO_DRAWER" })}
       />
 
-      {/* ── Message list ── */}
-      <div ref={scrollRef} className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-4 py-3">
+      {/* ── Message list (shadcn-chat ChatMessageList) ── */}
+      <ChatMessageList ref={scrollRef}>
         {/* Load history banners — styled as quiet chips */}
         <ChatHistoryBanners
           thread={thread}
@@ -147,7 +148,7 @@ export function ChatArea({ state: propState, dispatch: propDispatch }: ChatAreaP
             </div>
           );
         })}
-      </div>
+      </ChatMessageList>
 
       <Composer state={state} dispatch={dispatch} thread={thread} />
     </main>

@@ -1,4 +1,4 @@
-import type { CoreEventDto } from "@/shared/types/ipc";
+import type { CoreEventDto } from "@/shared/types/ipc.generated";
 import type { AppState } from "../app-state";
 import { handleContactsEvent } from "./contacts";
 import { handleLoginEvent } from "./login";
@@ -14,6 +14,7 @@ export function handleCoreEvent(state: AppState, event: CoreEventDto): AppState 
     case "QrExpired":
     case "LoginSuccess":
     case "LoginFailed":
+    case "CaptchaRequired":
     case "LoggedOut":
     case "SessionExpired":
     case "AccountSwitched":
@@ -26,6 +27,7 @@ export function handleCoreEvent(state: AppState, event: CoreEventDto): AppState 
     case "AttachmentSent":
     case "QuoteSent":
     case "Reacted":
+    case "ReactFailed":
     case "MessageDeleted":
     case "MessageRecalled":
     case "SendFailed":

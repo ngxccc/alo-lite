@@ -12,7 +12,7 @@ use crate::protocol::messaging::polling::{poll_new_messages, PollState};
 use crate::protocol::messaging::stickers::fetch_sticker_suggest_keywords;
 use crate::protocol::messaging::unread::get_mute_snapshot;
 use crate::protocol::messaging::Thread;
-use crate::protocol::session::Session;
+use crate::protocol::session::{Session, SessionStatus};
 use crate::protocol::social::friends::get_friends_with;
 use crate::protocol::social::groups::get_groups;
 use crate::services::account_manager::{
@@ -27,14 +27,16 @@ use crate::storage::{
 
 impl CoreEngine {
     pub(super) async fn handle_expired_session(self: &Arc<Self>, message: &str) {
+        self.set_session_verified(false);
         {
             let mut sl = self.session.lock().await;
             sl.mark_expired();
             let _ = sl.save_to_file("session.json");
             sl.logout();
         }
+        // Do not mint a new QR automatically: login is a user action, and the desktop
+        // `LoginView` starts the flow on demand.
         self.emit(CoreEvent::SessionExpired(message.to_string()));
-        self.request_qr().await;
     }
 
     pub async fn request_qr(self: &Arc<Self>) {
@@ -46,9 +48,14 @@ impl CoreEngine {
         }
         let engine = Arc::clone(self);
         let handle = tokio::spawn(async move {
+            engine.set_session_verified(false);
             {
                 let mut s = engine.session.lock().await;
-                s.logout();
+                // A valid session must survive a QR refresh; only clear leftover credentials
+                // when there is nothing to preserve.
+                if !s.has_live_credentials() || s.is_expired_marked() {
+                    s.logout();
+                }
             }
             {
                 let mut ps = engine.poll_state.lock().await;
@@ -120,21 +127,60 @@ impl CoreEngine {
         *guard = Some(handle);
     }
 
-    pub async fn login_password(self: &Arc<Self>, phone: String, pass: String) {
+    pub async fn login_password(
+        self: &Arc<Self>,
+        phone: String,
+        pass: String,
+        captcha_token: Option<String>,
+        captcha_answer: Option<String>,
+    ) {
+        // Two overlapping logins invalidate each other server-side: the last token wins while
+        // the first one keeps any state it already applied. Serialise them.
+        if self
+            .login_in_flight
+            .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            crate::logger::log_error(
+                "core::login_password",
+                "bỏ qua yêu cầu đăng nhập trùng khi lần trước chưa xong",
+            );
+            return;
+        }
+        self.login_password_inner(phone, pass, captcha_token, captcha_answer)
+            .await;
+        self.login_in_flight
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    async fn login_password_inner(
+        self: &Arc<Self>,
+        phone: String,
+        pass: String,
+        captcha_token: Option<String>,
+        captcha_answer: Option<String>,
+    ) {
         self.emit(CoreEvent::StatusUpdate("Đang xác thực tài khoản…".into()));
-        let auth_res = {
-            let mut s = self.session.lock().await;
-            let res = login::login_by_password(&mut s, &phone, &pass, "VN").await;
-            if res.is_ok() {
+        let mut s = self.session.lock().await;
+        match login::login_by_password(
+            &mut s,
+            &phone,
+            &pass,
+            "VN",
+            captcha_token.as_deref(),
+            captcha_answer.as_deref(),
+        )
+        .await
+        {
+            Ok(login::LoginPasswordOutcome::Success(_)) => {
                 let _ = login::fetch_and_apply_login_info(&mut s).await;
                 let _ = s.save_to_file("session.json");
                 let _ = s.save_device_identity("device.json");
-            }
-            res.map(|_| s.clone())
-        };
-        match auth_res {
-            Ok(s_clone) => {
+                let s_clone = s.clone();
+                drop(s);
                 self.finish_authenticated_bootstrap(s_clone).await;
+            }
+            Ok(login::LoginPasswordOutcome::CaptchaRequired(challenge)) => {
+                self.emit(CoreEvent::CaptchaRequired(challenge));
             }
             Err(e) => {
                 self.emit(CoreEvent::LoginFailed(e.to_string()));
@@ -142,14 +188,44 @@ impl CoreEngine {
         }
     }
 
+    pub async fn refresh_captcha(self: &Arc<Self>) {
+        let s = self.session.lock().await.clone();
+        match login::get_login_captcha(&s).await {
+            Ok(challenge) => {
+                self.emit(CoreEvent::CaptchaRequired(challenge));
+            }
+            Err(e) => {
+                self.emit(CoreEvent::LoginFailed(format!("Lỗi làm mới captcha: {e}")));
+            }
+        }
+    }
+
     async fn finish_authenticated_bootstrap(self: &Arc<Self>, s: Session) {
-        if s.login.is_none() || s.zpw_sek.is_none() {
+        if !s.has_live_credentials() {
             self.emit(CoreEvent::LoginFailed(
                 "Đăng nhập thất bại: Không nhận được thông tin phiên từ máy chủ Zalo.".into(),
             ));
             return;
         }
+        if s.verbose {
+            eprintln!(
+                "[login] zpw_sek={} ký tự, secret_key={} byte, uin={}",
+                s.zpw_sek.as_ref().map_or(0, |v| v.len()),
+                s.secret_key.as_ref().map_or(0, |v| v.len()),
+                s.login.as_ref().map_or("", |l| l.uin.as_str())
+            );
+        }
+        // Verify before touching the API. A token the edge refuses would otherwise fire the
+        // whole bootstrap request set (friends, groups, last-msgs, mobile sync) into `600`.
+        if s.session_status().await == SessionStatus::Expired {
+            self.set_session_verified(false);
+            self.emit(CoreEvent::LoginFailed(
+                "Phiên vừa tạo bị máy chủ Zalo từ chối (zpw_sek không hợp lệ). Vui lòng thử lại hoặc đăng nhập bằng mã QR.".into(),
+            ));
+            return;
+        }
         let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
+        self.set_session_verified(true);
         let _ = save_current_account_snapshot(&uin);
         let name = s
             .login
@@ -214,6 +290,7 @@ impl CoreEngine {
     }
 
     pub async fn logout(&self) {
+        self.set_session_verified(false);
         let cur_uin = {
             let s = self.session.lock().await;
             s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default()
@@ -272,6 +349,11 @@ impl CoreEngine {
             }
         };
         if loaded {
+            self.set_session_verified(false);
+            let snapshot = self.session.lock().await.clone();
+            let verified =
+                snapshot.has_live_credentials() && snapshot.session_status().await.is_valid();
+            self.set_session_verified(verified);
             let db_path = self.resolve_db_path_for_uin(&uin);
             let threads = tokio::task::spawn_blocking(move || {
                 let mut threads = load_threads_cache();

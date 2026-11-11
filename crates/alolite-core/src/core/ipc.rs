@@ -12,6 +12,7 @@ use serde::Serialize;
 use super::events::CoreEvent;
 use super::settings::AppSettings;
 use crate::common::logger::{LogEntry, ScanFinding};
+use crate::protocol::auth::login::CaptchaChallenge;
 use crate::protocol::messaging::unread::MuteControlEvent;
 use crate::protocol::messaging::{ChatMessage, LinkMetadata, StickerItem, StickerPackInfo, Thread};
 use crate::protocol::social::{FriendshipStatus, PhoneLookupResult};
@@ -148,6 +149,7 @@ pub enum CoreEventDto {
     LoginFailed {
         message: String,
     },
+    CaptchaRequired(CaptchaChallenge),
     ThreadsUpdated {
         threads: Vec<Thread>,
     },
@@ -214,6 +216,12 @@ pub enum CoreEventDto {
         quoted: ChatMessage,
     },
     Reacted {
+        thread_id: String,
+        msg_id: String,
+        ts: i64,
+        reaction: String,
+    },
+    ReactFailed {
         thread_id: String,
         msg_id: String,
         ts: i64,
@@ -335,6 +343,7 @@ impl From<CoreEvent> for CoreEventDto {
                 Self::LoginSuccess { name, uin, avatar }
             }
             CoreEvent::LoginFailed(message) => Self::LoginFailed { message },
+            CoreEvent::CaptchaRequired(challenge) => Self::CaptchaRequired(challenge),
             CoreEvent::ThreadsUpdated(threads) => Self::ThreadsUpdated { threads },
             CoreEvent::MessageSent {
                 client_message_id,
@@ -417,6 +426,17 @@ impl From<CoreEvent> for CoreEventDto {
                 ts,
                 reaction,
             } => Self::Reacted {
+                thread_id,
+                msg_id,
+                ts,
+                reaction,
+            },
+            CoreEvent::ReactFailed {
+                thread_id,
+                msg_id,
+                ts,
+                reaction,
+            } => Self::ReactFailed {
                 thread_id,
                 msg_id,
                 ts,

@@ -8,7 +8,7 @@ import type {
   PinnedPackMeta,
   StickerItem,
   Thread,
-} from "@/shared/types/ipc";
+} from "@/shared/types/ipc.generated";
 
 export interface ChatStoreState {
   threads: Thread[];

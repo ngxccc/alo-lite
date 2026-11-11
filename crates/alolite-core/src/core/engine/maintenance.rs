@@ -94,7 +94,9 @@ impl CoreEngine {
 
         let (logged_in, uin, display_name, avatar, send2me_id) = {
             let s = self.session.lock().await;
-            let logged_in = s.login.is_some() && !s.is_expired_marked();
+            // Authenticated endpoints need the cookie plus the AES key; a snapshot holding
+            // only `login` cannot work, so it must not unlock the chat UI.
+            let logged_in = s.has_live_credentials() && !s.is_expired_marked();
             let (uin, display_name, avatar, send2me_id) = s
                 .login
                 .as_ref()

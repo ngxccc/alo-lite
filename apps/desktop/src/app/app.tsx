@@ -19,6 +19,7 @@ import { useAppStore } from "@/app/store/use-app-store";
 export function App() {
   const dispatch = useAppStore((s) => s.dispatch);
   const themeMode = useAppStore((s) => s.settings?.theme_mode ?? "dark");
+  const fontSize = useAppStore((s) => s.settings?.font_size ?? "medium");
   const toast = useAppStore((s) => s.toast);
   const bootstrapped = useAppStore((s) => s.bootstrapped);
   const loggedIn = useAppStore((s) => s.loggedIn);
@@ -27,6 +28,7 @@ export function App() {
   const mediaCache = useAppStore((s) => s.mediaCache);
   const downloadDir = useAppStore((s) => s.settings?.download_dir ?? "");
   const [bootError, setBootError] = useState<string | null>(null);
+
   useEffect(() => {
     const resolved =
       themeMode === "system" && window.matchMedia("(prefers-color-scheme: light)").matches
@@ -36,6 +38,10 @@ export function App() {
           : "dark";
     document.documentElement.setAttribute("data-theme", resolved);
   }, [themeMode]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-font-size", fontSize);
+  }, [fontSize]);
 
   useEffect(() => {
     if (!isTauriRuntime()) {

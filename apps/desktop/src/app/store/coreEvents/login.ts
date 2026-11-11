@@ -1,5 +1,5 @@
 import { sortThreads } from "@/features/threads/utils/threads";
-import type { CoreEventDto } from "@/shared/types/ipc";
+import type { CoreEventDto } from "@/shared/types/ipc.generated";
 import type { AppState } from "../app-state";
 import { nextToast } from "../helpers";
 
@@ -10,6 +10,7 @@ export type LoginCoreEvent = Extract<
   | { type: "QrExpired" }
   | { type: "LoginSuccess" }
   | { type: "LoginFailed" }
+  | { type: "CaptchaRequired" }
   | { type: "LoggedOut" }
   | { type: "SessionExpired" }
   | { type: "AccountSwitched" }
@@ -54,6 +55,8 @@ export function handleLoginEvent(state: AppState, event: LoginCoreEvent): AppSta
         avatar: event.payload.avatar,
         loginInProgress: false,
         loginError: "",
+        captchaToken: null,
+        captchaImg: null,
         qrDataUrl: null,
         qrScannedName: null,
         statusMessage: "Đã đăng nhập",
@@ -66,6 +69,14 @@ export function handleLoginEvent(state: AppState, event: LoginCoreEvent): AppSta
         loginInProgress: false,
         loginError: event.payload.message,
         statusMessage: event.payload.message,
+      };
+    case "CaptchaRequired":
+      return {
+        ...state,
+        loginInProgress: false,
+        loginError: "",
+        captchaToken: event.payload.token,
+        captchaImg: event.payload.captcha_img,
       };
 
     case "LoggedOut":

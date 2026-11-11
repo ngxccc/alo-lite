@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bug, RefreshCw, ShieldAlert, Terminal } from "lucide-react";
 import { ipc, isTauriRuntime } from "@/shared/api/ipc";
-import type { DevDiagnosticsSnapshot, LogEntry } from "@/shared/types/ipc";
+import type { DevDiagnosticsSnapshot, LogEntry } from "@/shared/types/ipc.generated";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
@@ -85,10 +85,10 @@ export function DevToolsModal({
                   )}
                 >
                   <Badge variant={e.is_error ? "destructive" : "online"}>{e.status ?? "ERR"}</Badge>
-                  <span className="flex-1 truncate font-mono text-[11px]">
+                  <span className="flex-1 truncate font-mono text-xs">
                     {e.method} {e.url}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">{e.latency_ms}ms</span>
+                  <span className="text-xs text-muted-foreground">{e.latency_ms}ms</span>
                 </button>
               ))}
             </div>
@@ -106,7 +106,7 @@ export function DevToolsModal({
                   {selectedLog.error_msg ? (
                     <div className="text-destructive">Lỗi: {selectedLog.error_msg}</div>
                   ) : null}
-                  <pre className="overflow-x-auto rounded-lg border border-border bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap">
+                  <pre className="overflow-x-auto rounded-lg border border-border bg-muted p-3 font-mono text-xs whitespace-pre-wrap">
                     {selectedLog.decrypted_preview ?? selectedLog.payload_preview}
                   </pre>
                 </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ipc, isTauriRuntime } from "@/shared/api/ipc";
-import type { AutoReplyRule } from "@/shared/types/ipc";
+import type { AutoReplyRule } from "@/shared/types/ipc.generated";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Switch } from "@/shared/ui/switch";
@@ -62,7 +62,7 @@ export function UtilitiesTab({ settings, updateSettings, dispatch }: SettingsTab
             <div className="flex min-h-[52px] items-center justify-between gap-3 px-4 py-2">
               <div
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
                   item.color,
                 )}
               >

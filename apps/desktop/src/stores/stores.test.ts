@@ -3,7 +3,7 @@ import { useAuthStore } from "./use-auth-store";
 import { useChatStore } from "./use-chat-store";
 import { useUIStore } from "./use-ui-store";
 import { useContactsStore } from "./use-contacts-store";
-import type { ChatMessage, Thread } from "@/shared/types/ipc";
+import type { ChatMessage, Thread } from "@/shared/types/ipc.generated";
 
 describe("Domain Stores Architecture", () => {
   it("useAuthStore handles login and logout lifecycle", () => {
@@ -52,6 +52,7 @@ describe("Domain Stores Architecture", () => {
       messages: [],
       presentation: {
         members: [],
+        member_count: null,
         last_message_ts: 0,
         last_message_id: "",
         last_sender: "",
@@ -64,8 +65,10 @@ describe("Domain Stores Architecture", () => {
       unread: {
         last_seen_id: null,
         unread_ids: ["msg-1"],
+        mention_ids: [],
         marked_unread: false,
         muted: false,
+        muted_until: null,
       },
     };
 

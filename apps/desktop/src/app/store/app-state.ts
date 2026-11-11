@@ -12,7 +12,7 @@ import type {
   StickerPackInfo,
   Thread,
   UpdateCheckResult,
-} from "@/shared/types/ipc";
+} from "@/shared/types/ipc.generated";
 
 export type NavSection = "chat" | "contacts";
 export type ContactsSubTab = "friends" | "groups" | "friend_requests" | "group_invites";
@@ -55,6 +55,8 @@ export interface AppState {
   qrScannedAvatar: string | null;
   loginInProgress: boolean;
   loginError: string;
+  captchaToken: string | null;
+  captchaImg: string | null;
 
   activeSection: NavSection;
   contactsSubTab: ContactsSubTab;
@@ -176,6 +178,8 @@ export const initialAppState: AppState = {
   qrScannedAvatar: null,
   loginInProgress: false,
   loginError: "",
+  captchaToken: null,
+  captchaImg: null,
   activeSection: "chat",
   contactsSubTab: "friends",
   contactsSearchQuery: "",

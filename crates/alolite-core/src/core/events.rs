@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::protocol::auth::login::CaptchaChallenge;
 use crate::protocol::auth::QrLogin;
 use crate::protocol::messaging::unread::MuteControlEvent;
 use crate::protocol::messaging::{ChatMessage, LinkMetadata, StickerItem, StickerPackInfo, Thread};
@@ -74,6 +75,7 @@ pub enum CoreEvent {
         avatar: Option<String>,
     },
     LoginFailed(String),
+    CaptchaRequired(CaptchaChallenge),
     ThreadsUpdated(Vec<Thread>),
     MessageSent {
         client_message_id: String,
@@ -128,6 +130,12 @@ pub enum CoreEvent {
         quoted: ChatMessage,
     },
     Reacted {
+        thread_id: String,
+        msg_id: String,
+        ts: i64,
+        reaction: String,
+    },
+    ReactFailed {
         thread_id: String,
         msg_id: String,
         ts: i64,

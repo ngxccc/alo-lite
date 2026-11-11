@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { AppSettings, Thread } from "@/shared/types/ipc";
+import type { AppSettings, Thread } from "@/shared/types/ipc.generated";
 import { isThreadMuted, mergeThreadInto, reconcileSentMessage, sortThreads } from "./threads";
 
 const baseSettings: AppSettings = {
@@ -45,6 +45,7 @@ const baseSettings: AppSettings = {
   auto_check_updates: true,
   skipped_update_version: "",
   multi_profile_name: "acc2",
+  font_size: "medium",
   info_drawer_open: false,
 };
 
@@ -60,7 +61,9 @@ function thread(id: string, ts: number): Thread {
     unread: {
       last_seen_id: null,
       unread_ids: [],
+      mention_ids: [],
       muted: false,
+      muted_until: null,
       marked_unread: false,
     },
     presentation: {

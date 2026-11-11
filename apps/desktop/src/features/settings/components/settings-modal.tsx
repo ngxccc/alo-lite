@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { ipc, isTauriRuntime } from "@/shared/api/ipc";
-import type { AppSettings } from "@/shared/types/ipc";
+import type { AppSettings } from "@/shared/types/ipc.generated";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { cn } from "@/shared/utils/cn";
 import type { SettingsTab } from "@/app/store/app-reducer";

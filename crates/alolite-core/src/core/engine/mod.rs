@@ -2,6 +2,8 @@
 //! SQLite persistence, and image/sticker decoding independent of any GUI framework.
 
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::{Arc, Mutex as StdMutex};
 
 use serde::Serialize;
@@ -43,6 +45,15 @@ pub struct CoreEngine {
     pub(super) explicit_db_path: Option<String>,
     pub(super) sink: Arc<dyn CoreEventSink>,
     pub(super) is_polling: Arc<AtomicBool>,
+    pub(super) poll_failures: Arc<AtomicU32>,
+    /// Epoch seconds before which background polling stays paused after repeated failures.
+    pub(super) poll_paused_until: Arc<AtomicU64>,
+    /// Set once the server accepted the current credentials; background polling stays idle
+    /// until then so a restored-but-dead `zpw_sek` never produces long-poll traffic.
+    pub(super) session_verified: Arc<AtomicBool>,
+    /// Set while a password login is running; a concurrent submit is dropped instead of
+    /// minting a second session that invalidates the first.
+    pub(super) login_in_flight: Arc<AtomicBool>,
     pub(super) current_qr_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
@@ -56,6 +67,10 @@ impl CoreEngine {
             explicit_db_path: None,
             sink,
             is_polling: Arc::new(AtomicBool::new(false)),
+            poll_failures: Arc::new(AtomicU32::new(0)),
+            poll_paused_until: Arc::new(AtomicU64::new(0)),
+            session_verified: Arc::new(AtomicBool::new(false)),
+            login_in_flight: Arc::new(AtomicBool::new(false)),
             current_qr_task: Mutex::new(None),
         })
     }
@@ -73,6 +88,10 @@ impl CoreEngine {
             explicit_db_path: Some(db_path.into()),
             sink,
             is_polling: Arc::new(AtomicBool::new(false)),
+            poll_failures: Arc::new(AtomicU32::new(0)),
+            poll_paused_until: Arc::new(AtomicU64::new(0)),
+            session_verified: Arc::new(AtomicBool::new(false)),
+            login_in_flight: Arc::new(AtomicBool::new(false)),
             current_qr_task: Mutex::new(None),
         })
     }
@@ -90,6 +109,15 @@ impl CoreEngine {
     /// Emit an event directly to the attached UI sink.
     pub fn emit(&self, event: CoreEvent) {
         self.sink.emit(event);
+    }
+
+    /// Whether the server accepted the current credentials during this run.
+    pub fn is_session_verified(&self) -> bool {
+        self.session_verified.load(Ordering::Relaxed)
+    }
+
+    pub(super) fn set_session_verified(&self, verified: bool) {
+        self.session_verified.store(verified, Ordering::Relaxed);
     }
 
     /// Resolve the active SQLite path (explicit override or `accounts/<uin>_history.db`).
@@ -129,7 +157,7 @@ impl CoreEngine {
     pub async fn status(&self) -> CoreStatus {
         let (logged_in, uin, display_name) = {
             let s = self.session.lock().await;
-            let logged = s.login.is_some() && s.zpw_sek.is_some();
+            let logged = s.has_live_credentials() && !s.is_expired_marked();
             let uin = s.login.as_ref().map(|l| l.uin.clone()).unwrap_or_default();
             let dname = s
                 .login

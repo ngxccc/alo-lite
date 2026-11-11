@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use reqwest::cookie::Jar;
+use reqwest::cookie::{CookieStore, Jar};
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN, REFERER};
 use reqwest::{Client, Method};
 use serde_json::Value;
@@ -110,7 +110,6 @@ impl Session {
         if let Some(sek) = &self.zpw_sek {
             if !sek.is_empty() {
                 rb = rb
-                    .header("Cookie", format!("zpw_sek={sek}; _zlang=vi"))
                     .header("zpw_sek", sek)
                     .header("Origin", crate::endpoints::CHAT_ORIGIN)
                     .header("Referer", crate::endpoints::CHAT_REFERER);
@@ -176,13 +175,27 @@ impl Session {
             if let Some(b) = &body {
                 eprintln!("  body: {}", truncate(b, 400));
             }
+            // Cookie *names* only: values are credentials and never belong in a log.
+            if let Ok(parsed) = reqwest::Url::parse(url) {
+                if let Some(header) = self.jar.cookies(&parsed) {
+                    let names: Vec<&str> = header
+                        .to_str()
+                        .unwrap_or_default()
+                        .split(';')
+                        .filter_map(|pair| pair.split_once('=').map(|(name, _)| name.trim()))
+                        .collect();
+                    eprintln!("  cookies: {}", names.join(", "));
+                }
+            }
         }
         let method = m.as_str().to_string();
         let mut rb = self.http.request(m, url);
         if let Some(ref sek) = self.zpw_sek {
             if !sek.is_empty() && crate::endpoints::is_zalo_cookie_host(url) {
+                // The cookie jar already carries `zpw_sek` (and every cookie the server set,
+                // e.g. `zpsid`); a hand-built `Cookie` header would replace that set and made
+                // the microservices answer `600 zpw_sek bị thiếu hoặc không đúng`.
                 rb = rb
-                    .header("Cookie", format!("zpw_sek={sek}; _zlang=vi"))
                     .header("zpw_sek", sek)
                     .header("Origin", crate::endpoints::CHAT_ORIGIN)
                     .header("Referer", crate::endpoints::CHAT_REFERER);
@@ -213,6 +226,15 @@ impl Session {
         };
 
         let status = resp.status();
+        if let Some(sek) = super::cookies::extract_set_cookie_sek(resp.headers()) {
+            // Keep the seeded wildcard cookie in step with a rotated token, otherwise the
+            // jar would hold two `zpw_sek` values (our seed plus the server's) and the
+            // receiving service may read the stale one.
+            if self.zpw_sek.as_deref() != Some(sek.as_str()) {
+                self.seed_wildcard_cookie("zpw_sek", &sek);
+            }
+            self.stash_server_zpw_sek(sek);
+        }
         let text = resp.text().await?;
         if self.verbose {
             eprintln!("← {status} {}", truncate(&text, 400));

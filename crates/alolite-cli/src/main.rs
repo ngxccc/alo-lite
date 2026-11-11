@@ -71,31 +71,7 @@ async fn main() -> Result<()> {
     s.load_or_init_device_identity("device.json");
 
     // Attempt to restore persistent session from disk
-    let session_restored = if !opts.force_logout {
-        if s.load_from_file("session.json").is_ok() {
-            if let Some(li) = &s.login {
-                let _ = s.save_device_identity("device.json");
-                let name = if li.display_name.is_empty() {
-                    "Zalo User"
-                } else {
-                    &li.display_name
-                };
-                if opts.dev_mode {
-                    println!(
-                        "✓ Đã khôi phục phiên từ session.json: {name} (UIN: {})",
-                        li.uin
-                    );
-                }
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    } else {
-        false
-    };
+    let session_restored = !opts.force_logout && restore_session(&mut s, opts.dev_mode);
 
     // If `--mcp` is requested, run Model Context Protocol JSON-RPC server over stdio
     if opts.force_mcp {
@@ -205,12 +181,27 @@ async fn run_terminal_login_flow(
             if !phone.trim().is_empty() && !password.is_empty() {
                 println!("… Đang đăng nhập mật khẩu");
                 let v1 = args.iter().any(|a| a == "--v1");
-                let _ = if v1 {
-                    auth::login::login_by_password_v1(&mut s, phone.trim(), &password).await?
+                if v1 {
+                    let _ =
+                        auth::login::login_by_password_v1(&mut s, phone.trim(), &password).await?;
                 } else {
-                    auth::login::login_by_password(&mut s, phone.trim(), &password, iso.trim())
-                        .await?
-                };
+                    match auth::login::login_by_password(
+                        &mut s,
+                        phone.trim(),
+                        &password,
+                        iso.trim(),
+                        None,
+                        None,
+                    )
+                    .await?
+                    {
+                        auth::login::LoginPasswordOutcome::Success(_) => {}
+                        auth::login::LoginPasswordOutcome::CaptchaRequired(_) => {
+                            eprintln!("! Đăng nhập yêu cầu mã Captcha. Vui lòng quét mã QR (--qr) hoặc đăng nhập bằng AloLite Desktop.");
+                            return Ok(());
+                        }
+                    }
+                }
                 logged_in_now = true;
             }
         }
@@ -247,4 +238,33 @@ async fn run_terminal_login_flow(
         "✓ Hoàn tất xử lý phiên. Hãy chạy lại không kèm cờ dòng lệnh để mở giao diện AloLite!"
     );
     Ok(())
+}
+
+/// Restore sesstion from session.json; return true success
+fn restore_session(s: &mut Session, dev_mode: bool) -> bool {
+    match s.load_from_file("session.json") {
+        Ok(()) => {}
+        Err(e) => {
+            if std::path::Path::new("session.json").exists() {
+                eprintln!("! nạp session.json thất bại: {e}");
+            }
+            return false;
+        }
+    }
+    let Some(li) = &s.login else {
+        return false;
+    };
+    let _ = s.save_device_identity("device.json");
+    if dev_mode {
+        let name = if li.display_name.is_empty() {
+            "Zalo User"
+        } else {
+            &li.display_name
+        };
+        println!(
+            "✓ Đã khôi phục phiên từ session.json: {name} (UIN: {})",
+            li.uin
+        );
+    }
+    true
 }

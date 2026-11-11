@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, ExternalLink, FileText, Phone, Play, Video } from "lucide-react";
 import { ipc } from "@/shared/api/ipc";
-import type { ChatMessage } from "@/shared/types/ipc";
+import type { ChatMessage } from "@/shared/types/ipc.generated";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { jxlToJpgUrl } from "@/shared/utils/text";
@@ -52,7 +52,7 @@ export function PhotoMessageMedia({
       {src ? (
         <div className="relative">
           {/* HD badge as in Zalo */}
-          <span className="absolute top-2 left-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
+          <span className="absolute top-2 left-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
             HD
           </span>
           <img
@@ -152,7 +152,7 @@ export function VideoMessageMedia({
           className="group/vid relative flex min-h-[150px] max-w-[320px] min-w-[220px] cursor-pointer items-center justify-center overflow-hidden rounded-[6px] border border-border bg-black/80"
         >
           {/* HD badge */}
-          <span className="absolute top-2 left-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
+          <span className="absolute top-2 left-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
             HD
           </span>
           {posterUrl ? (
@@ -171,7 +171,7 @@ export function VideoMessageMedia({
           </div>
           {!inlineVideoSupported || playbackError ? (
             <div className="absolute right-0 bottom-2 left-0 flex justify-center">
-              <span className="rounded bg-black/60 px-2 py-0.5 text-[11px] text-white/80">
+              <span className="rounded bg-black/60 px-2 py-0.5 text-xs text-white/80">
                 {playbackError ? "Nhấn để mở ngoài" : "Nhấn để xem"}
               </span>
             </div>
@@ -179,13 +179,13 @@ export function VideoMessageMedia({
         </button>
       ) : null}
       {!shouldHideMediaCaption(msg) ? (
-        <span className="text-[15px] select-text">{msg.text}</span>
+        <span className="text-base select-text">{msg.text}</span>
       ) : null}
       {/* Download button for videos */}
       {videoUrl ? (
         <button
           type="button"
-          className="flex w-fit items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
+          className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           onClick={() => void ipc.downloadFile(videoUrl, fileName, downloadDir)}
         >
           <Download className="h-3.5 w-3.5" />
@@ -232,9 +232,9 @@ export function FileMessageMedia({ msg, downloadDir }: { msg: ChatMessage; downl
         <FileText className="h-5 w-5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[14px] font-medium">{msg.link_title ?? msg.text}</div>
+        <div className="truncate text-sm font-medium">{msg.link_title ?? msg.text}</div>
         {msg.link_desc ? (
-          <div className="text-[12px] text-muted-foreground">{formatFileSize(msg.link_desc)}</div>
+          <div className="text-xs text-muted-foreground">{formatFileSize(msg.link_desc)}</div>
         ) : null}
       </div>
       <Button
@@ -273,16 +273,14 @@ export function LinkPreviewCard({ msg }: { msg: ChatMessage }) {
           <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
         ) : null}
         <div className="min-w-0">
-          <div className="truncate text-[14px] font-semibold text-foreground">
+          <div className="truncate text-sm font-semibold text-foreground">
             {msg.link_title ?? msg.link_url}
           </div>
           {msg.link_desc ? (
-            <div className="mt-0.5 line-clamp-2 text-[13px] text-muted-foreground">
-              {msg.link_desc}
-            </div>
+            <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{msg.link_desc}</div>
           ) : null}
           {msg.link_src ? (
-            <div className="mt-1 truncate text-[12px] text-primary">{msg.link_src}</div>
+            <div className="mt-1 truncate text-xs text-primary">{msg.link_src}</div>
           ) : null}
         </div>
       </div>
@@ -304,8 +302,8 @@ export function CallCardMedia({ callCard }: { callCard: CallCardMeta }) {
         {callCard.isVideo ? <Video className="h-4.5 w-4.5" /> : <Phone className="h-4.5 w-4.5" />}
       </div>
       <div>
-        <div className="text-[13.5px] font-bold">{callCard.title}</div>
-        <div className="text-[13px] text-muted-foreground">{callCard.subtitle}</div>
+        <div className="text-sm font-bold">{callCard.title}</div>
+        <div className="text-xs text-muted-foreground">{callCard.subtitle}</div>
       </div>
     </div>
   );

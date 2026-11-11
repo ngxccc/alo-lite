@@ -243,39 +243,47 @@ pub async fn login_by_password_v1(
 /// * `password` - Plaintext user password.
 /// * `iso` - ISO country code (e.g. `"VN"`).
 ///
+/// Active Captcha challenge returned by `18029 CAPTCHA_REQUIRED` or `/api/login/getCaptcha`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct CaptchaChallenge {
+    pub token: String,
+    pub captcha_img: String,
+    pub expiration_time: u64,
+}
+
+/// Result of a password authentication attempt.
+#[derive(Debug, Clone)]
+pub enum LoginPasswordOutcome {
+    Success(crate::protocol::wire::ActionAck),
+    CaptchaRequired(CaptchaChallenge),
+}
+
 /// # Returns
-/// [`crate::protocol::wire::ActionAck`] indicating success or server failure code.
+/// [`LoginPasswordOutcome`] indicating success or a required Captcha challenge.
 ///
 /// # Errors
-/// Returns an error if encryption fails, HTTP transport fails, or server returns a non-zero error code:
-/// - `18060`: Invalid encryption protocol (ParamCipher v2 required).
-/// - `18022`: Invalid signature.
-/// - `18024`: Incorrect phone number or password.
-/// - `18012` / `18013`: Verification / Captcha challenge required.
+/// Returns an error if encryption fails, HTTP transport fails, or server returns a non-zero error code.
 pub async fn login_by_password(
     s: &mut Session,
     phone: &str,
     password: &str,
     iso: &str,
-) -> Result<crate::protocol::wire::ActionAck> {
+    captcha_token: Option<&str>,
+    captcha_answer: Option<&str>,
+) -> Result<LoginPasswordOutcome> {
     let salt = random_salt();
     let pwd = encrypt_password(phone, &s.imei, password, &salt)?;
     let client_time = unix_now();
 
-    // Field order and set must match `g` exactly — the signkey hashes sorted values.
-    //
-    // `logged_uids` is passed as the caller's value; the real client sends the stored
-    // uid list, and `null` when there is none. Sending the string "[]" changes both the
-    // signed payload and what the server expects to see.
     let payload = obj(&[
         ("phone_num", json!(phone)),
         ("iso_country_code", json!(iso)),
         ("password", json!(pwd)),
         ("salt", json!(salt)),
-        ("cptch_token", json!("")),
-        ("cptch_answer", json!("")),
+        ("cptch_token", json!(captcha_token.unwrap_or(""))),
+        ("cptch_answer", json!(captcha_answer.unwrap_or(""))),
         ("make_answer", json!(0)),
-        ("language", json!("en")),
+        ("language", json!("vi")),
         ("logged_uids", {
             let csv = s.logged_uids_csv();
             if csv.is_empty() {
@@ -291,20 +299,40 @@ pub async fn login_by_password(
     let cipher = ParamCipher::new(ZPW_TYPE, &s.imei, client_time)?;
     let body = cipher.build_body(ZPW_TYPE, ZPW_VER, &payload, "loginbypasswv2")?;
 
-    // Signed set only — no `enk`, no `ref` (both are outside the hash server-side).
-    let query = flatten_query(&body);
-    let url = format!(
-        "{}/api/login/loginByPasswv2?{query}&ref={}",
-        s.domains.auth,
-        urlencode(crate::endpoints::CHAT_ORIGIN)
-    );
-
-    let resp = s.post_form(&url, String::new()).await?;
+    // Official client sends parameters in POST body (application/x-www-form-urlencoded)
+    // and does NOT attach `ref` on desktop.
+    let url = format!("{}/api/login/loginByPasswv2", s.domains.auth);
+    let form_body = flatten_query(&body);
+    let resp = s.post_form(&url, form_body).await?;
     let resp = s.maybe_decrypt(resp, cipher.key().as_bytes()).await;
 
-    // Surface an error code hidden inside the encrypted envelope.
     let env = LoginResponseWireData::from_value(&resp);
     let code = env.code();
+    if code == 18029 {
+        if let Some(data) = resp.get("data") {
+            let token = data
+                .get("token")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let captcha_img = data
+                .get("captcha_img")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let expiration_time = data
+                .get("expiration_time")
+                .and_then(Value::as_u64)
+                .unwrap_or(300);
+            if !token.is_empty() && !captcha_img.is_empty() {
+                return Ok(LoginPasswordOutcome::CaptchaRequired(CaptchaChallenge {
+                    token,
+                    captcha_img,
+                    expiration_time,
+                }));
+            }
+        }
+    }
     if code != 0 {
         anyhow::bail!("login error {code}: {}", env.message());
     }
@@ -312,7 +340,66 @@ pub async fn login_by_password(
     if let Some(cfg) = &env.data {
         apply_login_config(s, cfg);
     }
-    Ok(crate::protocol::wire::ActionAck::from_wire(&resp))
+    // The cookie minted by the login edge is authoritative; the `zpw_sek` echoed in the
+    // encrypted body can lag behind it and would otherwise replace a working jar entry.
+    if let Some(sek) = s.take_server_zpw_sek() {
+        s.set_zpw_sek(sek);
+    }
+    Ok(LoginPasswordOutcome::Success(
+        crate::protocol::wire::ActionAck::from_wire(&resp),
+    ))
+}
+
+/// Fetch a fresh CAPTCHA challenge (`GET /api/login/getCaptcha`, cmd `11325`).
+pub async fn get_login_captcha(s: &Session) -> Result<CaptchaChallenge> {
+    let client_time = unix_now();
+    let payload = obj(&[
+        ("client_time", json!(client_time)),
+        ("imei", json!(s.imei)),
+        ("computer_name", json!(s.computer_name)),
+    ]);
+
+    let cipher = ParamCipher::new(ZPW_TYPE, &s.imei, client_time)?;
+    let body = cipher.build_body(ZPW_TYPE, ZPW_VER, &payload, "getcaptcha")?;
+
+    let query = flatten_query(&body);
+    let url = format!("{}/api/login/getCaptcha?{query}", s.domains.auth);
+    let resp = s.get(&url).await?;
+    let dec = s.maybe_decrypt(resp, cipher.key().as_bytes()).await;
+
+    let env = crate::protocol::wire::ErrorEnvelopeWireData::parse(&dec);
+    let code = env.code();
+    if code != 0 {
+        anyhow::bail!("getCaptcha error {code}: {}", env.message());
+    }
+
+    let data = dec
+        .get("data")
+        .ok_or_else(|| anyhow::anyhow!("getCaptcha response has no data"))?;
+    let token = data
+        .get("token")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let captcha_img = data
+        .get("captcha_img")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let expiration_time = data
+        .get("expiration_time")
+        .and_then(Value::as_u64)
+        .unwrap_or(300);
+
+    if token.is_empty() || captcha_img.is_empty() {
+        anyhow::bail!("getCaptcha missing token or captcha_img");
+    }
+
+    Ok(CaptchaChallenge {
+        token,
+        captcha_img,
+        expiration_time,
+    })
 }
 
 /// Flatten a JSON object into a `k=v&k=v` URL query string.
@@ -436,12 +523,25 @@ pub async fn fetch_and_apply_server_info(s: &mut Session) -> Result<()> {
 /// Returns an error if [`get_login_info`] fails on all candidate hosts.
 pub async fn fetch_and_apply_login_info(s: &mut Session) -> Result<()> {
     let info = get_login_info(s).await?;
-    if let Some(sek) = super::qr::extract_zpw_sek(&info) {
-        s.set_zpw_sek(sek);
+    let server_sek = s.take_server_zpw_sek();
+    // Credentials established by the login step outrank this hydration call: only fill the
+    // gaps, never replace a token the server has already accepted.
+    let live_sek = s.zpw_sek.clone().filter(|v| !v.is_empty());
+    let live_key = s.secret_key.clone();
+    if live_sek.is_none() {
+        if let Some(sek) = super::qr::extract_zpw_sek(&info) {
+            s.set_zpw_sek(sek);
+        }
     }
     let env = LoginResponseWireData::from_value(&info);
     if let Some(cfg) = &env.data {
         apply_login_config(s, cfg);
+    }
+    if let Some(sek) = server_sek.or(live_sek) {
+        s.set_zpw_sek(sek);
+    }
+    if let Some(key) = live_key {
+        s.secret_key = Some(key);
     }
     Ok(())
 }
@@ -681,6 +781,14 @@ pub fn apply_login_config(s: &mut Session, typed: &LoginConfigWireData) {
         let raw = crate::crypto::parse_secret_key(&new_enk);
         s.secret_key = Some(raw);
     }
+    if s.verbose {
+        eprintln!(
+            "[login] config: dkey={} ký tự, zpw_enk={} ký tự, zpw_sek={} ký tự",
+            new_dkey.len(),
+            new_enk.len(),
+            new_sek.len()
+        );
+    }
     if !new_sek.is_empty() {
         s.set_zpw_sek(new_sek.clone());
     }
@@ -782,5 +890,48 @@ mod tests {
         assert_eq!(s.zpw_sek.as_deref(), Some("sek_nested_456"));
         let login = s.login.as_ref().unwrap();
         assert_eq!(login.zpw_sek, "sek_nested_456");
+    }
+
+    #[test]
+    fn login_response_wire_data_parses_captcha_error() {
+        let resp = serde_json::json!({
+            "error_code": 18029,
+            "error_message": "Captcha required",
+            "data": {
+                "captcha_img": "base64_test_img",
+                "token": "token_xyz_123",
+                "expiration_time": 300
+            }
+        });
+        let env = LoginResponseWireData::from_value(&resp);
+        assert_eq!(env.code(), 18029);
+        assert_eq!(env.message(), "Captcha required");
+    }
+
+    #[test]
+    fn login_password_form_body_omits_ref_and_contains_mandatory_fields() {
+        let cipher = ParamCipher::new("23", "test_imei", 1700000000).unwrap();
+        let payload = serde_json::json!({
+            "phone_num": "0857044507",
+            "iso_country_code": "VN",
+            "password": "encrypted_pwd",
+            "salt": "12345678",
+            "cptch_token": "token_123",
+            "cptch_answer": "ABCD",
+            "make_answer": 0,
+            "language": "vi",
+            "logged_uids": null,
+            "computer_name": "pc",
+            "imei": "test_imei"
+        });
+        let body = cipher
+            .build_body("23", "695", &payload, "loginbypasswv2")
+            .unwrap();
+        let form_body = flatten_query(&body);
+        assert!(!form_body.contains("ref="));
+        assert!(form_body.contains("zcid="));
+        assert!(form_body.contains("signkey="));
+        assert!(form_body.contains("params="));
+        assert!(form_body.contains("enc_ver=v2"));
     }
 }
